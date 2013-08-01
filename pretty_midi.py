@@ -144,7 +144,6 @@ class PrettyMIDI(object):
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
         
-
     def get_tempii(self):
         '''
         Return arrays of tempo changes and their times.  This is direct from the MIDI file.
@@ -163,7 +162,6 @@ class PrettyMIDI(object):
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
         
-    
     def get_beats(self):
         '''
         Return a list of (probably correct) beat locations in the MIDI file
@@ -187,7 +185,7 @@ class PrettyMIDI(object):
         Input:
             times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - piano roll of MIDI data, flattened across instruments, np.ndarray of size 127 x times.shape[0]
+            piano_roll - piano roll of MIDI data, flattened across instruments, np.ndarray of size 128 x times.shape[0]
         '''
 
     def get_chroma(self, times=None):
@@ -197,7 +195,7 @@ class PrettyMIDI(object):
         Input:
             times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - chroma matrix, flattened across instruments, np.ndarray of size 127 x times.shape[0]
+            piano_roll - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
         '''
 
 # <codecell>
@@ -238,8 +236,30 @@ class Instrument(object):
         Input:
             times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - Piano roll matrix, np.ndarray of size 127 x times.shape[0]
+            piano_roll - Piano roll matrix, np.ndarray of size 128 x times.shape[0]
         '''
+        # If there are no events, return an empty matrix
+        if self.events == []:
+            return np.array([[]]*128)
+        # Do we need to generate a list of times?
+        if times is None:
+            # Get the end time of the last event
+            endTime = np.max([note.end for note in self.events])
+            # Uniform sampling at 1000 Hz
+            times = np.arange( 0, endTime, 1/1000.0 )
+        # Allocate a matrix of zeros - we will add in as we go
+        piano_roll = np.zeros((128, times.shape[0]))
+        # Drum tracks don't have pitch, so return a matrix of zeros
+        if self.is_drum:
+            return piano_roll
+        # Add up piano roll matrix, column-by-column
+        for n, (start, end) in enumerate( zip( times[:-1], times[1:] ) ):
+            for note in self.events:
+                # Does the note fall within this time window?
+                if note.start < end and note.end > start:
+                    # Should interpolate
+                    piano_roll[note.pitch, n] += note.velocity
+        return piano_roll
 
     def get_chroma(self, times=None):
         '''
@@ -248,7 +268,7 @@ class Instrument(object):
         Input:
             times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - chroma matrix, np.ndarray of size 127 x times.shape[0]
+            piano_roll - chroma matrix, np.ndarray of size 12 x times.shape[0]
         '''
     
     def __repr__(self):
