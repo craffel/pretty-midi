@@ -39,6 +39,12 @@ class PrettyMIDI(object):
         
         # Populate the list of tempo changes (tick scales
         self._get_tempo_changes(midi_data)
+        # Check that there are no tempo change events on any tracks other than track 0
+        if sum([[event.name == 'Set Tempo' for event in track] for track in midi_data[1:]]):
+            print "Warning - tempo change events found on non-zero tracks.  This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong."
+            
+        # Populate teh list of instruments
+        self._get_instruments(midi_data)
         
     def _get_tempo_changes(self, midi_data):
         '''
@@ -88,10 +94,19 @@ class PrettyMIDI(object):
                 time += tick_scale*(tick - change_tick)
                 tick = change_tick
         return time
+    
+    def _get_instruments(self, midi_data):
+        '''
+        Populates the list of instruments in midi_data.
+        
+        Input:
+            midi_data - midi.FileReader object
+        '''
+        
 
     def get_tempii(self):
         '''
-        Return arrays of tempo changes and their times
+        Return arrays of tempo changes and their times.  This is direct from the MIDI file.
         
         Output:
             tempo_change_times - Times, in seconds, where the tempo changes.
@@ -110,10 +125,18 @@ class PrettyMIDI(object):
     
     def get_beats(self):
         '''
-        Return a list of (approximate) beat locations in the MIDI file
+        Return a list of (probably correct) beat locations in the MIDI file
         
         Output:
             beats - np.ndarray of beat locations, in seconds
+        '''
+    
+    def get_onsets(self):
+        '''
+        Return a list of the times of all onsets of all notes from all instruments.
+        
+        Output:
+            onsets - np.ndarray of onset locations, in seconds
         '''
     
     def get_piano_roll(self, times=None):
@@ -158,6 +181,14 @@ class Instrument(object):
         self.program = program
         self.is_drum = is_drum
         self.events = []
+    
+    def get_onsets(self):
+        '''
+        Get all onsets of all notes played by this instrument.
+        
+        Output:
+            onsets - np.ndarray of all onsets
+        '''
     
     def get_piano_roll(self, times=None):
         '''
