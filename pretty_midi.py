@@ -250,6 +250,10 @@ class Instrument(object):
         Output:
             piano_roll - chroma matrix, np.ndarray of size 127 x times.shape[0]
         '''
+    
+    def __repr__(self):
+        return 'Instrument(program={}, is_drum={})'.format(self.program, self.is_drum, len(self.events))
+        
 
 # <codecell>
 
@@ -279,4 +283,7 @@ class Note(object):
         self.start = start
         self.end = end
         self.pitch_changes = []
+    
+    def __repr__(self):
+        return 'Note(start={:f}, end={:f}, pitch={}, velocity={})'.format(self.start, self.end, self.pitch, self.velocity)
 
