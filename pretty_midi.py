@@ -28,9 +28,6 @@ class PrettyMIDI(object):
         Input:
             midi_data - midi.FileReader object
         '''
-        # Initialize empty list of instruments
-        instruments = []
-        
         # Convert tick values in midi_data to absolute, a useful thing.
         midi_data.make_ticks_abs()
         
@@ -102,6 +99,50 @@ class PrettyMIDI(object):
         Input:
             midi_data - midi.FileReader object
         '''
+        # Initialize empty list of instruments
+        self.instruments = []
+        for track in midi_data:
+            # Keep track of last note on location: key = (instrument, is_drum, note), value = note on time
+            last_note_on = {}
+            # Keep track of which instrument is playing in each channel - initialize to program 0 for all channels
+            current_instrument = np.zeros( 16, dtype=np.int )
+            for event in track:
+                # Look for program change events
+                if event.name == 'Program Change':
+                    # Update the instrument for this channel
+                    current_instrument[event.channel] = event.data[0]
+                # Note ons are note on events with velocity > 0
+                elif event.name == 'Note On' and event.velocity > 0:
+                    # Check whether this event is for the drum channel
+                    is_drum = (event.channel == 9)
+                    # Store this as the last note-on location
+                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = self._tick_to_time(event.tick)
+                # Note offs can also be note on events with 0 velocity
+                elif event.name == 'Note Off' or (event.name == 'Note On' and event.velocity == 0):
+                    # Check whether this event is for the drum channel
+                    is_drum = (event.channel == 9)
+                    # Check that a note-on exists (ignore spurious note-offs)
+                    if (current_instrument[event.channel], is_drum, event.pitch) in last_note_on:
+                        # Get the start/stop times of this note
+                        start = last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
+                        end = self._tick_to_time(event.tick)
+                        # Check that the instrument exists
+                        instrument_exists = False
+                        for instrument in self.instruments:
+                            # Find the right instrument
+                            if instrument.program == current_instrument[event.channel] and instrument.is_drum == is_drum:
+                                instrument_exists = True
+                                # Add this note event
+                                instrument.events.append(Note(event.velocity, event.pitch, start, end))
+                        # Create the instrument if none was found
+                        if not instrument_exists:
+                            # Create a new instrument
+                            self.instruments.append(Instrument(current_instrument[event.channel], is_drum))
+                            instrument = self.instruments[-1]
+                            # Add the note to the new instrument
+                            instrument.events.append(Note(event.velocity, event.pitch, start, end))
+                        # Remove the last note on for this instrument
+                        del last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
         
 
     def get_tempii(self):
