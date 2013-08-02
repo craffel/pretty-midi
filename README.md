@@ -8,6 +8,7 @@ Example usage:
 
 ```python
 from pretty_midi import PrettyMIDI
+import midi
 bohemian_rhapsody = PrettyMIDI(midi.read_midifile('Bohemian Rhapsody.mid'))
 piano_roll = bohemian_rhapsody.get_piano_roll()
 import matplotlib.pyplot as plt
