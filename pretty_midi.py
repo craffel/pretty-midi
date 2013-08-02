@@ -187,6 +187,14 @@ class PrettyMIDI(object):
         Output:
             piano_roll - piano roll of MIDI data, flattened across instruments, np.ndarray of size 128 x times.shape[0]
         '''
+        # Get piano rolls for each instrument
+        piano_rolls = [i.get_piano_roll(times=times) for i in self.instruments]
+        # Allocate piano roll, # columns is max of # of columns in all piano rolls
+        piano_roll = np.zeros( (128, np.max([p.shape[1] for p in piano_rolls])), dtype=np.int16 )
+        # Sum each piano roll into the aggregate piano roll
+        for roll in piano_rolls:
+            piano_roll[:, :roll.shape[1]] += roll
+        return piano_roll
 
     def get_chroma(self, times=None):
         '''
