@@ -91,9 +91,9 @@ class PrettyMIDI(object):
         # Cycle through intervals of different tempii
         for (start_tick, tick_scale), (end_tick, _) in zip(self.tick_scales[:-1], self.tick_scales[1:]):
             # Convert ticks in this interval to times
-            self.tick_to_time[start_tick:end_tick] = last_end_time + tick_scale*np.arange(end_tick - start_tick)
+            self.tick_to_time[start_tick:end_tick + 1] = last_end_time + tick_scale*np.arange(end_tick - start_tick + 1)
             # Update the time of the last tick in this interval
-            last_end_time = self.tick_to_time[end_tick - 1]
+            last_end_time = self.tick_to_time[end_tick]
         # For the final interval, use the final tempo setting and ticks from the final tempo setting until max_tick
         start_tick, tick_scale = self.tick_scales[-1]
         self.tick_to_time[start_tick:] = last_end_time + tick_scale*np.arange(max_tick - start_tick)
