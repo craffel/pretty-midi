@@ -34,13 +34,16 @@ class PrettyMIDI(object):
         # Store the resolution for later use
         self.resolution = midi_data.resolution
         
-        # Populate the list of tempo changes (tick scales
+        # Populate the list of tempo changes (tick scales)
         self._get_tempo_changes(midi_data)
+        # Update the array which maps ticks to time
+        max_tick = max([max([event.tick for event in track]) for track in midi_data]) + 1
+        self._update_tick_to_time(max_tick)
         # Check that there are no tempo change events on any tracks other than track 0
-        if sum([[event.name == 'Set Tempo' for event in track] for track in midi_data[1:]]):
+        if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
             print "Warning - tempo change events found on non-zero tracks.  This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong."
             
-        # Populate teh list of instruments
+        # Populate the list of instruments
         self._get_instruments(midi_data)
         
     def _get_tempo_changes(self, midi_data):
@@ -74,24 +77,27 @@ class PrettyMIDI(object):
                     if tick_scale != last_tick_scale:
                         self.tick_scales.append( (event.tick, tick_scale) )
     
-    def _tick_to_time(self, tick):
+    def _update_tick_to_time(self, max_tick):
         '''
-        Converts from a tick to a time, in seconds, using self.tick_scales
+        Creates tick_to_time, an array which maps ticks to time, from tick 0 to max_tick
         
         Input:
-            tick - absolute tick
-        Output:
-            time - time, in seconds, of the tick
+            max_tick - last tick to compute time for
         '''
-        # Time will be accumulated over tick scale changes
-        time = 0
-        # Iterate through all the tempo changes (tick scale changes!)
-        for change_tick, tick_scale in reversed(self.tick_scales):
-            if tick > change_tick:
-                time += tick_scale*(tick - change_tick)
-                tick = change_tick
-        return time
-    
+        # Allocate tick to time array - indexed by tick from 0 to max_tick
+        self.tick_to_time = np.zeros( max_tick )
+        # Keep track of the end time of the last tick in the previous interval
+        last_end_time = 0
+        # Cycle through intervals of different tempii
+        for (start_tick, tick_scale), (end_tick, _) in zip(self.tick_scales[:-1], self.tick_scales[1:]):
+            # Convert ticks in this interval to times
+            self.tick_to_time[start_tick:end_tick] = last_end_time + tick_scale*np.arange(end_tick - start_tick)
+            # Update the time of the last tick in this interval
+            last_end_time = self.tick_to_time[end_tick - 1]
+        # For the final interval, use the final tempo setting and ticks from the final tempo setting until max_tick
+        start_tick, tick_scale = self.tick_scales[-1]
+        self.tick_to_time[start_tick:] = last_end_time + tick_scale*np.arange(max_tick - start_tick)
+        
     def _get_instruments(self, midi_data):
         '''
         Populates the list of instruments in midi_data.
@@ -116,7 +122,7 @@ class PrettyMIDI(object):
                     # Check whether this event is for the drum channel
                     is_drum = (event.channel == 9)
                     # Store this as the last note-on location
-                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = self._tick_to_time(event.tick)
+                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = self.tick_to_time[event.tick]
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On' and event.velocity == 0):
                     # Check whether this event is for the drum channel
@@ -125,7 +131,7 @@ class PrettyMIDI(object):
                     if (current_instrument[event.channel], is_drum, event.pitch) in last_note_on:
                         # Get the start/stop times of this note
                         start = last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
-                        end = self._tick_to_time(event.tick)
+                        end = self.tick_to_time[event.tick]
                         # Check that the instrument exists
                         instrument_exists = False
                         for instrument in self.instruments:
@@ -157,7 +163,7 @@ class PrettyMIDI(object):
         tempii = np.zeros(len(self.tick_scales))
         for n, (tick, tick_scale) in enumerate(self.tick_scales):
             # Convert tick of this tempo change to time in seconds
-            tempo_change_times[n] = self._tick_to_time(tick)
+            tempo_change_times[n] = self.tick_to_time[tick]
             # Convert tick scale to a tempo
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
