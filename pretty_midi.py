@@ -183,7 +183,7 @@ class PrettyMIDI(object):
         Get the MIDI data in piano roll notation.
         
         Input:
-            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/1000.0)
+            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             piano_roll - piano roll of MIDI data, flattened across instruments, np.ndarray of size 128 x times.shape[0]
         '''
@@ -195,7 +195,7 @@ class PrettyMIDI(object):
         Input:
             times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
+            chroma - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
         '''
 
 # <codecell>
@@ -234,32 +234,40 @@ class Instrument(object):
         Get a piano roll notation of the note events of this instrument.
         
         Input:
-            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/1000.0)
+            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             piano_roll - Piano roll matrix, np.ndarray of size 128 x times.shape[0]
         '''
         # If there are no events, return an empty matrix
         if self.events == []:
             return np.array([[]]*128)
-        # Do we need to generate a list of times?
-        if times is None:
-            # Get the end time of the last event
-            endTime = np.max([note.end for note in self.events])
-            # Uniform sampling at 1000 Hz
-            times = np.arange( 0, endTime, 1/1000.0 )
+        # Get the end time of the last event
+        endTime = np.max([note.end for note in self.events])
+        # Sample at 100 Hz
+        fs = 100
         # Allocate a matrix of zeros - we will add in as we go
-        piano_roll = np.zeros((128, times.shape[0]))
+        piano_roll = np.zeros((128, fs*endTime), dtype=np.int16)
         # Drum tracks don't have pitch, so return a matrix of zeros
         if self.is_drum:
+            if times is None:
+                return piano_roll
+            else:
+                return np.zeros((128, times.shape[0]), dtype=np.int16)
+        # Add up piano roll matrix, note-by-note
+        for note in self.events:
+            # Should interpolate
+            piano_roll[note.pitch, int(note.start*fs):int(note.end*fs)] += note.velocity
+
+        # Do we need to integrate?
+        if times is None:
             return piano_roll
-        # Add up piano roll matrix, column-by-column
-        for n, (start, end) in enumerate( zip( times[:-1], times[1:] ) ):
-            for note in self.events:
-                # Does the note fall within this time window?
-                if note.start < end and note.end > start:
-                    # Should interpolate
-                    piano_roll[note.pitch, n] += note.velocity
-        return piano_roll
+        piano_roll_integrated = np.zeros((128, times.shape[0]), dtype=np.int16)
+        # Convert to column indices
+        times = times*fs
+        for n, (start, end) in enumerate(zip(times[:-1], times[1:])):
+            # Each column is the mean of the columns in piano_roll
+            piano_roll_integrated[:, n] = np.mean(piano_roll[:, start:end], axis=1)
+        return piano_roll_integrated
 
     def get_chroma(self, times=None):
         '''
@@ -268,7 +276,7 @@ class Instrument(object):
         Input:
             times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
-            piano_roll - chroma matrix, np.ndarray of size 12 x times.shape[0]
+            chroma - chroma matrix, np.ndarray of size 12 x times.shape[0]
         '''
     
     def __repr__(self):
