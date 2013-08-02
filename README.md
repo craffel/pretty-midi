@@ -21,7 +21,7 @@ plt.imshow( piano_roll, origin='lower', aspect='auto', interpolation='nearest' )
 # Get the chroma matrix - the energy in each semitone across octaves
 chroma = bohemian_rhapsody.get_chroma()
 # Optional - normalize chroma_matrix columnwise by max
-chroma_matrix /= (chroma.max( axis = 0 ) + (chroma.max( axis = 0 ) == 0))
+chroma /= (chroma.max( axis = 0 ) + (chroma.max( axis = 0 ) == 0))
 plt.figure( figsize=(20, 4) )
-plt.imshow( chroma_matrix, origin='lower', aspect='auto', interpolation='nearest' )
+plt.imshow( chroma, origin='lower', aspect='auto', interpolation='nearest' )
 ```
