@@ -211,6 +211,13 @@ class PrettyMIDI(object):
         Output:
             chroma - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
         '''
+        # First, get the piano roll
+        piano_roll = self.get_piano_roll(times=times)
+        # Fold into one octave
+        chroma_matrix = np.zeros((12, piano_roll.shape[1]))
+        for note in range(12):
+            chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
+        return chroma_matrix
 
 # <codecell>
 
@@ -292,7 +299,14 @@ class Instrument(object):
         Output:
             chroma - chroma matrix, np.ndarray of size 12 x times.shape[0]
         '''
-    
+        # First, get the piano roll
+        piano_roll = self.get_piano_roll(times=times)
+        # Fold into one octave
+        chroma_matrix = np.zeros((12, piano_roll.shape[1]))
+        for note in range(12):
+            chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
+        return chroma_matrix
+        
     def __repr__(self):
         return 'Instrument(program={}, is_drum={})'.format(self.program, self.is_drum, len(self.events))
         
