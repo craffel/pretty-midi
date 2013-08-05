@@ -183,6 +183,12 @@ class PrettyMIDI(object):
         Output:
             onsets - np.ndarray of onset locations, in seconds
         '''
+        onsets = np.array([])
+        # Just concatenate onsets from all the instruments
+        for instrument in self.instruments:
+            onsets = np.append( onsets, instrument.get_onsets() )
+        # Return them sorted (because why not?)
+        return np.sort( onsets )
     
     def get_piano_roll(self, times=None):
         '''
@@ -249,6 +255,13 @@ class Instrument(object):
         Output:
             onsets - np.ndarray of all onsets
         '''
+        onsets = []
+        # Get the note-on time of each note played by this instrument
+        for note in self.events:
+            onsets.append( note.start )
+        # Return them sorted (because why not?)
+        return np.sort( onsets )
+
     
     def get_piano_roll(self, times=None):
         '''
