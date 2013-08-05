@@ -415,17 +415,3 @@ class Note(object):
     def __repr__(self):
         return 'Note(start={:f}, end={:f}, pitch={}, velocity={})'.format(self.start, self.end, self.pitch, self.velocity)
 
-# <codecell>
-
-m = PrettyMIDI( midi.read_midifile( 'Bohemian Rhapsody.mid' ) )
-a = m.synthesize()
-
-# <codecell>
-
-librosa.output.write_wav( 'bo.wav', a, 44100 )
-
-# <codecell>
-
-a = np.arange( 10 )
-a[-20]
-
