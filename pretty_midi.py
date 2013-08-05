@@ -225,6 +225,27 @@ class PrettyMIDI(object):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
+    def synthesize(self, fs=44100, wave=np.sin):
+        '''
+        Synthesize the pattern using some waveshape.  Ignores drum track.
+        
+        Input:
+            fs - Sampling rate
+            wave - Function which returns a periodic waveform, e.g. np.sin, scipy.signal.square, etc.
+        Output:
+            synthesized - Waveform of the MIDI data, synthesized at fs
+        '''
+        # Get synthesized waveform for each instrument
+        waveforms = [i.synthesize(fs=fs, wave=wave) for i in self.instruments]
+        # Allocate output waveform, with #sample = max length of all waveforms
+        synthesized = np.zeros(np.max([w.shape[0] for w in waveforms]))
+        # Sum all waveforms in
+        for waveform in waveforms:
+            synthesized[:waveform.shape[0]] += waveform
+        # Normalize
+        synthesized /= np.abs(synthesized).max()
+        return synthesized
+
 # <codecell>
 
 class Instrument(object):
@@ -261,7 +282,6 @@ class Instrument(object):
             onsets.append( note.start )
         # Return them sorted (because why not?)
         return np.sort( onsets )
-
     
     def get_piano_roll(self, times=None):
         '''
@@ -319,7 +339,46 @@ class Instrument(object):
         for note in range(12):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
+
+    def synthesize(self, fs=44100, wave=np.sin):
+        '''
+        Synthesize the instrument's notes using some waveshape.  For drum instruments, returns zeros.
         
+        Input:
+            fs - Sampling rate
+            wave - Function which returns a periodic waveform, e.g. np.sin, scipy.signal.square, etc.
+        Output:
+            synthesized - Waveform of the MIDI data, synthesized at fs.  Not normalized!
+        '''
+        # Pre-allocate output waveform
+        synthesized = np.zeros(fs*(max([n.end for n in self.events]) + 1))
+        # If we're a percussion channel, just return the zeros
+        if self.is_drum:
+            return synthesized
+        # This is a simple way to make the end of the notes fade-out without clicks
+        fade_out = np.linspace( 1, 0, .1*fs )
+        # Add in waveform for each note
+        for note in self.events:
+            # Indices in samples of this note
+            start = int(fs*note.start)
+            end = int(fs*note.end)
+            # Get frequency of note from MIDI note number
+            frequency = 440*(2.0**((note.pitch - 69)/12.0))
+            # Synthesize using wave function at this frequency
+            note_waveform = wave(2*np.pi*frequency*np.arange(end - start)/fs)
+            # Apply an exponential envelope
+            envelope = np.exp(-np.arange(end - start)/(1.0*fs))
+            # Make the end of the envelope be a fadeout
+            if envelope.shape[0] > fade_out.shape[0]:
+                envelope[-fade_out.shape[0]:] *= fade_out
+            else:
+                envelope *= np.linspace( 1, 0, envelope.shape[0] )
+            # Multiply by velocity (don't think it's linearly scaled but whatever)
+            envelope *= note.velocity
+            # Add in envelope'd waveform to the synthesized signal
+            synthesized[start:end] += envelope*note_waveform
+        return synthesized
+    
     def __repr__(self):
         return 'Instrument(program={}, is_drum={})'.format(self.program, self.is_drum, len(self.events))
         
@@ -355,4 +414,18 @@ class Note(object):
     
     def __repr__(self):
         return 'Note(start={:f}, end={:f}, pitch={}, velocity={})'.format(self.start, self.end, self.pitch, self.velocity)
+
+# <codecell>
+
+m = PrettyMIDI( midi.read_midifile( 'Bohemian Rhapsody.mid' ) )
+a = m.synthesize()
+
+# <codecell>
+
+librosa.output.write_wav( 'bo.wav', a, 44100 )
+
+# <codecell>
+
+a = np.arange( 10 )
+a[-20]
 
