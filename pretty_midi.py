@@ -108,7 +108,7 @@ class PrettyMIDI(object):
         # Initialize empty list of instruments
         self.instruments = []
         for track in midi_data:
-            # Keep track of last note on location: key = (instrument, is_drum, note), value = note on time
+            # Keep track of last note on location: key = (instrument, is_drum, note), value = (note on time, velocity)
             last_note_on = {}
             # Keep track of which instrument is playing in each channel - initialize to program 0 for all channels
             current_instrument = np.zeros( 16, dtype=np.int )
@@ -122,15 +122,15 @@ class PrettyMIDI(object):
                     # Check whether this event is for the drum channel
                     is_drum = (event.channel == 9)
                     # Store this as the last note-on location
-                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = self.tick_to_time[event.tick]
+                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = (self.tick_to_time[event.tick], event.velocity)
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On' and event.velocity == 0):
                     # Check whether this event is for the drum channel
                     is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
                     if (current_instrument[event.channel], is_drum, event.pitch) in last_note_on:
-                        # Get the start/stop times of this note
-                        start = last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
+                        # Get the start/stop times and velocity of this note
+                        start, velocity = last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
                         end = self.tick_to_time[event.tick]
                         # Check that the instrument exists
                         instrument_exists = False
@@ -139,7 +139,7 @@ class PrettyMIDI(object):
                             if instrument.program == current_instrument[event.channel] and instrument.is_drum == is_drum:
                                 instrument_exists = True
                                 # Add this note event
-                                instrument.events.append(Note(event.velocity, event.pitch, start, end))
+                                instrument.events.append(Note(velocity, event.pitch, start, end))
                         # Create the instrument if none was found
                         if not instrument_exists:
                             # Create a new instrument
