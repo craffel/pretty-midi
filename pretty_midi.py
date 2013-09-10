@@ -110,6 +110,8 @@ class PrettyMIDI(object):
         for track in midi_data:
             # Keep track of last note on location: key = (instrument, is_drum, note), value = (note on time, velocity)
             last_note_on = {}
+            # Keep track of pitch bends: key = (instrument, is_drum) value = (pitch bend time, pitch bend amount)
+            pitch_bends = {}
             # Keep track of which instrument is playing in each channel - initialize to program 0 for all channels
             current_instrument = np.zeros( 16, dtype=np.int )
             for event in track:
@@ -149,6 +151,17 @@ class PrettyMIDI(object):
                             instrument.events.append(Note(event.velocity, event.pitch, start, end))
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel], is_drum, event.pitch)]
+                # Store pitch bends
+                elif event.name == 'Pitch Wheel':
+                    # Check whether this event is for the drum channel
+                    is_drum = (event.channel == 9)
+                    # Convert to relative pitch in semitones
+                    pitch_bend = 2*event.pitch/8192.0
+                    for instrument in self.instruments:
+                        # Find the right instrument
+                        if instrument.program == current_instrument[event.channel] and instrument.is_drum == is_drum:
+                            # Store pitch bend information
+                            instrument.pitch_changes.append((self.tick_to_time[event.tick], pitch_bend))
         
     def get_tempii(self):
         '''
@@ -256,6 +269,7 @@ class Instrument(object):
         program - The program number of this instrument.
         is_drum - Is the instrument a drum instrument (channel 9)?
         events - List of Note objects
+        pitch_changes - List of pitch adjustments, in semitones (via the pitch wheel).  Tuples of (absolute time, relative pitch adjustment)
     '''
     def __init__(self, program, is_drum=False):
         '''
@@ -268,6 +282,7 @@ class Instrument(object):
         self.program = program
         self.is_drum = is_drum
         self.events = []
+        self.pitch_changes = []
     
     def get_onsets(self):
         '''
@@ -296,11 +311,11 @@ class Instrument(object):
         if self.events == []:
             return np.array([[]]*128)
         # Get the end time of the last event
-        endTime = np.max([note.end for note in self.events])
+        end_time = np.max([note.end for note in self.events])
         # Sample at 100 Hz
         fs = 100
         # Allocate a matrix of zeros - we will add in as we go
-        piano_roll = np.zeros((128, fs*endTime), dtype=np.int16)
+        piano_roll = np.zeros((128, fs*end_time), dtype=np.int16)
         # Drum tracks don't have pitch, so return a matrix of zeros
         if self.is_drum:
             if times is None:
@@ -311,8 +326,7 @@ class Instrument(object):
         for note in self.events:
             # Should interpolate
             piano_roll[note.pitch, int(note.start*fs):int(note.end*fs)] += note.velocity
-
-        # Do we need to integrate?
+            
         if times is None:
             return piano_roll
         piano_roll_integrated = np.zeros((128, times.shape[0]), dtype=np.int16)
@@ -394,7 +408,6 @@ class Note(object):
         pitch - Note pitch, as a MIDI note number
         start - Note on time, absolute, in seconds
         end - Note off time, absolute, in seconds
-        pitch_changes - List of pitch adjustments, in semitones (via the pitch wheel).  Tuples of (absolute time, relative pitch adjustment)
     '''
     def __init__(self, velocity, pitch, start, end):
         '''
@@ -410,7 +423,6 @@ class Note(object):
         self.pitch = pitch
         self.start = start
         self.end = end
-        self.pitch_changes = []
     
     def __repr__(self):
         return 'Note(start={:f}, end={:f}, pitch={}, velocity={})'.format(self.start, self.end, self.pitch, self.velocity)
