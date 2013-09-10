@@ -326,7 +326,36 @@ class Instrument(object):
         for note in self.events:
             # Should interpolate
             piano_roll[note.pitch, int(note.start*fs):int(note.end*fs)] += note.velocity
-            
+
+        # Process pitch changes
+        for ((start, bend), (end, _)) in zip( self.pitch_changes, self.pitch_changes[1:] + [(end_time, 0)] ):
+            # Piano roll is already generated with everything bend = 0
+            if np.abs( bend ) < 1/8192.0:
+                continue
+            # Get integer and decimal part of bend amount
+            bend_int = int( np.sign( bend )*np.floor( np.abs( bend ) ) )
+            bend_decimal = np.abs( bend - bend_int )
+            # Construct the bent part of the piano roll
+            bent_roll = np.zeros( (128, int(end*fs) - int(start*fs)) )
+            # Easiest to process differently depending on bend sign
+            if bend >= 0:
+                # First, pitch shift by the int amount
+                if bend_int is not 0:
+                    bent_roll[bend_int:] = piano_roll[:-bend_int, int(start*fs):int(end*fs)]
+                else:
+                    bent_roll = piano_roll[:, int(start*fs):int(end*fs)]
+                # Now, linear interpolate by the decimal place
+                bent_roll[1:] = (1 - bend_decimal)*bent_roll[1:] + bend_decimal*bent_roll[:-1]
+            else:
+                # Same procedure as for positive bends
+                if bend_int is not 0:
+                    bent_roll[:bend_int] = piano_roll[-bend_int:, int(start*fs):int(end*fs)]
+                else:
+                    bent_roll = piano_roll[:, int(start*fs):int(end*fs)]
+                bent_roll[:-1] = (1 - bend_decimal)*bent_roll[:-1] + bend_decimal*bent_roll[1:]
+            # Store bent portion back in piano roll
+            piano_roll[:, int(start*fs):int(end*fs)] = bent_roll
+        
         if times is None:
             return piano_roll
         piano_roll_integrated = np.zeros((128, times.shape[0]), dtype=np.int16)
