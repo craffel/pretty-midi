@@ -24,4 +24,15 @@ chroma = bohemian_rhapsody.get_chroma()
 chroma /= (chroma.max( axis = 0 ) + (chroma.max( axis = 0 ) == 0))
 plt.figure( figsize=(20, 4) )
 plt.imshow( chroma, origin='lower', aspect='auto', interpolation='nearest' )
+
+# Iterate over the instrument tracks in the MIDI file
+for instrument in bohemian_rhapsody.instruments:
+    # Check whether the instrument is a drum track
+    if not instrument.is_drum:
+        # Iterate over note events for this instrument
+        for note in instrument.events:
+            # Shift them up by 4 semitones
+            note.pitch += 4
+# Write out key-shifted version
+bohemian_rhapsody.write('Bohemian Rhapsody-Shifted.mid')
 ```
