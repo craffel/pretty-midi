@@ -259,6 +259,99 @@ class PrettyMIDI(object):
         synthesized /= np.abs(synthesized).max()
         return synthesized
 
+    def _time_to_tick(self, time):
+        '''
+        Converts from a time, in seconds, to absolute tick using self.tick_scales
+        
+        Input:
+            time - time, in seconds, of the event
+        Output:
+            tick - tick - an integer
+        '''
+        # Ticks will be accumulated over tick scale changes
+        tick = 0
+        # Iterate through all the tempo changes (tick scale changes!)
+        for change_tick, tick_scale in reversed(self.tick_scales):
+            change_time = self.tick_to_time[change_tick]
+            if time > change_time:
+                tick += (time - change_time)/tick_scale
+                time = change_time
+        return int(tick)
+    
+    def write(self, filename):
+        '''
+        Write the PrettyMIDI object out to a .mid file
+        
+        Input:
+            filename - Path to write .mid file to
+        '''
+        # Initialize list of tracks to output
+        tracks = []
+        # Create track 0 with timing information
+        timing_track = midi.Track()
+        # Not sure if time signature is actually necessary
+        timing_track += [midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
+        # Add in each tempo change event
+        for (tick, tick_scale) in self.tick_scales:
+            tempo_event = midi.SetTempoEvent(tick=tick)
+            # Compute the BPM
+            tempo_event.set_bpm(60.0/(tick_scale*self.resolution))
+            timing_track += [tempo_event]
+        # Add in an end of track event
+        timing_track += [midi.EndOfTrackEvent(tick=timing_track[-1].tick + 1)]
+        tracks += [timing_track]
+        # Create a list of possible channels to assign - this seems to matter for some synths.
+        channels = range(16)
+        # Don't assign the drum channel by mistake!
+        channels.remove(9)
+        for n, instrument in enumerate(self.instruments):
+            # Initialize track for this instrument
+            track = midi.Track()
+            # If it's a drum event, we need to set channel to 9
+            if instrument.is_drum:
+                channel = 9
+            # Otherwise, choose a channel from the possible channel list
+            else:
+                channel = channels[n % len(channels)]
+            # Set the program number
+            program_change = midi.ProgramChangeEvent(tick=0)
+            program_change.set_value(instrument.program)
+            program_change.channel = channel
+            track += [program_change]
+            # Add all note events
+            for note in instrument.events:
+                # Construct the note-on event
+                note_on = midi.NoteOnEvent(tick=self._time_to_tick(note.start))
+                note_on.set_pitch(note.pitch)
+                note_on.set_velocity(note.velocity)
+                note_on.channel = channel
+                # Also need a note-off event (note on with velocity 0)
+                note_off = midi.NoteOnEvent(tick=self._time_to_tick(note.end))
+                note_off.set_pitch(note.pitch)
+                note_off.set_velocity(0)
+                note_off.channel = channel
+                # Add notes to track
+                track += [note_on, note_off]
+            # Add all pitch bend events
+            for (time, bend) in instrument.pitch_changes:
+                bend_event = midi.PitchWheelEvent(tick=self._time_to_tick(time))
+                bend_event.set_pitch(int((bend/2)*8192))
+                bend_event.channel = channel
+                track += [bend_event]
+            # Need to sort all the events by tick time before converting to relative
+            tick_sort = np.argsort([event.tick for event in track])
+            track = midi.Track([track[n] for n in tick_sort])
+            # Finally, add in an end of track event
+            track += [midi.EndOfTrackEvent(tick=track[-1].tick + 1)]
+            # Add to the list of output tracks
+            tracks += [track]
+        # Construct an output pattern with the currently stored resolution
+        output_pattern = midi.Pattern(resolution=self.resolution, tracks=tracks)
+        # Turn ticks to relative, it doesn't work otherwise
+        output_pattern.make_ticks_rel()
+        # Write it out
+        midi.write_midifile(filename, output_pattern)
+
 # <codecell>
 
 class Instrument(object):
