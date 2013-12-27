@@ -498,15 +498,20 @@ class Instrument(object):
         '''
         # Pre-allocate output waveform
         synthesized = np.zeros(fs*(max([n.end for n in self.events] + [bend[0] for bend in self.pitch_changes]) + 1))
-        
+        # If we're a percussion channel, just return the zeros - can't get FluidSynth to work
+        if self.is_drum:
+            return synthesized
+
         # If method is a string and we have fluidsynth, try to use fluidsynth
         if _HAS_FLUIDSYNTH and type(method) == str and os.path.exists(method):
             # Create fluidsynth instance
             fl = fluidsynth.Synth()
             # Load in the soundfont
             sfid = fl.sfload(method)
+            # Set the channel to 10 if it's a drum channel, 0 otherwise (doesn't actually work)
+            channel = 9 if self.is_drum else 0
             # Select the program number
-            fl.program_select(0, sfid, 0, self.program)
+            fl.program_select(channel, sfid, 0, self.program)
             # Collect all notes in one list
             event_list = []
             for note in self.events:
@@ -527,11 +532,11 @@ class Instrument(object):
             for event in event_list:
                 # Process events based on type
                 if event[1] == 'note on':
-                    fl.noteon(0, event[2], event[3])
+                    fl.noteon(channel, event[2], event[3])
                 elif event[1] == 'note off':
-                    fl.noteoff(0, event[2])
+                    fl.noteoff(channel, event[2])
                 elif event[1] == 'pitch bend':
-                    pass
+                    fl.pitch_bend(channel, int(8192*(event[2]/2)))
                 # Add in these samples
                 synthesized[current_sample:current_sample + event[0]] += fl.get_samples(event[0])[::2]
                 # Increment the current sample
@@ -545,9 +550,6 @@ class Instrument(object):
             if not hasattr(method, '__call__'):
                 print "Warning - fluidsynth was requested, but the .sf2 file was not found or pyfluidsynth is not installed."
                 method = np.sin
-            # If we're a percussion channel, just return the zeros
-            if self.is_drum:
-                return synthesized
             # This is a simple way to make the end of the notes fade-out without clicks
             fade_out = np.linspace( 1, 0, .1*fs )
             # Add in waveform for each note
@@ -558,7 +560,7 @@ class Instrument(object):
                 # Get frequency of note from MIDI note number
                 frequency = 440*(2.0**((note.pitch - 69)/12.0))
                 # Synthesize using wave function at this frequency
-                note_waveform = wave(2*np.pi*frequency*np.arange(end - start)/fs)
+                note_waveform = method(2*np.pi*frequency*np.arange(end - start)/fs)
                 # Apply an exponential envelope
                 envelope = np.exp(-np.arange(end - start)/(1.0*fs))
                 # Make the end of the envelope be a fadeout
