@@ -187,13 +187,62 @@ class PrettyMIDI(object):
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
         
-    def get_beats(self):
+    def get_tempo(self):
+        '''
+        Return an empirical estimate of the global tempo.
+        
+        Output:
+            tempo - Estimated tempo, in bpm
+        '''
+        # Grab the list of onsets
+        onsets = self.get_onsets()
+        # Compute inner-onset intervals
+        ioi = np.diff( onsets )
+        # Remove any short intervals
+        ioi = ioi[ioi > .1]
+        # Normalize all iois into the range 75...150bpm
+        for n in xrange(ioi.shape[0]):
+            while ioi[n] < .4:
+                ioi[n] *= 2
+            while ioi[n] > .8:
+                ioi[n] /= 2
+        # Compute ioi histogram
+        interval_hist, bins = np.histogram(ioi, bins=150, range=[.4, .8])
+        # Compute global tempo by argmax of histogram
+        tempo = np.argmax( interval_hist )/2 + 75
+        return tempo
+    
+    def get_beats(self, tolerance=.01):
         '''
         Return a list of (probably correct) beat locations in the MIDI file
         
+        Input:
+            tolerance - Maximum absolute error between expected beat location and chosen beat location.  Seconds in [0, 1]
         Output:
             beats - np.ndarray of beat locations, in seconds
         '''
+        # Grab the list of onsets
+        onsets = self.get_onsets()
+        # Empirically estimate the tempo
+        tempo = self.get_tempo()
+        # Create beat list; first beat is at first onset
+        beats = [onsets.min()]
+        # Add beats in
+        while beats[-1] < onsets.max():
+            # Compute the expected beat location
+            expected_beat = beats[-1] + 60.0/tempo
+            # Find the onset closest to this beat location
+            next_beat = onsets[np.argmin(np.abs(onsets - expected_beat))]
+            # If the beat is within tolerance, use it
+            if np.abs(next_beat - expected_beat) < tolerance:
+                # Update tempo
+                tempo = (1 - tolerance)*tempo + tolerance*60/(next_beat - beats[-1])
+                print tempo
+                beats.append(next_beat)
+            # If no beat is close enough, just use the expected beat
+            else:
+                beats.append(expected_beat)
+        return beats
     
     def get_onsets(self):
         '''
