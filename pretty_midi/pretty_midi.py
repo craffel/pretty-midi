@@ -248,7 +248,7 @@ class PrettyMIDI(object):
                     # Increment the tempo index
                     n = n + 1
             beats.append(next_beat)
-        return beats
+        return np.array(beats)
     
     def get_onsets(self):
         '''
