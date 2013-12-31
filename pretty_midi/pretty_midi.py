@@ -212,36 +212,42 @@ class PrettyMIDI(object):
         tempo = np.argmax( interval_hist )/2 + 75
         return tempo
     
-    def get_beats(self, tolerance=.01):
+    def get_beats(self):
         '''
-        Return a list of (probably correct) beat locations in the MIDI file
+        Return a list of beat locations, according to the MIDI file tempo changes - may be incorrect, especially if MIDI data is modified
         
-        Input:
-            tolerance - Maximum absolute error between expected beat location and chosen beat location.  Seconds in [0, 1]
         Output:
             beats - np.ndarray of beat locations, in seconds
         '''
         # Grab the list of onsets
         onsets = self.get_onsets()
-        # Empirically estimate the tempo
-        tempo = self.get_tempo()
+        # Get tempo changs and tempos
+        tempo_change_times, tempii = self.get_tempii()
         # Create beat list; first beat is at first onset
         beats = [onsets.min()]
+        # Index of the tempo we're using
+        n = 0
         # Add beats in
         while beats[-1] < onsets.max():
-            # Compute the expected beat location
-            expected_beat = beats[-1] + 60.0/tempo
-            # Find the onset closest to this beat location
-            next_beat = onsets[np.argmin(np.abs(onsets - expected_beat))]
-            # If the beat is within tolerance, use it
-            if np.abs(next_beat - expected_beat) < tolerance:
-                # Update tempo
-                tempo = (1 - tolerance)*tempo + tolerance*60/(next_beat - beats[-1])
-                print tempo
-                beats.append(next_beat)
-            # If no beat is close enough, just use the expected beat
-            else:
-                beats.append(expected_beat)
+            # Compute expected beat location, one period later
+            next_beat = beats[-1] + 60.0/tempii[n]
+            # If the beat location passes a tempo change boundary...
+            if n < tempo_change_times.shape[0] - 1 and next_beat > tempo_change_times[n + 1]:
+                # Start by setting the beat location to the current beat...
+                next_beat = beats[-1]
+                # with the entire beat remaining
+                beat_remaining = 1.0
+                # While a beat with the current tempo would pass a tempo change boundary...
+                while n < tempo_change_times.shape[0] - 1 and next_beat + beat_remaining*60.0/tempii[n] > tempo_change_times[n + 1]:
+                    # Compute the extent to which the beat location overshoots
+                    overshot_ratio = (tempo_change_times[n + 1] - next_beat)/(60.0/tempii[n])
+                    # Add in the amount of the beat during this tempo
+                    next_beat += overshot_ratio*60.0/tempii[n]
+                    # Less of the beat remains now
+                    beat_remaining -= overshot_ratio
+                    # Increment the tempo index
+                    n = n + 1
+            beats.append(next_beat)
         return beats
     
     def get_onsets(self):
