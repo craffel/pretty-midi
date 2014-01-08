@@ -560,7 +560,7 @@ class Instrument(object):
         # If method is a string and we have fluidsynth, try to use fluidsynth
         if _HAS_FLUIDSYNTH and type(method) == str and os.path.exists(method):
             # Create fluidsynth instance
-            fl = fluidsynth.Synth()
+            fl = fluidsynth.Synth(samplerate=fs)
             # Load in the soundfont
             sfid = fl.sfload(method)
             # Set the channel to 10 if it's a drum channel, 0 otherwise (doesn't actually work)
