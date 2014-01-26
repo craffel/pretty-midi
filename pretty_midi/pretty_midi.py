@@ -47,7 +47,8 @@ class PrettyMIDI(object):
         self._update_tick_to_time(max_tick)
         # Check that there are no tempo change events on any tracks other than track 0
         if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
-            print "Warning - tempo change events found on non-zero tracks.  This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong."
+            print "Warning - tempo change events found on non-zero tracks."
+            print "This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong."
             
         # Populate the list of instruments
         self._get_instruments(midi_data)
@@ -130,7 +131,8 @@ class PrettyMIDI(object):
                     # Check whether this event is for the drum channel
                     is_drum = (event.channel == 9)
                     # Store this as the last note-on location
-                    last_note_on[(current_instrument[event.channel], is_drum, event.pitch)] = (self.tick_to_time[event.tick], event.velocity)
+                    note_on_index = (current_instrument[event.channel], is_drum, event.pitch)
+                    last_note_on[note_on_index] = (self.tick_to_time[event.tick], event.velocity)
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On' and event.velocity == 0):
                     # Check whether this event is for the drum channel
@@ -229,7 +231,8 @@ class PrettyMIDI(object):
     
     def get_beats(self):
         '''
-        Return a list of beat locations, according to the MIDI file tempo changes - may be incorrect, especially if MIDI data is modified
+        Return a list of beat locations, according to the MIDI file tempo changes.
+        May be incorrect, especially if MIDI data is modified
         
         Output:
             beats - np.ndarray of beat locations, in seconds
@@ -302,7 +305,8 @@ class PrettyMIDI(object):
         Get the MIDI data as a sequence of chroma vectors.
         
         Input:
-            times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
+            times - times of the start of each column in the chroma matrix.
+                    Default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
             chroma - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
         '''
@@ -440,7 +444,8 @@ class Instrument(object):
         program - The program number of this instrument.
         is_drum - Is the instrument a drum instrument (channel 9)?
         events - List of Note objects
-        pitch_changes - List of pitch adjustments, in semitones (via the pitch wheel).  Tuples of (absolute time, relative pitch adjustment)
+        pitch_changes - List of pitch adjustments, in semitones (via the pitch wheel).
+                        Tuples of (absolute time, relative pitch adjustment)
     '''
     def __init__(self, program, is_drum=False):
         '''
@@ -474,7 +479,8 @@ class Instrument(object):
         Get a piano roll notation of the note events of this instrument.
         
         Input:
-            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/100.0)
+            times - times of the start of each column in the piano roll, 
+                    Default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             piano_roll - Piano roll matrix, np.ndarray of size 128 x times.shape[0]
         '''
@@ -542,7 +548,8 @@ class Instrument(object):
         Get a chroma matrix for the note events in this instrument.
         
         Input:
-            times - times of the start of each column in the chroma matrix, default None which is np.arange(0, event_times.max(), 1/1000.0)
+            times - times of the start of each column in the chroma matrix,
+                    Default None which is np.arange(0, event_times.max(), 1/1000.0)
         Output:
             chroma - chroma matrix, np.ndarray of size 12 x times.shape[0]
         '''
