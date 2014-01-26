@@ -171,7 +171,7 @@ class PrettyMIDI(object):
                             # Store pitch bend information
                             instrument.pitch_changes.append((self.tick_to_time[event.tick], pitch_bend))
         
-    def get_tempii(self):
+    def get_tempo_changes(self):
         '''
         Return arrays of tempo changes and their times.  This is direct from the MIDI file.
         
@@ -204,7 +204,7 @@ class PrettyMIDI(object):
                     end_time = note.end
         return end_time
         
-    def get_tempo(self):
+    def estimate_tempo(self):
         '''
         Return an empirical estimate of the global tempo.
         
@@ -229,7 +229,7 @@ class PrettyMIDI(object):
         tempo = np.argmax( interval_hist )/2 + 75
         return tempo
     
-    def get_beats(self):
+    def estimate_beats(self):
         '''
         Return a list of beat locations, according to the MIDI file tempo changes.
         May be incorrect, especially if MIDI data is modified
@@ -287,7 +287,8 @@ class PrettyMIDI(object):
         Get the MIDI data in piano roll notation.
         
         Input:
-            times - times of the start of each column in the piano roll, default None which is np.arange(0, event_times.max(), 1/100.0)
+            times - times of the start of each column in the piano roll.
+                    Default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             piano_roll - piano roll of MIDI data, flattened across instruments, np.ndarray of size 128 x times.shape[0]
         '''
