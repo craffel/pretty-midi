@@ -186,6 +186,21 @@ class PrettyMIDI(object):
             # Convert tick scale to a tempo
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
+
+    def get_end_time(self):
+        '''
+        Returns the time of the end of this MIDI file (latest note-off event).
+        
+        Output:
+            end_time - Time, in seconds, where this MIDI file ends
+        '''
+        # Cycle through all notes from all instruments and find the largest
+        end_time = 0.0
+        for instrument in self.instruments:
+            for note in instrument.events:
+                if note.end > end_time:
+                    end_time = note.end
+        return end_time
         
     def get_tempo(self):
         '''
