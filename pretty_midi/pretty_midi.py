@@ -305,17 +305,17 @@ class PrettyMIDI(object):
         onset_scores = np.zeros(len(beat_candidates))
         # Synthesize note onset signal, with velocity-valued spikes at onset times
         fs = 1000
-        onset_signal = np.zeros(fs*(self.get_end_time() + 1))
+        onset_signal = np.zeros(int(fs*(self.get_end_time() + 1)))
         for note in note_list:
             onset_signal[int(note.start*fs)] += note.velocity
         for n, beats in enumerate(beat_candidates):
             # Create a synthetic beat signal with 25ms windows
-            beat_signal = np.zeros(fs*(self.get_end_time() + 1))
+            beat_signal = np.zeros(int(fs*(self.get_end_time() + 1)))
             for beat in np.append(0, beats):
                 if beat - .025 < 0:
-                    beat_signal[:(beat + .025)*fs] = np.ones(fs*.05 + (beat - 0.025)*fs)
+                    beat_signal[:int((beat + .025)*fs)] = np.ones(int(fs*.05 + (beat - 0.025)*fs))
                 else:
-                    beat_signal[(beat - .025)*fs:(beat + .025)*fs] = np.ones(fs*.05)
+                    beat_signal[int((beat - .025)*fs):int((beat + .025)*fs)] = np.ones(int(fs*.05))
             # Compute their dot product and normalize to get score
             onset_scores[n] = np.dot(beat_signal, onset_signal)/beats.shape[0]
         # Return the best-scoring beat tracking
@@ -628,7 +628,7 @@ class Instrument(object):
             synthesized - Waveform of the MIDI data, synthesized at fs.  Not normalized!
         '''
         # Pre-allocate output waveform
-        synthesized = np.zeros(fs*(max([n.end for n in self.events] + [bend[0] for bend in self.pitch_changes]) + 1))
+        synthesized = np.zeros(int(fs*(max([n.end for n in self.events] + [bend[0] for bend in self.pitch_changes]) + 1)))
         # If we're a percussion channel, just return the zeros - can't get FluidSynth to work
         if self.is_drum:
             return synthesized
