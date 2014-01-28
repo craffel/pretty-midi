@@ -248,6 +248,15 @@ class PrettyMIDI(object):
         cluster_counts /= cluster_counts.max()
         return 60./clusters, cluster_counts
     
+    def estimate_tempo(self):
+        '''
+        Returns the best tempo estimate from estimate_tempii(), for convenience
+        
+        Output:
+            tempo - Estimated tempo, in bpm
+        '''
+        return self.estimate_tempii()[0][0]
+    
     def get_beats(self):
         '''
         Return a list of beat locations, according to the MIDI file tempo changes.
