@@ -277,6 +277,9 @@ class PrettyMIDI(object):
             beats = [start_time]
             # Index of the tempo we're using
             n = 0
+            # Move past all the tempo changes up to the supplied start time
+            while beats[-1] > tempo_change_times[n]:
+                n += 1
             # Add beats in
             while beats[-1] < note_list[-1].start:
                 # Compute expected beat location, one period later
@@ -289,7 +292,7 @@ class PrettyMIDI(object):
                     beat_remaining = 1.0
                     # While a beat with the current tempo would pass a tempo change boundary...
                     while n < tempo_change_times.shape[0] - 1 and \
-                    next_beat + beat_remaining*60.0/tempii[n] > tempo_change_times[n + 1]:
+                    next_beat + beat_remaining*60.0/tempii[n] >= tempo_change_times[n + 1]:
                         # Compute the extent to which the beat location overshoots
                         overshot_ratio = (tempo_change_times[n + 1] - next_beat)/(60.0/tempii[n])
                         # Add in the amount of the beat during this tempo
@@ -298,6 +301,7 @@ class PrettyMIDI(object):
                         beat_remaining -= overshot_ratio
                         # Increment the tempo index
                         n = n + 1
+                    next_beat += beat_remaining*60./tempii[n]
                 beats.append(next_beat)
             return np.array(beats)
         
@@ -324,7 +328,7 @@ class PrettyMIDI(object):
                 if beat - .025 < 0:
                     beat_signal[:int((beat + .025)*fs)] = np.ones(int(fs*.05 + (beat - 0.025)*fs))
                 else:
-                    beat_signal[int((beat - .025)*fs):int((beat + .025)*fs)] = np.ones(int(fs*.05))
+                    beat_signal[int((beat - .025)*fs):int((beat - .025)*fs) + int(fs*.05)] = np.ones(int(fs*.05))
             # Compute their dot product and normalize to get score
             onset_scores[n] = np.dot(beat_signal, onset_signal)/beats.shape[0]
         # Return the best-scoring beat tracking
