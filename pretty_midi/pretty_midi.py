@@ -280,7 +280,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
             # Index of the tempo we're using
             n = 0
             # Move past all the tempo changes up to the supplied start time
-            while beats[-1] > tempo_change_times[n]:
+            while n < tempo_change_times.shape[0] - 1 and beats[-1] > tempo_change_times[n]:
                 n += 1
             # Add beats in
             while beats[-1] < note_list[-1].start:
