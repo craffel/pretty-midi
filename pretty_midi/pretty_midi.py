@@ -18,6 +18,7 @@ except ImportError:
     _HAS_FLUIDSYNTH = False
 import os
 import itertools
+import warnings
 
 # <codecell>
 
@@ -48,8 +49,9 @@ class PrettyMIDI(object):
         self._update_tick_to_time(max_tick)
         # Check that there are no tempo change events on any tracks other than track 0
         if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
-            print "Warning - tempo change events found on non-zero tracks."
-            print "This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong."
+            warnings.warn("Tempo change events found on non-zero tracks.  \
+This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
+                          RuntimeWarning)
             
         # Populate the list of instruments
         self._get_instruments(midi_data)
@@ -692,7 +694,8 @@ class Instrument(object):
         else:
             # If the above if statement failed, we need to revert back to default
             if not hasattr(method, '__call__'):
-                print "Warning - fluidsynth was requested, but the .sf2 file was not found or pyfluidsynth is not installed."
+                warnings.warn("fluidsynth was requested, but the .sf2 file was not found or pyfluidsynth is not installed.",
+                              RuntimeWarning)
                 method = np.sin
             # This is a simple way to make the end of the notes fade-out without clicks
             fade_out = np.linspace( 1, 0, .1*fs )
