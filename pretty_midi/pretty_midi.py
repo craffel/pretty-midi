@@ -172,7 +172,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
                         # Find the right instrument
                         if instrument.program == current_instrument[event.channel] and instrument.is_drum == is_drum:
                             # Store pitch bend information
-                            instrument.pitch_changes.append((self.tick_to_time[event.tick], pitch_bend))
+                            instrument.pitch_bends.append(PitchBend(pitch_bend, self.tick_to_time[event.tick]))
         
     def get_tempo_changes(self):
         '''
@@ -484,9 +484,9 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
                 # Add notes to track
                 track += [note_on, note_off]
             # Add all pitch bend events
-            for (time, bend) in instrument.pitch_changes:
-                bend_event = midi.PitchWheelEvent(tick=self._time_to_tick(time))
-                bend_event.set_pitch(int((bend/2)*8192))
+            for bend in instrument.pitch_bends:
+                bend_event = midi.PitchWheelEvent(tick=self._time_to_tick(bend.time))
+                bend_event.set_pitch(int((bend.pitch/2)*8192))
                 bend_event.channel = channel
                 track += [bend_event]
             # Need to sort all the events by tick time before converting to relative
@@ -513,8 +513,7 @@ class Instrument(object):
         program - The program number of this instrument.
         is_drum - Is the instrument a drum instrument (channel 9)?
         events - List of Note objects
-        pitch_changes - List of pitch adjustments, in semitones (via the pitch wheel).
-                        Tuples of (absolute time, relative pitch adjustment)
+        pitch_bends - List of of PitchBend objects
     '''
     def __init__(self, program, is_drum=False):
         '''
@@ -527,7 +526,7 @@ class Instrument(object):
         self.program = program
         self.is_drum = is_drum
         self.events = []
-        self.pitch_changes = []
+        self.pitch_bends = []
     
     def get_onsets(self):
         '''
@@ -574,33 +573,33 @@ class Instrument(object):
             piano_roll[note.pitch, int(note.start*fs):int(note.end*fs)] += note.velocity
 
         # Process pitch changes
-        for ((start, bend), (end, _)) in zip( self.pitch_changes, self.pitch_changes[1:] + [(end_time, 0)] ):
+        for start_bend, end_bend in zip(self.pitch_bends, self.pitch_bends[1:] + [PitchBend(0, end_time)]):
             # Piano roll is already generated with everything bend = 0
-            if np.abs( bend ) < 1/8192.0:
+            if np.abs(start_bend.pitch) < 1/8192.0:
                 continue
             # Get integer and decimal part of bend amount
-            bend_int = int( np.sign( bend )*np.floor( np.abs( bend ) ) )
-            bend_decimal = np.abs( bend - bend_int )
+            bend_int = int(np.sign(start_bend.pitch)*np.floor(np.abs(start_bend.pitch)))
+            bend_decimal = np.abs(start_bend.pitch - bend_int)
             # Construct the bent part of the piano roll
-            bent_roll = np.zeros( (128, int(end*fs) - int(start*fs)) )
+            bent_roll = np.zeros((128, int(end_bend.time*fs) - int(start_bend.time*fs)))
             # Easiest to process differently depending on bend sign
-            if bend >= 0:
+            if start_bend.pitch >= 0:
                 # First, pitch shift by the int amount
                 if bend_int is not 0:
-                    bent_roll[bend_int:] = piano_roll[:-bend_int, int(start*fs):int(end*fs)]
+                    bent_roll[bend_int:] = piano_roll[:-bend_int, int(start_bend.time*fs):int(end_bend.time*fs)]
                 else:
-                    bent_roll = piano_roll[:, int(start*fs):int(end*fs)]
+                    bent_roll = piano_roll[:, int(start_bend.time*fs):int(end_bend.time*fs)]
                 # Now, linear interpolate by the decimal place
                 bent_roll[1:] = (1 - bend_decimal)*bent_roll[1:] + bend_decimal*bent_roll[:-1]
             else:
                 # Same procedure as for positive bends
                 if bend_int is not 0:
-                    bent_roll[:bend_int] = piano_roll[-bend_int:, int(start*fs):int(end*fs)]
+                    bent_roll[:bend_int] = piano_roll[-bend_int:, int(start_bend.time*fs):int(end_bend.time*fs)]
                 else:
-                    bent_roll = piano_roll[:, int(start*fs):int(end*fs)]
+                    bent_roll = piano_roll[:, int(start_bend.time*fs):int(end_bend.time*fs)]
                 bent_roll[:-1] = (1 - bend_decimal)*bent_roll[:-1] + bend_decimal*bent_roll[1:]
             # Store bent portion back in piano roll
-            piano_roll[:, int(start*fs):int(end*fs)] = bent_roll
+            piano_roll[:, int(start_bend.time*fs):int(end_bend.time*fs)] = bent_roll
         
         if times is None:
             return piano_roll
@@ -643,7 +642,7 @@ class Instrument(object):
             synthesized - Waveform of the MIDI data, synthesized at fs.  Not normalized!
         '''
         # Pre-allocate output waveform
-        synthesized = np.zeros(int(fs*(max([n.end for n in self.events] + [bend[0] for bend in self.pitch_changes]) + 1)))
+        synthesized = np.zeros(int(fs*(max([n.end for n in self.events] + [bend.time for bend in self.pitch_bends]) + 1)))
         # If we're a percussion channel, just return the zeros - can't get FluidSynth to work
         if self.is_drum:
             return synthesized
@@ -663,8 +662,8 @@ class Instrument(object):
             for note in self.events:
                 event_list += [[note.start, 'note on', note.pitch, note.velocity]]
                 event_list += [[note.end, 'note off', note.pitch]]
-            for bend in self.pitch_changes:
-                event_list += [[bend[0], 'pitch bend', bend[1]]]
+            for bend in self.pitch_bends:
+                event_list += [[bend.time, 'pitch bend', bend.pitch]]
             # Sort the event list by time
             event_list.sort(key=lambda x: x[0])
             # Add some silence at the beginning according to the time of the first event
@@ -740,7 +739,7 @@ class Note(object):
     '''
     def __init__(self, velocity, pitch, start, end):
         '''
-        Create a note object.  pitch_changes is initialized to [], add pitch changes via (Note).pitch_changes.append
+        Create a note object.
         
         Input:
             velocity - Note velocity
@@ -755,4 +754,28 @@ class Note(object):
     
     def __repr__(self):
         return 'Note(start={:f}, end={:f}, pitch={}, velocity={})'.format(self.start, self.end, self.pitch, self.velocity)
+
+# <codecell>
+
+class PitchBend(object):
+    '''
+    A pitch bend event.
+    
+    Members:
+        pitch - Pitch bend amount, in (floating-point) seimtones
+        time - Time where the pitch bend occurs
+    '''
+    def __init__(self, pitch, time):
+        '''
+        Create pitch bend object.
+        
+        Input:
+            pitch - Pitch bend amount, in (floating-point) seimtones
+            time - Time where the pitch bend occurs
+        '''
+        self.pitch = pitch
+        self.time = time
+    
+    def __repr__(self):
+        return 'Note(pitch={:f}, time={:f})'.format(self.pitch, self.time)
 
