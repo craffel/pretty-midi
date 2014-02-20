@@ -643,9 +643,6 @@ class Instrument(object):
         '''
         # Pre-allocate output waveform
         synthesized = np.zeros(int(fs*(max([n.end for n in self.events] + [bend.time for bend in self.pitch_bends]) + 1)))
-        # If we're a percussion channel, just return the zeros - can't get FluidSynth to work
-        if self.is_drum:
-            return synthesized
 
         # If method is a string and we have fluidsynth, try to use fluidsynth
         if _HAS_FLUIDSYNTH and type(method) == str and os.path.exists(method):
@@ -653,10 +650,14 @@ class Instrument(object):
             fl = fluidsynth.Synth(samplerate=fs)
             # Load in the soundfont
             sfid = fl.sfload(method)
-            # Set the channel to 10 if it's a drum channel, 0 otherwise (doesn't actually work)
-            channel = 9 if self.is_drum else 0
-            # Select the program number
-            fl.program_select(channel, sfid, 0, self.program)
+            # If this is a drum instrument, use channel 9 and bank 128
+            if self.is_drum:
+                channel = 9
+                fl.program_select(channel, sfid, 128, self.program)
+            # Otherwise just use channel 0
+            else:
+                channel = 0
+                fl.program_select(channel, sfid, 0, self.program)
             # Collect all notes in one list
             event_list = []
             for note in self.events:
@@ -691,6 +692,9 @@ class Instrument(object):
             
         # If method is a function, use it to synthesize (also a failure mode for the above)
         else:
+            # If we're a percussion channel, just return the zeros
+            if self.is_drum:
+                return synthesized
             # If the above if statement failed, we need to revert back to default
             if not hasattr(method, '__call__'):
                 warnings.warn("fluidsynth was requested, but the .sf2 file was not found or pyfluidsynth is not installed.",
