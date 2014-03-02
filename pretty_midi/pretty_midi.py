@@ -29,32 +29,45 @@ class PrettyMIDI(object):
     Members:
         instruments - list of pretty_midi.Instrument objects, corresponding to the instruments which play in the MIDI file
     '''
-    def __init__(self, midi_data):
+    def __init__(self, midi_data=None):
         '''
         Initialize the PrettyMIDI container with some midi data
         
         Input:
-            midi_data - midi.FileReader object
+            midi_data - midi.FileReader object, default None which means create an empty class
         '''
-        # Convert tick values in midi_data to absolute, a useful thing.
-        midi_data.make_ticks_abs()
-        
-        # Store the resolution for later use
-        self.resolution = midi_data.resolution
-        
-        # Populate the list of tempo changes (tick scales)
-        self._get_tempo_changes(midi_data)
-        # Update the array which maps ticks to time
-        max_tick = max([max([event.tick for event in track]) for track in midi_data]) + 1
-        self._update_tick_to_time(max_tick)
-        # Check that there are no tempo change events on any tracks other than track 0
-        if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
-            warnings.warn("Tempo change events found on non-zero tracks.  \
-This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
-                          RuntimeWarning)
+        if midi_data is not None:
+            # Convert tick values in midi_data to absolute, a useful thing.
+            midi_data.make_ticks_abs()
             
-        # Populate the list of instruments
-        self._get_instruments(midi_data)
+            # Store the resolution for later use
+            self.resolution = midi_data.resolution
+            
+            # Populate the list of tempo changes (tick scales)
+            self._get_tempo_changes(midi_data)
+            # Update the array which maps ticks to time
+            max_tick = max([max([event.tick for event in track]) for track in midi_data]) + 1
+            self._update_tick_to_time(max_tick)
+            # Check that there are no tempo change events on any tracks other than track 0
+            if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
+                warnings.warn("Tempo change events found on non-zero tracks.  \
+This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
+                              RuntimeWarning)
+                
+            # Populate the list of instruments
+            self._get_instruments(midi_data)
+        
+        else:
+            # No midi file reader was supplied, so just create an empty pretty_midi object.
+            # Need to set some tempo values in order for some of the functions to work
+            # Resolution is 220 by default
+            self.resolution = 220
+            # By default, set the tempo to 120 bpm, starting at time 0
+            self.tick_scales = [(0, 60.0/(120.0*self.resolution))]
+            # Only need to convert one tick to time
+            self.tick_to_time = [0]
+            # Empty instruments list
+            self.instruments = []
         
     def _get_tempo_changes(self, midi_data):
         '''
@@ -200,12 +213,8 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
             end_time - Time, in seconds, where this MIDI file ends
         '''
         # Cycle through all notes from all instruments and find the largest
-        end_time = 0.0
-        for instrument in self.instruments:
-            for note in instrument.events:
-                if note.end > end_time:
-                    end_time = note.end
-        return end_time
+        return max([note.end for instrument in self.instruments for note in instrument.events] + \
+                   [bend.time for instrument in self.instruments for bend in instrument.pitch_bends])
         
     def estimate_tempii(self):
         '''
@@ -311,7 +320,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
         beat_candidates = []
         onset_index = 0
         # Try the first 10 (unique) onsets as beat tracking start locations
-        while len(beat_candidates) <= 10 and len(beat_candidates) <= len(note_list):
+        while len(beat_candidates) <= 10 and len(beat_candidates) <= len(note_list) and onset_index < len(note_list):
             # Make sure we are using a new start location
             if onset_index == 0 or np.abs(note_list[onset_index - 1].start - note_list[onset_index].start) > .001:
                 beat_candidates.append(beat_track_using_tempo(note_list[onset_index].start))
