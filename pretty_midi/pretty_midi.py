@@ -582,7 +582,9 @@ class Instrument(object):
             piano_roll[note.pitch, int(note.start*fs):int(note.end*fs)] += note.velocity
 
         # Process pitch changes
-        for start_bend, end_bend in zip(self.pitch_bends, self.pitch_bends[1:] + [PitchBend(0, end_time)]):
+        # Need to sort the pitch bend list for the following to work
+        ordered_bends = sorted(self.pitch_bends, key=lambda bend: bend.time)
+        for start_bend, end_bend in zip(ordered_bends, ordered_bends[1:] + [PitchBend(0, end_time)]):
             # Piano roll is already generated with everything bend = 0
             if np.abs(start_bend.pitch) < 1/8192.0:
                 continue
@@ -590,7 +592,7 @@ class Instrument(object):
             bend_int = int(np.sign(start_bend.pitch)*np.floor(np.abs(start_bend.pitch)))
             bend_decimal = np.abs(start_bend.pitch - bend_int)
             # Construct the bent part of the piano roll
-            bent_roll = np.zeros((128, int(end_bend.time*fs) - int(start_bend.time*fs)))
+            bent_roll = np.zeros(piano_roll[:, int(start_bend.time*fs):int(end_bend.time*fs)].shape)
             # Easiest to process differently depending on bend sign
             if start_bend.pitch >= 0:
                 # First, pitch shift by the int amount
