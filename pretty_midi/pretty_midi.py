@@ -790,5 +790,5 @@ class PitchBend(object):
         self.time = time
     
     def __repr__(self):
-        return 'Note(pitch={:f}, time={:f})'.format(self.pitch, self.time)
+        return 'PItchBend(pitch={:f}, time={:f})'.format(self.pitch, self.time)
 
