@@ -291,8 +291,10 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
             # Move past all the tempo changes up to the supplied start time
             while n < tempo_change_times.shape[0] - 1 and beats[-1] > tempo_change_times[n]:
                 n += 1
+            # Get track end time
+            end_time = self.get_end_time()
             # Add beats in
-            while beats[-1] < note_list[-1].start:
+            while beats[-1] < end_time:
                 # Compute expected beat location, one period later
                 next_beat = beats[-1] + 60.0/tempii[n]
                 # If the beat location passes a tempo change boundary...
@@ -314,7 +316,8 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
                         n = n + 1
                     next_beat += beat_remaining*60./tempii[n]
                 beats.append(next_beat)
-            return np.array(beats)
+            # The last beat will pass the end_time barrier, so don't return it
+            return np.array(beats[:-1])
         
         # List of possible beat trackings
         beat_candidates = []
