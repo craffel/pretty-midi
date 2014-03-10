@@ -47,6 +47,9 @@ class PrettyMIDI(object):
             self._get_tempo_changes(midi_data)
             # Update the array which maps ticks to time
             max_tick = max([max([event.tick for event in track]) for track in midi_data]) + 1
+            # If max_tick is huge, the MIDI file is probably corrupt and creating the tick_to_time array will thrash memory
+            if max_tick > 1e7:
+                raise ValueError('MIDI file has a largest tick of {}, it is likely corrupt'.format(max_tick))
             self._update_tick_to_time(max_tick)
             # Check that there are no tempo change events on any tracks other than track 0
             if sum([sum([event.name == 'Set Tempo' for event in track]) for track in midi_data[1:]]):
