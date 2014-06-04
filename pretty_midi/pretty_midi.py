@@ -690,7 +690,7 @@ class Instrument(object):
             next_event_times = [e[0] for e in event_list[1:]]
             for event, end in zip(event_list[:-1], next_event_times):
                 event[0] = int(fs*(end - event[0]))
-            event_list[-1][0] = int(fs)
+            event_list[-1][0] = synthesized.shape[0] - int(fs*event_list[-1][0])
             # Iterate over all events
             for event in event_list:
                 # Process events based on type
