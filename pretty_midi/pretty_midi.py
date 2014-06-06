@@ -454,7 +454,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
         # Initialize list of tracks to output
         tracks = []
         # Create track 0 with timing information
-        timing_track = midi.Track()
+        timing_track = midi.Track(tick_relative=False)
         # Not sure if time signature is actually necessary
         timing_track += [midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
         # Add in each tempo change event
@@ -472,7 +472,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
         channels.remove(9)
         for n, instrument in enumerate(self.instruments):
             # Initialize track for this instrument
-            track = midi.Track()
+            track = midi.Track(tick_relative=False)
             # If it's a drum event, we need to set channel to 9
             if instrument.is_drum:
                 channel = 9
@@ -506,13 +506,16 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
                 track += [bend_event]
             # Need to sort all the events by tick time before converting to relative
             tick_sort = np.argsort([event.tick for event in track])
-            track = midi.Track([track[n] for n in tick_sort])
+            track = midi.Track([track[n] for n in tick_sort],
+                               tick_relative=False)
             # Finally, add in an end of track event
             track += [midi.EndOfTrackEvent(tick=track[-1].tick + 1)]
             # Add to the list of output tracks
             tracks += [track]
         # Construct an output pattern with the currently stored resolution
-        output_pattern = midi.Pattern(resolution=self.resolution, tracks=tracks)
+        output_pattern = midi.Pattern(resolution=self.resolution,
+                                      tracks=tracks,
+                                      tick_relative=False)
         # Turn ticks to relative, it doesn't work otherwise
         output_pattern.make_ticks_rel()
         # Write it out
