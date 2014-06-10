@@ -8,6 +8,7 @@ setup(
     author_email='craffel@gmail.com',
     url='https://github.com/craffel/pretty_midi',
     packages=['pretty_midi'],
+    data_files=[('', ['1mgm.sf2'])],
     long_description="""\
     A class which makes handling MIDI data easy in Python.  Provides methods for extracting and modifying the useful parts of MIDI files.
     """,

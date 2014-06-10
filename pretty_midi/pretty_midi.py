@@ -17,8 +17,8 @@ try:
 except ImportError:
     _HAS_FLUIDSYNTH = False
 import os
-import itertools
 import warnings
+import pkg_resources
 
 # <codecell>
 
@@ -402,20 +402,44 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
-    def synthesize(self, fs=44100, method=np.sin):
+    def synthesize(self, fs=44100, wave=np.sin):
         '''
         Synthesize the pattern using some waveshape.  Ignores drum track.
         
         Input:
             fs - Sampling rate
-            method - If a string, use pyfluidsynth where method is the path to a .sf2 file.
-                     If a function, synthesize the notes using this periodic function (e.g. np.sin, scipy.signal.square etc)
-                     Defaults to np.sin.  If the .sf2 file is not found or pyfluidsynth is not installed, also uses np.sin.
+            wave - Function which returns a periodic waveform, e.g. np.sin, scipy.signal.square, etc.
         Output:
             synthesized - Waveform of the MIDI data, synthesized at fs
         '''
         # Get synthesized waveform for each instrument
-        waveforms = [i.synthesize(fs=fs, method=method) for i in self.instruments]
+        waveforms = [i.synthesize(fs=fs, wave=wave) for i in self.instruments]
+        # Allocate output waveform, with #sample = max length of all waveforms
+        synthesized = np.zeros(np.max([w.shape[0] for w in waveforms]))
+        # Sum all waveforms in
+        for waveform in waveforms:
+            synthesized[:waveform.shape[0]] += waveform
+        # Normalize
+        synthesized /= np.abs(synthesized).max()
+        return synthesized
+
+    def fluidsynth(self, fs=44100, sf2_path=None):
+        ''' Synthesize using fluidsynth.
+
+        :parameters:
+            - fs : int
+                Sampling rate to synthesize
+            - sf2_path : str
+                Path to a .sf2 file.
+                Default None, which uses the 1mgm.sf2 file included with
+                pretty_midi.
+
+        :returns:
+            - synthesized : np.ndarray
+                Waveform of the MIDI data, synthesized at fs
+        '''
+        # Get synthesized waveform for each instrument
+        waveforms = [i.fluidsynth(fs=fs, sf2_path=sf2_path) for i in self.instruments]
         # Allocate output waveform, with #sample = max length of all waveforms
         synthesized = np.zeros(np.max([w.shape[0] for w in waveforms]))
         # Sum all waveforms in
@@ -649,102 +673,128 @@ class Instrument(object):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
-    def synthesize(self, fs=44100, method=np.sin):
+    def synthesize(self, fs=44100, wave=np.sin):
         '''
         Synthesize the instrument's notes using some waveshape.  For drum instruments, returns zeros.
         
         Input:
             fs - Sampling rate
-            method - If a string, use pyfluidsynth where method is the path to a .sf2 file.
-                     If a function, synthesize the notes using this periodic function (e.g. np.sin, scipy.signal.square etc)
-                     Defaults to np.sin.  If the .sf2 file is not found or pyfluidsynth is not installed, also uses np.sin.
+            wave - Function which returns a periodic waveform, e.g. np.sin, scipy.signal.square, etc.
         Output:
             synthesized - Waveform of the MIDI data, synthesized at fs.  Not normalized!
         '''
         # Pre-allocate output waveform
         synthesized = np.zeros(int(fs*(max([n.end for n in self.events] + [bend.time for bend in self.pitch_bends]) + 1)))
 
-        # If method is a string and we have fluidsynth, try to use fluidsynth
-        if _HAS_FLUIDSYNTH and type(method) == str and os.path.exists(method):
-            # Create fluidsynth instance
-            fl = fluidsynth.Synth(samplerate=fs)
-            # Load in the soundfont
-            sfid = fl.sfload(method)
-            # If this is a drum instrument, use channel 9 and bank 128
-            if self.is_drum:
-                channel = 9
-                fl.program_select(channel, sfid, 128, self.program)
-            # Otherwise just use channel 0
+        # If we're a percussion channel, just return the zeros
+        if self.is_drum:
+            return synthesized
+        # If the above if statement failed, we need to revert back to default
+        if not hasattr(wave, '__call__'):
+            raise ValueError('wave should be a callable Python function')
+        # This is a simple way to make the end of the notes fade-out without clicks
+        fade_out = np.linspace( 1, 0, .1*fs )
+        # Add in waveform for each note
+        for note in self.events:
+            # Indices in samples of this note
+            start = int(fs*note.start)
+            end = int(fs*note.end)
+            # Get frequency of note from MIDI note number
+            frequency = 440*(2.0**((note.pitch - 69)/12.0))
+            # Synthesize using wave function at this frequency
+            note_waveform = wave(2*np.pi*frequency*np.arange(end - start)/fs)
+            # Apply an exponential envelope
+            envelope = np.exp(-np.arange(end - start)/(1.0*fs))
+            # Make the end of the envelope be a fadeout
+            if envelope.shape[0] > fade_out.shape[0]:
+                envelope[-fade_out.shape[0]:] *= fade_out
             else:
-                channel = 0
-                fl.program_select(channel, sfid, 0, self.program)
-            # Collect all notes in one list
-            event_list = []
-            for note in self.events:
-                event_list += [[note.start, 'note on', note.pitch, note.velocity]]
-                event_list += [[note.end, 'note off', note.pitch]]
-            for bend in self.pitch_bends:
-                event_list += [[bend.time, 'pitch bend', bend.pitch]]
-            # Sort the event list by time
-            event_list.sort(key=lambda x: x[0])
-            # Add some silence at the beginning according to the time of the first event
-            current_sample = int(fs*event_list[0][0])
-            # Convert absolute secons to relative samples
-            next_event_times = [e[0] for e in event_list[1:]]
-            for event, end in zip(event_list[:-1], next_event_times):
-                event[0] = int(fs*(end - event[0]))
-            event_list[-1][0] = synthesized.shape[0] - int(fs*event_list[-1][0])
-            # Iterate over all events
-            for event in event_list:
-                # Process events based on type
-                if event[1] == 'note on':
-                    fl.noteon(channel, event[2], event[3])
-                elif event[1] == 'note off':
-                    fl.noteoff(channel, event[2])
-                elif event[1] == 'pitch bend':
-                    fl.pitch_bend(channel, int(8192*(event[2]/2)))
-                # Add in these samples
-                synthesized[current_sample:current_sample + event[0]] += fl.get_samples(event[0])[::2]
-                # Increment the current sample
-                current_sample += event[0]
-            # Close fluidsynth
-            fl.delete()
-            
-        # If method is a function, use it to synthesize (also a failure mode for the above)
-        else:
-            # If we're a percussion channel, just return the zeros
-            if self.is_drum:
-                return synthesized
-            # If the above if statement failed, we need to revert back to default
-            if not hasattr(method, '__call__'):
-                warnings.warn("fluidsynth was requested, but the .sf2 file was not found or pyfluidsynth is not installed.",
-                              RuntimeWarning)
-                method = np.sin
-            # This is a simple way to make the end of the notes fade-out without clicks
-            fade_out = np.linspace( 1, 0, .1*fs )
-            # Add in waveform for each note
-            for note in self.events:
-                # Indices in samples of this note
-                start = int(fs*note.start)
-                end = int(fs*note.end)
-                # Get frequency of note from MIDI note number
-                frequency = 440*(2.0**((note.pitch - 69)/12.0))
-                # Synthesize using wave function at this frequency
-                note_waveform = method(2*np.pi*frequency*np.arange(end - start)/fs)
-                # Apply an exponential envelope
-                envelope = np.exp(-np.arange(end - start)/(1.0*fs))
-                # Make the end of the envelope be a fadeout
-                if envelope.shape[0] > fade_out.shape[0]:
-                    envelope[-fade_out.shape[0]:] *= fade_out
-                else:
-                    envelope *= np.linspace( 1, 0, envelope.shape[0] )
-                # Multiply by velocity (don't think it's linearly scaled but whatever)
-                envelope *= note.velocity
-                # Add in envelope'd waveform to the synthesized signal
-                synthesized[start:end] += envelope*note_waveform
+                envelope *= np.linspace( 1, 0, envelope.shape[0] )
+            # Multiply by velocity (don't think it's linearly scaled but whatever)
+            envelope *= note.velocity
+            # Add in envelope'd waveform to the synthesized signal
+            synthesized[start:end] += envelope*note_waveform
 
         return synthesized
-    
+
+    def fluidsynth(self, fs=44100, sf2_path=None):
+        ''' Synthesize using fluidsynth.
+
+        :parameters:
+            - fs : int
+                Sampling rate to synthesize
+            - sf2_path : str
+                Path to a .sf2 file.
+                Default None, which uses the 1mgm.sf2 file included with
+                pretty_midi.
+
+        :returns:
+            - synthesized : np.ndarray
+                Waveform of the MIDI data, synthesized at fs
+        '''
+        # If sf2_path is None, use the included 1mgm.sf2 path
+        if sf2_path is None:
+            sf2_path = pkg_resources.resource_filename(__name__, '1mgm.sf2')
+
+        if not _HAS_FLUIDSYNTH:
+            raise ImportError("fluidsynth() was called but pyfluidsynth "
+                              "is not installed.")
+
+        if not os.path.exists(sf2_path):
+            raise ValueError("No soundfont file found at the supplied path "
+                             "{}".format(sf2_path))
+
+        # Pre-allocate output waveform
+        synthesized = np.zeros(int(fs*(max([n.end for n in self.events] +
+                                           [b.time for b in self.pitch_bends])
+                                       + 1)))
+        # Create fluidsynth instance
+        fl = fluidsynth.Synth(samplerate=fs)
+        # Load in the soundfont
+        sfid = fl.sfload(sf2_path)
+        # If this is a drum instrument, use channel 9 and bank 128
+        if self.is_drum:
+            channel = 9
+            fl.program_select(channel, sfid, 128, self.program)
+        # Otherwise just use channel 0
+        else:
+            channel = 0
+            fl.program_select(channel, sfid, 0, self.program)
+        # Collect all notes in one list
+        event_list = []
+        for note in self.events:
+            event_list += [[note.start, 'note on', note.pitch, note.velocity]]
+            event_list += [[note.end, 'note off', note.pitch]]
+        for bend in self.pitch_bends:
+            event_list += [[bend.time, 'pitch bend', bend.pitch]]
+        # Sort the event list by time
+        event_list.sort(key=lambda x: x[0])
+        # Add some silence at the beginning according to the time of the first event
+        current_sample = int(fs*event_list[0][0])
+        # Convert absolute secons to relative samples
+        next_event_times = [e[0] for e in event_list[1:]]
+        for event, end in zip(event_list[:-1], next_event_times):
+            event[0] = int(fs*(end - event[0]))
+        event_list[-1][0] = synthesized.shape[0] - int(fs*event_list[-1][0])
+        # Iterate over all events
+        for event in event_list:
+            # Process events based on type
+            if event[1] == 'note on':
+                fl.noteon(channel, event[2], event[3])
+            elif event[1] == 'note off':
+                fl.noteoff(channel, event[2])
+            elif event[1] == 'pitch bend':
+                fl.pitch_bend(channel, int(8192*(event[2]/2)))
+            # Add in these samples
+            synthesized[current_sample:current_sample + event[0]] += fl.get_samples(event[0])[::2]
+            # Increment the current sample
+            current_sample += event[0]
+        # Close fluidsynth
+        fl.delete()
+
+        return synthesized
+
+                
     def __repr__(self):
         return 'Instrument(program={}, is_drum={})'.format(self.program, self.is_drum, len(self.events))
         
