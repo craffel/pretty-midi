@@ -1,10 +1,13 @@
 pretty_midi.py contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
 As of now it relies on the python-midi package:
+
 https://github.com/vishnubob/python-midi/
 
 In order to synthesize some MIDI data using the included soundfont file (see the fluidsynth() function), you need fluidsynth and pyfluidsynth:
+
 http://www.fluidsynth.org/
+
 https://code.google.com/p/pyfluidsynth/
 
 Example usage:
