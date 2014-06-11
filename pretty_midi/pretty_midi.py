@@ -20,6 +20,8 @@ import os
 import warnings
 import pkg_resources
 
+DEFAULT_SF2='TimGM6mb.sf2'
+
 # <codecell>
 
 class PrettyMIDI(object):
@@ -431,7 +433,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
                 Sampling rate to synthesize
             - sf2_path : str
                 Path to a .sf2 file.
-                Default None, which uses the 1mgm.sf2 file included with
+                Default None, which uses the TimGM6mb.sf2 file included with
                 pretty_midi.
 
         :returns:
@@ -725,16 +727,16 @@ class Instrument(object):
                 Sampling rate to synthesize
             - sf2_path : str
                 Path to a .sf2 file.
-                Default None, which uses the 1mgm.sf2 file included with
+                Default None, which uses the TimGM6mb.sf2 file included with
                 pretty_midi.
 
         :returns:
             - synthesized : np.ndarray
                 Waveform of the MIDI data, synthesized at fs
         '''
-        # If sf2_path is None, use the included 1mgm.sf2 path
+        # If sf2_path is None, use the included TimGM6mb.sf2 path
         if sf2_path is None:
-            sf2_path = pkg_resources.resource_filename(__name__, '1mgm.sf2')
+            sf2_path = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
 
         if not _HAS_FLUIDSYNTH:
             raise ImportError("fluidsynth() was called but pyfluidsynth "
