@@ -768,15 +768,16 @@ class Instrument(object):
         # Sort the event list by time
         event_list.sort(key=lambda x: x[0])
         # Add some silence at the beginning according to the time of the first event
-        current_sample = int(round(fs*event_list[0][0]))
+        current_time = event_list[0][0]
         # Convert absolute seconds to relative samples
         next_event_times = [e[0] for e in event_list[1:]]
         for event, end in zip(event_list[:-1], next_event_times):
-            event[0] = int(round(fs*(end - event[0])))
+            event[0] = end - event[0]
         # Include 1 second of silence at the end
-        event_list[-1][0] = int(fs)
-        synthesized = np.zeros((current_sample +
-                                np.sum([e[0] for e in event_list])))
+        event_list[-1][0] = 1.
+        # Pre-allocate output array
+        total_time = current_time + np.sum([e[0] for e in event_list])
+        synthesized = np.zeros(int(np.ceil(fs*total_time)))
         # Iterate over all events
         for event in event_list:
             # Process events based on type
@@ -787,9 +788,11 @@ class Instrument(object):
             elif event[1] == 'pitch bend':
                 fl.pitch_bend(channel, int(8192*(event[2]/2)))
             # Add in these samples
-            synthesized[current_sample:current_sample + event[0]] += fl.get_samples(event[0])[::2]
+            current_sample = int(fs*current_time)
+            n_samples = int(fs*event[0])
+            synthesized[current_sample:current_sample + n_samples] += fl.get_samples(n_samples)[::2]
             # Increment the current sample
-            current_sample += event[0]
+            current_time += event[0]
         # Close fluidsynth
         fl.delete()
 
