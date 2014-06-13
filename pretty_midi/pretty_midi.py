@@ -746,10 +746,6 @@ class Instrument(object):
             raise ValueError("No soundfont file found at the supplied path "
                              "{}".format(sf2_path))
 
-        # Pre-allocate output waveform
-        synthesized = np.zeros(int(fs*(max([n.end for n in self.events] +
-                                           [b.time for b in self.pitch_bends])
-                                       + 1)))
         # Create fluidsynth instance
         fl = fluidsynth.Synth(samplerate=fs)
         # Load in the soundfont
@@ -772,12 +768,15 @@ class Instrument(object):
         # Sort the event list by time
         event_list.sort(key=lambda x: x[0])
         # Add some silence at the beginning according to the time of the first event
-        current_sample = int(fs*event_list[0][0])
-        # Convert absolute secons to relative samples
+        current_sample = int(round(fs*event_list[0][0]))
+        # Convert absolute seconds to relative samples
         next_event_times = [e[0] for e in event_list[1:]]
         for event, end in zip(event_list[:-1], next_event_times):
-            event[0] = int(fs*(end - event[0]))
-        event_list[-1][0] = synthesized.shape[0] - int(fs*event_list[-1][0])
+            event[0] = int(round(fs*(end - event[0])))
+        # Include 1 second of silence at the end
+        event_list[-1][0] = int(fs)
+        synthesized = np.zeros((current_sample +
+                                np.sum([e[0] for e in event_list])))
         # Iterate over all events
         for event in event_list:
             # Process events based on type
