@@ -753,7 +753,12 @@ class Instrument(object):
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
             channel = 9
-            fl.program_select(channel, sfid, 128, self.program)
+            # Try to use the supplied program number
+            res = fl.program_select(channel, sfid, 128, self.program)
+            # If the result is -1, there's no preset with this program number
+            if res == -1:
+                # So use preset 0
+                fl.program_select(channel, sfid, 128, 0)
         # Otherwise just use channel 0
         else:
             channel = 0
