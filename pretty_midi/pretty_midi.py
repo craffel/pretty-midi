@@ -794,8 +794,8 @@ class Instrument(object):
                 fl.pitch_bend(channel, int(8192*(event[2]/2)))
             # Add in these samples
             current_sample = int(fs*current_time)
-            n_samples = int(fs*event[0])
-            synthesized[current_sample:current_sample + n_samples] += fl.get_samples(n_samples)[::2]
+            end = int(fs*(current_time + event[0]))
+            synthesized[current_sample:end] += fl.get_samples(end - current_sample)[::2]
             # Increment the current sample
             current_time += event[0]
         # Close fluidsynth
