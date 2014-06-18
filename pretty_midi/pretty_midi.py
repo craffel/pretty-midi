@@ -392,7 +392,7 @@ This is not a valid type 0 or type 1 MIDI file.  Timing may be wrong.",
         
         Input:
             times - times of the start of each column in the chroma matrix.
-                    Default None which is np.arange(0, event_times.max(), 1/1000.0)
+                    Default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             chroma - chroma matrix, flattened across instruments, np.ndarray of size 12 x times.shape[0]
         '''
@@ -663,7 +663,7 @@ class Instrument(object):
         
         Input:
             times - times of the start of each column in the chroma matrix,
-                    Default None which is np.arange(0, event_times.max(), 1/1000.0)
+                    Default None which is np.arange(0, event_times.max(), 1/100.0)
         Output:
             chroma - chroma matrix, np.ndarray of size 12 x times.shape[0]
         '''
