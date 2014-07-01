@@ -198,7 +198,7 @@ class PrettyMIDI(object):
                             instrument = self.instruments[-1]
                             # Add the note to the new instrument
                             instrument.events.append(Note(
-                                event.velocity, event.pitch, start, end))
+                                velocity, event.pitch, start, end))
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel],
                                 is_drum, event.pitch)]
