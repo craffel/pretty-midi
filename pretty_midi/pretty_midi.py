@@ -658,7 +658,7 @@ class Instrument(object):
         if self.events == []:
             return np.array([[]]*128)
         # Get the end time of the last event
-        end_time = np.max([note.end for note in self.events])
+        end_time = self.get_end_time()
         # Sample at 100 Hz
         fs = 100
         # Allocate a matrix of zeros - we will add in as we go
