@@ -1245,3 +1245,35 @@ def instrument_name_to_program_number(instrument_name):
 
     # Return the index (program number) if a match was found
     return program_number
+
+
+__INSTRUMENT_CLASSES = ['Piano', 'Chromatic Percussion', 'Organ', 'Guitar',
+                        'Bass', 'Strings', 'Ensemble', 'Brass', 'Reed', 'Pipe',
+                        'Synth Lead', 'Synth Pad', 'Synth Effects', 'Ethnic',
+                        'Percussive',
+                        'Sound effects']
+
+
+def program_number_to_instrument_class(program_number):
+    '''
+    Converts a MIDI program number to the corresponding General MIDI instrument
+    class.
+
+    :parameters:
+        - program_number : int
+            MIDI program number, between 0 and 127
+
+    :returns:
+        - instrument_class : str
+            Name of the instrument class corresponding to this program number.
+
+    :note:
+        See http://www.midi.org/techspecs/gm1sound.php
+    '''
+
+    # Check that the supplied program is in the valid range
+    if program_number < 0 or program_number > 127:
+        raise ValueError('Invalid program number {}, should be between 0 and'
+                         ' 127'.format(program_number))
+    # Just grab the name from the instrument mapping list
+    return __INSTRUMENT_CLASSES[int(program_number)/8]
