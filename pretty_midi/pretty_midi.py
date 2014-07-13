@@ -962,6 +962,8 @@ def note_number_to_hz(note_number):
         - note_frequency : float
             Frequency of the note in Hz
     '''
+    # MIDI note numbers are defined as the number of semitones relative to C0
+    # in a 440 Hz tuning
     return 440.0*(2.0**((note_number - 69)/12.0))
 
 
@@ -977,6 +979,8 @@ def hz_to_note_number(frequency):
         - note_number : float
             MIDI note number, can be fractional
     '''
+    # MIDI note numbers are defined as the number of semitones relative to C0
+    # in a 440 Hz tuning
     return 12*(np.log2(frequency) - np.log2(440.0)) + 69
 
 
@@ -1004,10 +1008,14 @@ def note_name_to_number(note_name):
         Thanks to Brian McFee.
     '''
 
+    # Map note name to the semitone
     pitch_map = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
+    # Relative change in semitone denoted by each accidental
     acc_map = {'#': 1, '': 0, 'b': -1, '!': -1}
 
+    # Reg exp will raise an error when the note name is not valid
     try:
+        # Extract pitch, octave, and accidental from the supplied note name
         match = re.match(r'^(?P<n>[A-Ga-g])(?P<off>[#b!]?)(?P<oct>[+-]?\d+)$',
                          note_name)
 
@@ -1017,6 +1025,7 @@ def note_name_to_number(note_name):
     except:
         raise ValueError('Improper note format: %s' % note_name)
 
+    # Convert from the extrated ints to a full note number
     return 12*octave + pitch_map[pitch] + offset
 
 
@@ -1037,10 +1046,13 @@ def note_number_to_name(note_number):
         Thanks to Brian McFee.
     '''
 
+    # Note names within one octave
     semis = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+    # Ensure the note is an int
     note_number = int(np.round(note_number))
 
+    # Get the semitone and the octave, and concatenate to create the name
     return semis[note_number % 12] + str(note_number/12)
 
 # List which maps MIDI note number - 35 to drum name
@@ -1083,10 +1095,13 @@ def note_number_to_drum_name(note_number):
         See http://www.midi.org/techspecs/gm1sound.php for the mapping used.
     '''
 
+    # Ensure note is an int
     note_number = int(np.round(note_number))
+    # General MIDI only defines drum names for notes 35-81
     if note_number < 35 or note_number > 81:
         return ''
     else:
+        # Our __DRUM_MAP starts from index 0; drum names start from 35
         return __DRUM_MAP[note_number - 35]
 
 
@@ -1113,9 +1128,12 @@ def drum_name_to_note_number(drum_name):
         ''' Removes all non-alphanumeric characters from a string and converts
         it to lowercase'''
         return ''.join(ch for ch in name if ch.isalnum()).lower()
+
     normalized_drum_name = normalize(drum_name)
+    # Create a list of the entries __DRUM_MAP, normalized, to search over
     normalized_drum_names = [normalize(name) for name in __DRUM_MAP]
 
+    # If the normalized drum name is not found, complain
     try:
         note_index = normalized_drum_names.index(normalized_drum_name)
     except:
