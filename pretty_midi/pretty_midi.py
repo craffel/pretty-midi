@@ -1042,3 +1042,84 @@ def note_number_to_name(note_number):
     note_number = int(np.round(note_number))
 
     return semis[note_number % 12] + str(note_number/12)
+
+# List which maps MIDI note number - 35 to drum name
+# from http://www.midi.org/techspecs/gm1sound.php
+__DRUM_MAP = ['Acoustic Bass Drum', 'Bass Drum 1', 'Side Stick',
+              'Acoustic Snare', 'Hand Clap', 'Electric Snare',
+              'Low Floor Tom', 'Closed Hi Hat', 'High Floor Tom',
+              'Pedal Hi Hat', 'Low Tom', 'Open Hi Hat',
+              'Low-Mid Tom', 'Hi-Mid Tom', 'Crash Cymbal 1',
+              'High Tom', 'Ride Cymbal 1', 'Chinese Cymbal',
+              'Ride Bell', 'Tambourine', 'Splash Cymbal',
+              'Cowbell', 'Crash Cymbal 2', 'Vibraslap',
+              'Ride Cymbal 2', 'Hi Bongo', 'Low Bongo',
+              'Mute Hi Conga', 'Open Hi Conga', 'Low Conga',
+              'High Timbale', 'Low Timbale', 'High Agogo',
+              'Low Agogo', 'Cabasa', 'Maracas',
+              'Short Whistle', 'Long Whistle', 'Short Guiro',
+              'Long Guiro', 'Claves', 'Hi Wood Block',
+              'Low Wood Block', 'Mute Cuica', 'Open Cuica',
+              'Mute Triangle', 'Open Triangle']
+
+
+def note_number_to_drum_name(note_number):
+    '''
+    Converts a MIDI note number in a percussion instrument to the corresponding
+    drum name, according to the General MIDI standard.
+
+    Any MIDI note number outside of the valid range (note 35-81, zero-indexed)
+    will result in an empty string.
+
+    :parameters:
+        - note_number : int
+            MIDI note number.  If not an int, it will be rounded.
+
+    :returns:
+        - drum_name : str
+            Name of the drum for this note for a percussion instrument.
+
+    :note:
+        See http://www.midi.org/techspecs/gm1sound.php for the mapping used.
+    '''
+
+    note_number = int(np.round(note_number))
+    if note_number < 35 or note_number > 81:
+        return ''
+    else:
+        return __DRUM_MAP[note_number - 35]
+
+
+def drum_name_to_note_number(drum_name):
+    '''
+    Converts a drum name to the corresponding MIDI note number for a percussion
+    instrument.  Conversion is case, whitespace, and non-alphanumeric character
+    insensitive.
+
+    :parameters:
+        - drum_name : str
+            Name of a drum which exists in the general MIDI standard.
+            If the drum is not found, a ValueError is raised.
+
+    :returns:
+        - note_number : int
+            The MIDI note number corresponding to this drum.
+
+    :note:
+        See http://www.midi.org/techspecs/gm1sound.php for the mapping used.
+    '''
+
+    def normalize(name):
+        ''' Removes all non-alphanumeric characters from a string and converts
+        it to lowercase'''
+        return ''.join(ch for ch in name if ch.isalnum()).lower()
+    normalized_drum_name = normalize(drum_name)
+    normalized_drum_names = [normalize(name) for name in __DRUM_MAP]
+
+    try:
+        note_index = normalized_drum_names.index(normalized_drum_name)
+    except:
+        raise ValueError('{} is not a valid General MIDI drum '
+                         'name.'.format(drum_name))
+
+    return note_index + 35
