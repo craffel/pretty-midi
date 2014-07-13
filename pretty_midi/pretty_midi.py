@@ -1187,7 +1187,7 @@ __INSTRUMENT_MAP = ['Acoustic Grand Piano', 'Bright Acoustic Piano',
                     'Applause', 'Gunshot']
 
 
-def program_number_to_instrument_name(program_number):
+def program_to_instrument_name(program_number):
     '''
     Converts a MIDI program number to the corresponding General MIDI instrument
     name.
@@ -1212,7 +1212,7 @@ def program_number_to_instrument_name(program_number):
     return __INSTRUMENT_MAP[program_number]
 
 
-def instrument_name_to_program_number(instrument_name):
+def instrument_name_to_program(instrument_name):
     '''
     Converts an instrument name to the corresponding General MIDI program
     number.  Conversion is case, whitespace, and non-alphanumeric character
@@ -1254,7 +1254,7 @@ __INSTRUMENT_CLASSES = ['Piano', 'Chromatic Percussion', 'Organ', 'Guitar',
                         'Sound effects']
 
 
-def program_number_to_instrument_class(program_number):
+def program_to_instrument_class(program_number):
     '''
     Converts a MIDI program number to the corresponding General MIDI instrument
     class.
