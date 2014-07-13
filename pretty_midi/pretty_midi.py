@@ -1092,7 +1092,7 @@ def note_number_to_drum_name(note_number):
             Name of the drum for this note for a percussion instrument.
 
     :note:
-        See http://www.midi.org/techspecs/gm1sound.php for the mapping used.
+        See http://www.midi.org/techspecs/gm1sound.php
     '''
 
     # Ensure note is an int
@@ -1103,6 +1103,12 @@ def note_number_to_drum_name(note_number):
     else:
         # Our __DRUM_MAP starts from index 0; drum names start from 35
         return __DRUM_MAP[note_number - 35]
+
+
+def __normalize_str(name):
+    ''' Removes all non-alphanumeric characters from a string and converts
+    it to lowercase'''
+    return ''.join(ch for ch in name if ch.isalnum()).lower()
 
 
 def drum_name_to_note_number(drum_name):
@@ -1121,17 +1127,12 @@ def drum_name_to_note_number(drum_name):
             The MIDI note number corresponding to this drum.
 
     :note:
-        See http://www.midi.org/techspecs/gm1sound.php for the mapping used.
+        See http://www.midi.org/techspecs/gm1sound.php
     '''
 
-    def normalize(name):
-        ''' Removes all non-alphanumeric characters from a string and converts
-        it to lowercase'''
-        return ''.join(ch for ch in name if ch.isalnum()).lower()
-
-    normalized_drum_name = normalize(drum_name)
+    normalized_drum_name = __normalize_str(drum_name)
     # Create a list of the entries __DRUM_MAP, normalized, to search over
-    normalized_drum_names = [normalize(name) for name in __DRUM_MAP]
+    normalized_drum_names = [__normalize_str(name) for name in __DRUM_MAP]
 
     # If the normalized drum name is not found, complain
     try:
@@ -1140,4 +1141,107 @@ def drum_name_to_note_number(drum_name):
         raise ValueError('{} is not a valid General MIDI drum '
                          'name.'.format(drum_name))
 
+    # If an index was found, it will be 0-based; add 35 to get the note number
     return note_index + 35
+
+
+__INSTRUMENT_MAP = ['Acoustic Grand Piano', 'Bright Acoustic Piano',
+                    'Electric Grand Piano', 'Honky-tonk Piano',
+                    'Electric Piano 1', 'Electric Piano 2', 'Harpsichord',
+                    'Clavinet', 'Celesta', 'Glockenspiel', 'Music Box',
+                    'Vibraphone', 'Marimba', 'Xylophone', 'Tubular Bells',
+                    'Dulcimer', 'Drawbar Organ', 'Percussive Organ',
+                    'Rock Organ', 'Church Organ', 'Reed Organ', 'Accordion',
+                    'Harmonica', 'Tango Accordion', 'Acoustic Guitar (nylon)',
+                    'Acoustic Guitar (steel)', 'Electric Guitar (jazz)',
+                    'Electric Guitar (clean)', 'Electric Guitar (muted)',
+                    'Overdriven Guitar', 'Distortion Guitar',
+                    'Guitar Harmonics', 'Acoustic Bass',
+                    'Electric Bass (finger)', 'Electric Bass (pick)',
+                    'Fretless Bass', 'Slap Bass 1', 'Slap Bass 2',
+                    'Synth Bass 1', 'Synth Bass 2', 'Violin', 'Viola', 'Cello',
+                    'Contrabass', 'Tremolo Strings', 'Pizzicato Strings',
+                    'Orchestral Harp', 'Timpani', 'String Ensemble 1',
+                    'String Ensemble 2', 'Synth Strings 1', 'Synth Strings 2',
+                    'Choir Aahs', 'Voice Oohs', 'Synth Choir', 'Orchestra Hit',
+                    'Trumpet', 'Trombone', 'Tuba', 'Muted Trumpet',
+                    'French Horn', 'Brass Section', 'Synth Brass 1',
+                    'Synth Brass 2', 'Soprano Sax', 'Alto Sax', 'Tenor Sax',
+                    'Baritone Sax', 'Oboe', 'English Horn', 'Bassoon',
+                    'Clarinet', 'Piccolo', 'Flute', 'Recorder', 'Pan Flute',
+                    'Blown bottle', 'Shakuhachi', 'Whistle', 'Ocarina',
+                    'Lead 1 (square)', 'Lead 2 (sawtooth)',
+                    'Lead 3 (calliope)', 'Lead 4 chiff', 'Lead 5 (charang)',
+                    'Lead 6 (voice)', 'Lead 7 (fifths)',
+                    'Lead 8 (bass + lead)', 'Pad 1 (new age)', 'Pad 2 (warm)',
+                    'Pad 3 (polysynth)', 'Pad 4 (choir)', 'Pad 5 (bowed)',
+                    'Pad 6 (metallic)', 'Pad 7 (halo)', 'Pad 8 (sweep)',
+                    'FX 1 (rain)', 'FX 2 (soundtrack)', 'FX 3 (crystal)',
+                    'FX 4 (atmosphere)', 'FX 5 (brightness)', 'FX 6 (goblins)',
+                    'FX 7 (echoes)', 'FX 8 (sci-fi)', 'Sitar', 'Banjo',
+                    'Shamisen', 'Koto', 'Kalimba', 'Bagpipe', 'Fiddle',
+                    'Shanai', 'Tinkle Bell', 'Agogo', 'Steel Drums',
+                    'Woodblock', 'Taiko Drum', 'Melodic Tom', 'Synth Drum',
+                    'Reverse Cymbal', 'Guitar Fret Noise', 'Breath Noise',
+                    'Seashore', 'Bird Tweet', 'Telephone Ring', 'Helicopter',
+                    'Applause', 'Gunshot']
+
+
+def program_number_to_instrument_name(program_number):
+    '''
+    Converts a MIDI program number to the corresponding General MIDI instrument
+    name.
+
+    :parameters:
+        - program_number : int
+            MIDI program number, between 0 and 127
+
+    :returns:
+        - instrument_name : str
+            Name of the instrument corresponding to this program number.
+
+    :note:
+        See http://www.midi.org/techspecs/gm1sound.php
+    '''
+
+    # Check that the supplied program is in the valid range
+    if program_number < 0 or program_number > 127:
+        raise ValueError('Invalid program number {}, should be between 0 and'
+                         ' 127'.format(program_number))
+    # Just grab the name from the instrument mapping list
+    return __INSTRUMENT_MAP[program_number]
+
+
+def instrument_name_to_program_number(instrument_name):
+    '''
+    Converts an instrument name to the corresponding General MIDI program
+    number.  Conversion is case, whitespace, and non-alphanumeric character
+    insensitive.
+
+    :parameters:
+        - instrument_name : str
+            Name of an instrument which exists in the general MIDI standard.
+            If the instrument is not found, a ValueError is raised.
+
+    :returns:
+        - program_number : int
+            The MIDI program number corresponding to this instrument.
+
+    :note:
+        See http://www.midi.org/techspecs/gm1sound.php
+    '''
+
+    normalized_inst_name = __normalize_str(instrument_name)
+    # Create a list of the entries __INSTRUMENT_MAP, normalized, to search over
+    normalized_inst_names = [__normalize_str(name) for name in
+                             __INSTRUMENT_MAP]
+
+    # If the normalized drum name is not found, complain
+    try:
+        program_number = normalized_inst_names.index(normalized_inst_name)
+    except:
+        raise ValueError('{} is not a valid General MIDI instrument '
+                         'name.'.format(instrument_name))
+
+    # Return the index (program number) if a match was found
+    return program_number
