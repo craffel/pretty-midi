@@ -12,6 +12,7 @@ except ImportError:
 import os
 import warnings
 import pkg_resources
+import re
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
@@ -947,3 +948,97 @@ class PitchBend(object):
 
     def __repr__(self):
         return 'PitchBend(pitch={:f}, time={:f})'.format(self.pitch, self.time)
+
+
+def note_number_to_hz(note_number):
+    '''
+    Convert a (fractional) MIDI note number to its frequency in Hz.
+
+    :parameters:
+        - note_number : float
+            MIDI note number, can be fractional
+
+    :returns:
+        - note_frequency : float
+            Frequency of the note in Hz
+    '''
+    return 440.0*(2.0**((note_number - 69)/12.0))
+
+
+def hz_to_note_number(frequency):
+    '''
+    Convert a frequency in Hz to a (fractional) frequency
+
+    :parameters:
+        - frequency : float
+            Frequency of the note in Hz
+
+    :returns:
+        - note_number : float
+            MIDI note number, can be fractional
+    '''
+    return 12*(np.log2(frequency) - np.log2(440.0)) + 69
+
+
+def note_name_to_number(note_name):
+    '''
+    Converts a note name in the format (note)(accidental)(octave number)
+    to MIDI note number.
+
+    (note) is required, and is case-insensitive.
+
+    (accidental) should be '' for natural, '#' for sharp and '!' or 'b' for
+    flat.
+
+    If (octave) is '', octave 0 is assumed.
+
+    :parameters:
+        - note_name : str
+            A note name, as described above
+
+    :returns:
+        - note_number : int
+            MIDI note number corresponding to the provided note name.
+
+    :note:
+        Thanks to Brian McFee.
+    '''
+
+    pitch_map = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
+    acc_map = {'#': 1, '': 0, 'b': -1, '!': -1}
+
+    try:
+        match = re.match(r'^(?P<n>[A-Ga-g])(?P<off>[#b!]?)(?P<oct>[+-]?\d+)$',
+                         note_name)
+
+        pitch = match.group('n').upper()
+        offset = acc_map[match.group('off')]
+        octave = int(match.group('oct'))
+    except:
+        raise ValueError('Improper note format: %s' % note_name)
+
+    return 12*octave + pitch_map[pitch] + offset
+
+
+def note_number_to_name(note_number):
+    '''
+    Convert a MIDI note number to its name, in the format
+    (note)(accidental)(octave number) (e.g. 'C#4')
+
+    :parameters:
+        - note_number : int
+            MIDI note number.  If not an int, it will be rounded.
+
+    :returns:
+        - note_name : str
+            Name of the supplied MIDI note number.
+
+    :note:
+        Thanks to Brian McFee.
+    '''
+
+    semis = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+    note_number = int(np.round(note_number))
+
+    return semis[note_number % 12] + str(note_number/12)
