@@ -783,6 +783,22 @@ class Instrument(object):
         # This is a simple way to make the end of the notes fade-out without
         # clicks
         fade_out = np.linspace(1, 0, .1*fs)
+        # Create a frequency multiplier array for pitch bend
+        bend_multiplier = np.ones(synthesized.shape)
+        # Need to sort the pitch bend list for the loop below to work
+        ordered_bends = sorted(self.pitch_bends, key=lambda bend: bend.time)
+        # Add in a bend of 0 at the end of time
+        end_bend = PitchBend(0, self.get_end_time())
+        for start_bend, end_bend in zip(ordered_bends,
+                                        ordered_bends[1:] + [end_bend]):
+            # Bend start and end time in samples
+            start = int(start_bend.time*fs)
+            end = int(end_bend.time*fs)
+            # The multiplier will be (twelfth root of 2)^(bend semitones)
+            bend_semitones = pitch_bend_to_semitones(start_bend.pitch)
+            bend_amount = (2**(1/12.))**bend_semitones
+            # Sample indices effected by the bend
+            bend_multiplier[start:end] = bend_amount
         # Add in waveform for each note
         for note in self.events:
             # Indices in samples of this note
@@ -790,8 +806,26 @@ class Instrument(object):
             end = int(fs*note.end)
             # Get frequency of note from MIDI note number
             frequency = 440*(2.0**((note.pitch - 69)/12.0))
+            # When a pitch bend gets applied, there will be a sample
+            # discontinuity. So, we also need an array of offsets which get
+            # applied to compensate.
+            offsets = np.zeros(end - start)
+            for bend in ordered_bends:
+                bend_sample = int(bend.time*fs)
+                # Does this pitch bend fall within this note?
+                if bend_sample > start and bend_sample < end:
+                    # Compute the average bend so far
+                    bend_so_far = bend_multiplier[start:bend_sample].mean()
+                    bend_amount = bend_multiplier[bend_sample]
+                    # Compute the offset correction
+                    offset = (bend_so_far - bend_amount)*(bend_sample - start)
+                    # Store this offset for samples effected
+                    offsets[bend_sample - start:] = offset
+            # Compute the angular frequencies, bent, over this interval
+            frequencies = 2*np.pi*frequency*(bend_multiplier[start:end])/fs
             # Synthesize using wave function at this frequency
-            note_waveform = wave(2*np.pi*frequency*np.arange(end - start)/fs)
+            note_waveform = wave(frequencies*np.arange(end - start) +
+                                 2*np.pi*frequency*offsets/fs)
             # Apply an exponential envelope
             envelope = np.exp(-np.arange(end - start)/(1.0*fs))
             # Make the end of the envelope be a fadeout
