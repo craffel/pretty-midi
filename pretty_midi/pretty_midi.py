@@ -169,8 +169,6 @@ class PrettyMIDI(object):
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On'
                                                   and event.velocity == 0):
-                    # Check whether this event is for the drum channel
-                    is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
                     if (current_instrument[event.channel],
                             is_drum, event.pitch) in last_note_on:
@@ -179,44 +177,43 @@ class PrettyMIDI(object):
                             (current_instrument[event.channel],
                              is_drum, event.pitch)]
                         end = self.tick_to_time[event.tick]
-                        # Check that the instrument exists
-                        instrument_exists = False
-                        for instrument in self.instruments:
-                            # Find the right instrument
-                            current_program = current_instrument[event.channel]
-                            if (instrument.program == current_program
-                                    and instrument.is_drum == is_drum):
-                                instrument_exists = True
-                                # Add this note event
-                                instrument.events.append(Note(
-                                    velocity, event.pitch, start, end))
-                        # Create the instrument if none was found
-                        if not instrument_exists:
-                            # Create a new instrument
-                            self.instruments.append(
-                                Instrument(current_instrument[event.channel],
-                                           is_drum))
-                            instrument = self.instruments[-1]
-                            # Add the note to the new instrument
-                            instrument.events.append(Note(
-                                velocity, event.pitch, start, end))
+                        # Create the note event
+                        note = Note(velocity, event.pitch, start, end)
+                        # Get the program and drum type for the current inst
+                        program = current_instrument[event.channel]
+                        is_drum = (event.channel == 9)
+                        # Retrieve the Instrument instance for the current inst
+                        instrument = self.__get_instrument(program, is_drum)
+                        # Add the note event
+                        instrument.events.append(note)
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel],
                                 is_drum, event.pitch)]
                 # Store pitch bends
                 elif event.name == 'Pitch Wheel':
-                    # Check whether this event is for the drum channel
-                    is_drum = (event.channel == 9)
                     # Convert to relative pitch in semitones
-                    pitch_bend = 2*event.pitch/8192.0
-                    for instrument in self.instruments:
-                        # Find the right instrument
-                        current_program = current_instrument[event.channel]
-                        if (instrument.program == current_program
-                                and instrument.is_drum == is_drum):
-                            # Store pitch bend information
-                            instrument.pitch_bends.append(PitchBend(
-                                pitch_bend, self.tick_to_time[event.tick]))
+                    bend = PitchBend(event.pitch,
+                                     self.tick_to_time[event.tick])
+                    # Get the program and drum type for the current inst
+                    program = current_instrument[event.channel]
+                    is_drum = (event.channel == 9)
+                    # Retrieve the Instrument instance for the current inst
+                    instrument = self.__get_instrument(program, is_drum)
+                    # Add the pitch bend event
+                    instrument.pitch_bends.append(bend)
+
+    def __get_instrument(self, program, is_drum):
+        ''' Gets the Instrument corresponding to the given program number and
+        drum/non-drum type.  If no such instrument exists, one is created.'''
+        for instrument in self.instruments:
+            if (instrument.program == program
+                    and instrument.is_drum == is_drum):
+                # Add this note event
+                return instrument
+        # Create the instrument if none was found
+        self.instruments.append(Instrument(program, is_drum))
+        instrument = self.instruments[-1]
+        return instrument
 
     def get_tempo_changes(self):
         '''
@@ -582,7 +579,7 @@ class PrettyMIDI(object):
             for bend in instrument.pitch_bends:
                 tick = self._time_to_tick(bend.time)
                 bend_event = midi.PitchWheelEvent(tick=tick)
-                bend_event.set_pitch(int((bend.pitch/2)*8192))
+                bend_event.set_pitch(bend.pitch)
                 bend_event.channel = channel
                 track += [bend_event]
             # Sort all the events by tick time before converting to relative
@@ -684,10 +681,10 @@ class Instrument(object):
         for start_bend, end_bend in zip(ordered_bends,
                                         ordered_bends[1:] + [end_bend]):
             # Piano roll is already generated with everything bend = 0
-            if np.abs(start_bend.pitch) < 1/8192.0:
+            if np.abs(start_bend.pitch) < 1:
                 continue
             # Get integer and decimal part of bend amount
-            start_pitch = start_bend.pitch
+            start_pitch = pitch_bend_to_semitones(start_bend.pitch)
             bend_int = int(np.sign(start_pitch)*np.floor(np.abs(start_pitch)))
             bend_decimal = np.abs(start_pitch - bend_int)
             # Column indices effected by the bend
@@ -877,7 +874,7 @@ class Instrument(object):
             elif event[1] == 'note off':
                 fl.noteoff(channel, event[2])
             elif event[1] == 'pitch bend':
-                fl.pitch_bend(channel, int(8192*(event[2]/2)))
+                fl.pitch_bend(channel, event[2])
             # Add in these samples
             current_sample = int(fs*current_time)
             end = int(fs*(current_time + event[0]))
@@ -931,7 +928,7 @@ class PitchBend(object):
     A pitch bend event.
 
     Members:
-        pitch - Pitch bend amount, in (floating-point) seimtones
+        pitch - MIDI pitch bend amount, in the range [-8192, 8191]
         time - Time where the pitch bend occurs
     '''
 
@@ -940,14 +937,14 @@ class PitchBend(object):
         Create pitch bend object.
 
         Input:
-            pitch - Pitch bend amount, in (floating-point) seimtones
+            pitch - MIDI pitch bend amount, in the range [-8192, 8191]
             time - Time where the pitch bend occurs
         '''
         self.pitch = pitch
         self.time = time
 
     def __repr__(self):
-        return 'PitchBend(pitch={:f}, time={:f})'.format(self.pitch, self.time)
+        return 'PitchBend(pitch={:d}, time={:f})'.format(self.pitch, self.time)
 
 
 def note_number_to_hz(note_number):
@@ -1277,3 +1274,41 @@ def program_to_instrument_class(program_number):
                          ' 127'.format(program_number))
     # Just grab the name from the instrument mapping list
     return __INSTRUMENT_CLASSES[int(program_number)/8]
+
+
+def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
+    '''
+    Convert a MIDI pitch bend value (in the range -8192, 8191) to the bend
+    amount in semitones.
+
+    :parameters:
+        - pitch_bend : int
+            MIDI pitch bend amount, in [-8192, 8191]
+        - semitone_range : float
+            Convert to +/- this semitone range.  Default is 2., which is the
+            General MIDI standard +/-2 semitone range.
+
+    :returns:
+        - semitones : float
+            Number of semitones corresponding to this pitch bend amount
+    '''
+
+    return semitone_range*pitch_bend/8192.0
+
+
+def semitones_to_pitch_bend(semitones, semitone_range=2.):
+    '''
+    Convert a semitone value to the corresponding MIDI pitch bend int
+
+    :parameters:
+        - semitones : float
+            Number of semitones for the pitch bend
+        - semitone_range : float
+            Convert to +/- this semitone range.  Default is 2., which is the
+            General MIDI standard +/-2 semitone range.
+
+    :returns:
+        - pitch_bend : int
+            MIDI pitch bend amount, in [-8192, 8191]
+    '''
+    return int(8192*(semitones/semitone_range))
