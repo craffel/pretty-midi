@@ -174,6 +174,8 @@ class PrettyMIDI(object):
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On'
                                                   and event.velocity == 0):
+                    # Get the instrument's drum type
+                    is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
                     if (current_instrument[event.channel],
                             is_drum, event.pitch) in last_note_on:
@@ -186,7 +188,6 @@ class PrettyMIDI(object):
                         note = Note(velocity, event.pitch, start, end)
                         # Get the program and drum type for the current inst
                         program = current_instrument[event.channel]
-                        is_drum = (event.channel == 9)
                         # Retrieve the Instrument instance for the current inst
                         instrument = self.__get_instrument(program, is_drum)
                         # Add the note event
