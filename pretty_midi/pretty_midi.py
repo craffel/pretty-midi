@@ -45,7 +45,7 @@ class PrettyMIDI(object):
             self.resolution = midi_data.resolution
 
             # Populate the list of tempo changes (tick scales)
-            self._get_tempo_changes(midi_data)
+            self._load_tempo_changes(midi_data)
             # Update the array which maps ticks to time
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
@@ -62,7 +62,7 @@ class PrettyMIDI(object):
                                "file.  Timing may be wrong.", RuntimeWarning))
 
             # Populate the list of instruments
-            self._get_instruments(midi_data)
+            self._load_instruments(midi_data)
 
         else:
             # No midi file reader was supplied,
@@ -77,7 +77,7 @@ class PrettyMIDI(object):
             # Empty instruments list
             self.instruments = []
 
-    def _get_tempo_changes(self, midi_data):
+    def _load_tempo_changes(self, midi_data):
         '''
         Populates self.tick_scales with tuples of (tick, tick_scale)
 
@@ -137,7 +137,7 @@ class PrettyMIDI(object):
         self.tick_to_time[start_tick:] = (last_end_time +
                                           tick_scale*ticks)
 
-    def _get_instruments(self, midi_data):
+    def _load_instruments(self, midi_data):
         '''
         Populates the list of instruments in midi_data.
 
