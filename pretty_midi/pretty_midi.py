@@ -26,15 +26,18 @@ class PrettyMIDI(object):
             corresponding to the instruments in the MIDI file
     '''
 
-    def __init__(self, midi_data=None):
+    def __init__(self, midi_file=None):
         '''
         Initialize the PrettyMIDI container with some midi data
 
         Input:
-            midi_data - midi.FileReader object
-                default None which means create an empty class
+            midi_file - str or file
+                Path or file pointer to a MIDI file.
+                Default None which means create an empty class
         '''
-        if midi_data is not None:
+        if midi_file is not None:
+            # Load in the MIDI data using the midi module
+            midi_data = midi.read_midifile(midi_file)
             # Convert tick values in midi_data to absolute, a useful thing.
             midi_data.make_ticks_abs()
 
