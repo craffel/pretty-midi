@@ -64,7 +64,7 @@ class PrettyMIDI(object):
                     for track in midi_data[1:]]):
                 warnings.warn(("Tempo change events found on non-zero tracks."
                                "  This is not a valid type 0 or type 1 MIDI "
-                               "file.  Timing may be wrong.", RuntimeWarning))
+                               "file.  Timing may be wrong."), RuntimeWarning)
 
             # Populate the list of instruments
             self._load_instruments(midi_data)
