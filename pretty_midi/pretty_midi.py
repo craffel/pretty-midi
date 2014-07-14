@@ -26,14 +26,19 @@ class PrettyMIDI(object):
             corresponding to the instruments in the MIDI file
     '''
 
-    def __init__(self, midi_file=None):
+    def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
         '''
         Initialize the PrettyMIDI container with some midi data
 
         Input:
             midi_file - str or file
                 Path or file pointer to a MIDI file.
-                Default None which means create an empty class
+                Default None which means create an empty class with the
+                supplied values for resolutiona and initial tempo.
+            resolution - int
+                Resolution of the MIDI data, when no file is provided.
+            intitial_tempo - float
+                Initial tempo for the MIDI data, when no file is provided.
         '''
         if midi_file is not None:
             # Load in the MIDI data using the midi module
@@ -65,13 +70,10 @@ class PrettyMIDI(object):
             self._load_instruments(midi_data)
 
         else:
-            # No midi file reader was supplied,
-            # so create an empty pretty_midi object.
-            # Need to set some tempo values for some functions to work
-            # Resolution is 220 by default
-            self.resolution = 220
-            # By default, set the tempo to 120 bpm, starting at time 0
-            self.tick_scales = [(0, 60.0/(120.0*self.resolution))]
+            self.resolution = resolution
+            # Compute the tick scale for the provided initial tempo
+            # and let the tick scale start from 0
+            self.tick_scales = [(0, 60.0/(initial_tempo*self.resolution))]
             # Only need to convert one tick to time
             self.tick_to_time = [0]
             # Empty instruments list
@@ -504,7 +506,7 @@ class PrettyMIDI(object):
         synthesized /= np.abs(synthesized).max()
         return synthesized
 
-    def _time_to_tick(self, time):
+    def time_to_tick(self, time):
         '''
         Converts from a time in seconds to absolute tick using self.tick_scales
 
@@ -567,12 +569,12 @@ class PrettyMIDI(object):
             # Add all note events
             for note in instrument.events:
                 # Construct the note-on event
-                note_on = midi.NoteOnEvent(tick=self._time_to_tick(note.start))
+                note_on = midi.NoteOnEvent(tick=self.time_to_tick(note.start))
                 note_on.set_pitch(note.pitch)
                 note_on.set_velocity(note.velocity)
                 note_on.channel = channel
                 # Also need a note-off event (note on with velocity 0)
-                note_off = midi.NoteOnEvent(tick=self._time_to_tick(note.end))
+                note_off = midi.NoteOnEvent(tick=self.time_to_tick(note.end))
                 note_off.set_pitch(note.pitch)
                 note_off.set_velocity(0)
                 note_off.channel = channel
@@ -580,7 +582,7 @@ class PrettyMIDI(object):
                 track += [note_on, note_off]
             # Add all pitch bend events
             for bend in instrument.pitch_bends:
-                tick = self._time_to_tick(bend.time)
+                tick = self.time_to_tick(bend.time)
                 bend_event = midi.PitchWheelEvent(tick=tick)
                 bend_event.set_pitch(bend.pitch)
                 bend_event.channel = channel
