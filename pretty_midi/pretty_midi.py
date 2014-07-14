@@ -805,7 +805,7 @@ class Instrument(object):
             start = int(fs*note.start)
             end = int(fs*note.end)
             # Get frequency of note from MIDI note number
-            frequency = 440*(2.0**((note.pitch - 69)/12.0))
+            frequency = note_number_to_hz(note.pitch)
             # When a pitch bend gets applied, there will be a sample
             # discontinuity. So, we also need an array of offsets which get
             # applied to compensate.
