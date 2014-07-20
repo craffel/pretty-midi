@@ -507,6 +507,29 @@ class PrettyMIDI(object):
         synthesized /= np.abs(synthesized).max()
         return synthesized
 
+    def tick_to_time(self, tick):
+        '''
+        Converts from an absolute tick to time in seconds using
+        self.__tick_to_time
+
+        :parameters:
+            - tick : int
+                absolute tick to convert
+
+        :returns:
+            - time : float
+                time in seconds of tick
+        '''
+        # Check that the tick isn't too big
+        if tick >= len(self.__tick_to_time):
+            raise IndexError('Supplied tick is too large.  Please run '
+                             'update_tick_to_time(tick) before converting.')
+        # Ticks should be integers
+        if type(tick) != int:
+            warnings.warn('tick should be an int.')
+        # Otherwise just return the time
+        return self.__tick_to_time[int(tick)]
+
     def time_to_tick(self, time):
         '''
         Converts from a time in seconds to absolute tick using
