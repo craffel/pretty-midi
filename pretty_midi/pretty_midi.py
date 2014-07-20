@@ -54,7 +54,7 @@ class PrettyMIDI(object):
             # Update the array which maps ticks to time
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
-            # and creating the tick_to_time array will thrash memory
+            # and creating the __tick_to_time array will thrash memory
             if max_tick > 1e7:
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
@@ -73,15 +73,15 @@ class PrettyMIDI(object):
             self.resolution = resolution
             # Compute the tick scale for the provided initial tempo
             # and let the tick scale start from 0
-            self.tick_scales = [(0, 60.0/(initial_tempo*self.resolution))]
+            self.__tick_scales = [(0, 60.0/(initial_tempo*self.resolution))]
             # Only need to convert one tick to time
-            self.tick_to_time = [0]
+            self.__tick_to_time = [0]
             # Empty instruments list
             self.instruments = []
 
     def _load_tempo_changes(self, midi_data):
         '''
-        Populates self.tick_scales with tuples of (tick, tick_scale)
+        Populates self.__tick_scales with tuples of (tick, tick_scale)
 
         Input:
             midi_data - midi.FileReader object
@@ -92,7 +92,7 @@ class PrettyMIDI(object):
         # So, create a list of tuples, (time, tempo)
         # denoting a tempo change at a certain time.
         # By default, set the tempo to 120 bpm, starting at time 0
-        self.tick_scales = [(0, 60.0/(120.0*midi_data.resolution))]
+        self.__tick_scales = [(0, 60.0/(120.0*midi_data.resolution))]
         # For SMF file type 0, all events are on track 0.
         # For type 1, all tempo events should be on track 1.
         # Everyone ignores type 2.
@@ -102,41 +102,41 @@ class PrettyMIDI(object):
                 # Only allow one tempo change event at the beginning
                 if event.tick == 0:
                     bpm = event.get_bpm()
-                    self.tick_scales = [(0, 60.0/(bpm*midi_data.resolution))]
+                    self.__tick_scales = [(0, 60.0/(bpm*midi_data.resolution))]
                 else:
                     # Get time and BPM up to this point
-                    _, last_tick_scale = self.tick_scales[-1]
+                    _, last_tick_scale = self.__tick_scales[-1]
                     tick_scale = 60.0/(event.get_bpm()*midi_data.resolution)
                     # Ignore repetition of BPM, which happens often
                     if tick_scale != last_tick_scale:
-                        self.tick_scales.append((event.tick, tick_scale))
+                        self.__tick_scales.append((event.tick, tick_scale))
 
     def _update_tick_to_time(self, max_tick):
         '''
-        Creates tick_to_time, a class member array which maps ticks to time
+        Creates __tick_to_time, a class member array which maps ticks to time
         starting from tick 0 and ending at max_tick
 
         Input:
             max_tick - last tick to compute time for
         '''
         # Allocate tick to time array - indexed by tick from 0 to max_tick
-        self.tick_to_time = np.zeros(max_tick)
+        self.__tick_to_time = np.zeros(max_tick)
         # Keep track of the end time of the last tick in the previous interval
         last_end_time = 0
         # Cycle through intervals of different tempii
         for (start_tick, tick_scale), (end_tick, _) in \
-                zip(self.tick_scales[:-1], self.tick_scales[1:]):
+                zip(self.__tick_scales[:-1], self.__tick_scales[1:]):
             # Convert ticks in this interval to times
             ticks = np.arange(end_tick - start_tick + 1)
-            self.tick_to_time[start_tick:end_tick + 1] = (last_end_time +
+            self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
                                                           tick_scale*ticks)
             # Update the time of the last tick in this interval
-            last_end_time = self.tick_to_time[end_tick]
+            last_end_time = self.__tick_to_time[end_tick]
         # For the final interval, use the final tempo setting
         # and ticks from the final tempo setting until max_tick
-        start_tick, tick_scale = self.tick_scales[-1]
+        start_tick, tick_scale = self.__tick_scales[-1]
         ticks = np.arange(max_tick - start_tick)
-        self.tick_to_time[start_tick:] = (last_end_time +
+        self.__tick_to_time[start_tick:] = (last_end_time +
                                           tick_scale*ticks)
 
     def _load_instruments(self, midi_data):
@@ -169,7 +169,7 @@ class PrettyMIDI(object):
                     note_on_index = (current_instrument[event.channel],
                                      is_drum, event.pitch)
                     last_note_on[note_on_index] = (
-                        self.tick_to_time[event.tick],
+                        self.__tick_to_time[event.tick],
                         event.velocity)
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On'
@@ -183,7 +183,7 @@ class PrettyMIDI(object):
                         start, velocity = last_note_on[
                             (current_instrument[event.channel],
                              is_drum, event.pitch)]
-                        end = self.tick_to_time[event.tick]
+                        end = self.__tick_to_time[event.tick]
                         # Create the note event
                         note = Note(velocity, event.pitch, start, end)
                         # Get the program and drum type for the current inst
@@ -199,7 +199,7 @@ class PrettyMIDI(object):
                 elif event.name == 'Pitch Wheel':
                     # Convert to relative pitch in semitones
                     bend = PitchBend(event.pitch,
-                                     self.tick_to_time[event.tick])
+                                     self.__tick_to_time[event.tick])
                     # Get the program and drum type for the current inst
                     program = current_instrument[event.channel]
                     is_drum = (event.channel == 9)
@@ -231,11 +231,11 @@ class PrettyMIDI(object):
             tempii - np.ndarray of tempos, same size as tempo_change_times
         '''
         # Pre-allocate return arrays
-        tempo_change_times = np.zeros(len(self.tick_scales))
-        tempii = np.zeros(len(self.tick_scales))
-        for n, (tick, tick_scale) in enumerate(self.tick_scales):
+        tempo_change_times = np.zeros(len(self.__tick_scales))
+        tempii = np.zeros(len(self.__tick_scales))
+        for n, (tick, tick_scale) in enumerate(self.__tick_scales):
             # Convert tick of this tempo change to time in seconds
-            tempo_change_times[n] = self.tick_to_time[tick]
+            tempo_change_times[n] = self.__tick_to_time[tick]
             # Convert tick scale to a tempo
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
@@ -509,7 +509,8 @@ class PrettyMIDI(object):
 
     def time_to_tick(self, time):
         '''
-        Converts from a time in seconds to absolute tick using self.tick_scales
+        Converts from a time in seconds to absolute tick using
+        self.__tick_scales
 
         Input:
             time - time, in seconds, of the event
@@ -519,8 +520,8 @@ class PrettyMIDI(object):
         # Ticks will be accumulated over tick scale changes
         tick = 0
         # Iterate through all the tempo changes (tick scale changes!)
-        for change_tick, tick_scale in reversed(self.tick_scales):
-            change_time = self.tick_to_time[change_tick]
+        for change_tick, tick_scale in reversed(self.__tick_scales):
+            change_time = self.__tick_to_time[change_tick]
             if time > change_time:
                 tick += (time - change_time)/tick_scale
                 time = change_time
@@ -540,7 +541,7 @@ class PrettyMIDI(object):
         # Not sure if time signature is actually necessary
         timing_track += [midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
         # Add in each tempo change event
-        for (tick, tick_scale) in self.tick_scales:
+        for (tick, tick_scale) in self.__tick_scales:
             tempo_event = midi.SetTempoEvent(tick=tick)
             # Compute the BPM
             tempo_event.set_bpm(60.0/(tick_scale*self.resolution))
