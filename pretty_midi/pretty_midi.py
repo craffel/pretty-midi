@@ -549,7 +549,7 @@ class PrettyMIDI(object):
         tick = 0
         # Iterate through all the tempo changes (tick scale changes!)
         for change_tick, tick_scale in reversed(self.__tick_scales):
-            change_time = self.__tick_to_time[change_tick]
+            change_time = self.tick_to_time(change_tick)
             if time > change_time:
                 tick += (time - change_time)/tick_scale
                 time = change_time
