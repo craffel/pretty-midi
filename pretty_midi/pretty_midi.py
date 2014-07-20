@@ -191,7 +191,7 @@ class PrettyMIDI(object):
                         # Retrieve the Instrument instance for the current inst
                         instrument = self.__get_instrument(program, is_drum)
                         # Add the note event
-                        instrument.events.append(note)
+                        instrument.notes.append(note)
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel],
                                 is_drum, event.pitch)]
@@ -248,7 +248,7 @@ class PrettyMIDI(object):
             end_time - Time, in seconds, where this MIDI file ends
         '''
         # Cycle through all notes from all instruments and find the largest
-        return max([n.end for i in self.instruments for n in i.events] +
+        return max([n.end for i in self.instruments for n in i.notes] +
                    [b.time for i in self.instruments for b in i.pitch_bends])
 
     def estimate_tempii(self):
@@ -317,7 +317,7 @@ class PrettyMIDI(object):
             beats - np.ndarray of beat locations, in seconds
         '''
         # Get a sorted list of all notes from all instruments
-        note_list = [n for i in self.instruments for n in i.events]
+        note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
         # Get tempo changs and tempos
         tempo_change_times, tempii = self.get_tempo_changes()
@@ -568,7 +568,7 @@ class PrettyMIDI(object):
             program_change.channel = channel
             track += [program_change]
             # Add all note events
-            for note in instrument.events:
+            for note in instrument.notes:
                 # Construct the note-on event
                 note_on = midi.NoteOnEvent(tick=self.time_to_tick(note.start))
                 note_on.set_pitch(note.pitch)
@@ -613,15 +613,15 @@ class Instrument(object):
     Members:
         program - The program number of this instrument.
         is_drum - Is the instrument a drum instrument (channel 9)?
-        events - List of Note objects
+        notes - List of Note objects
         pitch_bends - List of of PitchBend objects
     '''
 
     def __init__(self, program, is_drum=False):
         '''
         Create the Instrument.
-        events gets initialized to empty list.
-        Fill with (Instrument).events.append(event)
+        notes gets initialized to empty list.
+        Fill with (Instrument).notes.append(event)
 
         Input:
             program - MIDI program number (instrument index)
@@ -630,7 +630,7 @@ class Instrument(object):
         '''
         self.program = program
         self.is_drum = is_drum
-        self.events = []
+        self.notes = []
         self.pitch_bends = []
 
     def get_onsets(self):
@@ -642,7 +642,7 @@ class Instrument(object):
         '''
         onsets = []
         # Get the note-on time of each note played by this instrument
-        for note in self.events:
+        for note in self.notes:
             onsets.append(note.start)
         # Return them sorted (because why not?)
         return np.sort(onsets)
@@ -658,8 +658,8 @@ class Instrument(object):
             piano_roll - Piano roll matrix
                 np.ndarray of size 128 x times.shape[0]
         '''
-        # If there are no events, return an empty matrix
-        if self.events == []:
+        # If there are no notes, return an empty matrix
+        if self.notes == []:
             return np.array([[]]*128)
         # Get the end time of the last event
         end_time = self.get_end_time()
@@ -674,7 +674,7 @@ class Instrument(object):
             else:
                 return np.zeros((128, times.shape[0]), dtype=np.int16)
         # Add up piano roll matrix, note-by-note
-        for note in self.events:
+        for note in self.notes:
             # Should interpolate
             piano_roll[note.pitch,
                        int(note.start*fs):int(note.end*fs)] += note.velocity
@@ -755,7 +755,7 @@ class Instrument(object):
             end_time - Time, in seconds, of the end of the last event
         '''
         # Cycle through all note ends and all pitch bends and find the largest
-        return max([n.end for n in self.events] +
+        return max([n.end for n in self.notes] +
                    [b.time for b in self.pitch_bends])
 
     def synthesize(self, fs=44100, wave=np.sin):
@@ -800,7 +800,7 @@ class Instrument(object):
             # Sample indices effected by the bend
             bend_multiplier[start:end] = bend_amount
         # Add in waveform for each note
-        for note in self.events:
+        for note in self.notes:
             # Indices in samples of this note
             start = int(fs*note.start)
             end = int(fs*note.end)
@@ -887,7 +887,7 @@ class Instrument(object):
             fl.program_select(channel, sfid, 0, self.program)
         # Collect all notes in one list
         event_list = []
-        for note in self.events:
+        for note in self.notes:
             event_list += [[note.start, 'note on', note.pitch, note.velocity]]
             event_list += [[note.end, 'note off', note.pitch]]
         for bend in self.pitch_bends:
@@ -929,7 +929,7 @@ class Instrument(object):
 
     def __repr__(self):
         return 'Instrument(program={}, is_drum={})'.format(
-            self.program, self.is_drum, len(self.events))
+            self.program, self.is_drum, len(self.notes))
 
 
 class Note(object):
