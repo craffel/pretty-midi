@@ -943,6 +943,9 @@ class Instrument(object):
             event_list += [[note.end, 'note off', note.pitch]]
         for bend in self.pitch_bends:
             event_list += [[bend.time, 'pitch bend', bend.pitch]]
+        for control_change in self.control_changes:
+            event_list += [[control_change.time, 'control change',
+                            control_change.number, control_change.value]]
         # Sort the event list by time
         event_list.sort(key=lambda x: x[0])
         # Add some silence at the beginning according to the time of the first
@@ -966,6 +969,8 @@ class Instrument(object):
                 fl.noteoff(channel, event[2])
             elif event[1] == 'pitch bend':
                 fl.pitch_bend(channel, event[2])
+            elif event[1] == 'control change':
+                fl.cc(channel, event[2], event[3])
             # Add in these samples
             current_sample = int(fs*current_time)
             end = int(fs*(current_time + event[0]))
