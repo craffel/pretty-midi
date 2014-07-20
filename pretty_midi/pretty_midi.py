@@ -16,6 +16,9 @@ import re
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
+# The largest we'd ever expect a tick to be
+MAX_TICK = 1e7
+
 
 class PrettyMIDI(object):
     '''
@@ -55,7 +58,7 @@ class PrettyMIDI(object):
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
             # and creating the __tick_to_time array will thrash memory
-            if max_tick > 1e7:
+            if max_tick > MAX_TICK:
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
             self._update_tick_to_time(max_tick)
@@ -120,7 +123,7 @@ class PrettyMIDI(object):
             max_tick - last tick to compute time for
         '''
         # Allocate tick to time array - indexed by tick from 0 to max_tick
-        self.__tick_to_time = np.zeros(max_tick)
+        self.__tick_to_time = np.zeros(max_tick + 1)
         # Keep track of the end time of the last tick in the previous interval
         last_end_time = 0
         # Cycle through intervals of different tempii
@@ -135,7 +138,7 @@ class PrettyMIDI(object):
         # For the final interval, use the final tempo setting
         # and ticks from the final tempo setting until max_tick
         start_tick, tick_scale = self.__tick_scales[-1]
-        ticks = np.arange(max_tick - start_tick)
+        ticks = np.arange(max_tick + 1 - start_tick)
         self.__tick_to_time[start_tick:] = (last_end_time +
                                           tick_scale*ticks)
 
@@ -521,9 +524,11 @@ class PrettyMIDI(object):
                 time in seconds of tick
         '''
         # Check that the tick isn't too big
+        if tick >= MAX_TICK:
+            raise IndexError('Supplied tick is too large.')
+        # If we haven't compute the mapping for a tick this large, compute it
         if tick >= len(self.__tick_to_time):
-            raise IndexError('Supplied tick is too large.  Please run '
-                             'update_tick_to_time(tick) before converting.')
+            self._update_tick_to_time(tick)
         # Ticks should be integers
         if type(tick) != int:
             warnings.warn('tick should be an int.')
