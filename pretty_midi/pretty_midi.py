@@ -210,6 +210,18 @@ class PrettyMIDI(object):
                     instrument = self.__get_instrument(program, is_drum)
                     # Add the pitch bend event
                     instrument.pitch_bends.append(bend)
+                # Store control changes
+                elif event.name == 'Control Change':
+                    control_change = ControlChange(event.data[0],
+                                         event.data[1],
+                                         self.__tick_to_time[event.tick])
+                    # Get the program and drum type for the current inst
+                    program = current_instrument[event.channel]
+                    is_drum = (event.channel == 9)
+                    # Retrieve the Instrument instance for the current inst
+                    instrument = self.__get_instrument(program, is_drum)
+                    # Add the control change event
+                    instrument.control_changes.append(control_change)
 
     def __get_instrument(self, program, is_drum):
         ''' Gets the Instrument corresponding to the given program number and
@@ -644,6 +656,7 @@ class Instrument(object):
         is_drum - Is the instrument a drum instrument (channel 9)?
         notes - List of Note objects
         pitch_bends - List of of PitchBend objects
+        control_changes - List of ControlChange objects
     '''
 
     def __init__(self, program, is_drum=False):
@@ -661,6 +674,7 @@ class Instrument(object):
         self.is_drum = is_drum
         self.notes = []
         self.pitch_bends = []
+        self.control_changes = []
 
     def get_onsets(self):
         '''
@@ -1014,6 +1028,34 @@ class PitchBend(object):
 
     def __repr__(self):
         return 'PitchBend(pitch={:d}, time={:f})'.format(self.pitch, self.time)
+
+
+class ControlChange(object):
+    '''
+    A control change event.
+
+    Members:
+        number - The control change number
+        value - The value of the control change
+        time - Time where the pitch bend occurs
+    '''
+
+    def __init__(self, number, value, time):
+        '''
+        Create pitch bend object.
+
+        Input:
+            number - The control change number, in [0, 127]
+            value - Value of the control change, also in [0, 127]
+            time - Time where the control change occurs
+        '''
+        self.number = number
+        self.value = value
+        self.time = time
+
+    def __repr__(self):
+        return ('ControlChange(number={:d}, value={:d}, '
+                'time={:f})'.format(self.number, self.value, self.time))
 
 
 def note_number_to_hz(note_number):
