@@ -200,7 +200,7 @@ class PrettyMIDI(object):
                                 is_drum, event.pitch)]
                 # Store pitch bends
                 elif event.name == 'Pitch Wheel':
-                    # Convert to relative pitch in semitones
+                    # Create pitch bend class instance
                     bend = PitchBend(event.pitch,
                                      self.__tick_to_time[event.tick])
                     # Get the program and drum type for the current inst
