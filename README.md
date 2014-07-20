@@ -1,4 +1,4 @@
-pretty_midi.py contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
+pretty_midi contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
 As of now it relies on the python-midi package:
 
@@ -10,35 +10,46 @@ http://www.fluidsynth.org/
 
 https://code.google.com/p/pyfluidsynth/
 
-Example usage:
+Example usage for analyzing, manipulating and synthesizing a MIDI file:
 
 ```python
-from pretty_midi import PrettyMIDI
-import midi
-# Construct PrettyMIDI object
-bohemian_rhapsody = PrettyMIDI(midi.read_midifile('Bohemian Rhapsody.mid'))
-
-# Get a piano roll matrix of this MIDI file, sampled at 100 Hz
-piano_roll = bohemian_rhapsody.get_piano_roll()
-import matplotlib.pyplot as plt
-plt.figure( figsize=(20, 8) )
-plt.imshow( piano_roll, origin='lower', aspect='auto', interpolation='nearest' )
-
-# Get the chroma matrix - the energy in each semitone across octaves
-chroma = bohemian_rhapsody.get_chroma()
-# Optional - normalize chroma_matrix columnwise by max
-chroma /= (chroma.max( axis = 0 ) + (chroma.max( axis = 0 ) == 0))
-plt.figure( figsize=(20, 4) )
-plt.imshow( chroma, origin='lower', aspect='auto', interpolation='nearest' )
-
-# Iterate over the instrument tracks in the MIDI file
-for instrument in bohemian_rhapsody.instruments:
-    # Check whether the instrument is a drum track
+import pretty_midi
+# Load MIDI file into PrettyMIDI object
+midi_data = pretty_midi.PrettyMIDI('Bohemian Rhapsody.mid')
+# Print an empirical estimate of its global tempo
+print midi_data.estimate_tempo()
+# Compute the relative amount of each semitone across the entire song, a proxy for key
+total_velocity = sum(sum(midi_data.get_chroma()))
+print [sum(semitone)/total_velocity for semitone in midi_data.get_chroma()]
+# Shift all notes up by 5 semitones
+for instrument in midi_data.instruments:
+    # Don't want to shift drum notes
     if not instrument.is_drum:
-        # Iterate over note events for this instrument
-        for note in instrument.events:
-            # Shift them up by 4 semitones
-            note.pitch += 4
-# Write out key-shifted version
-bohemian_rhapsody.write('Bohemian Rhapsody-Shifted.mid')
+        for note in instrument.notes:
+            note.pitch += 5
+# Synthesize the resulting MIDI data using sine waves
+audio_data = midi_data.synthesize()
+```
+
+Example usage for creating a simple MIDI file:
+
+```python
+import pretty_midi
+# Create a PrettyMIDI object
+cello_c_chord = pretty_midi.PrettyMIDI()
+# Create an Instrument instance for a cello instrument
+cello_program = pretty_midi.instrument_name_to_program('Cello')
+cello = pretty_midi.Instrument(program=cello_program)
+# Iterate over note names, which will be converted to note number later
+for note_name in ['C5', 'E5', 'G5']:
+    # Retrieve the MIDI note number for this note name
+    note_number = pretty_midi.note_name_to_number(note_name)
+    # Create a Note instance for this note, starting at 0s and ending at .5s
+    note = pretty_midi.Note(velocity=100, pitch=note_number, start=0, end=.5)
+    # Add it to our cello instrument
+    cello.notes.append(note)
+# Add the cello instrument to the PrettyMIDI object
+cello_c_chord.instruments.append(cello)
+# Write out the MIDI data
+cello_c_chord.write('cello-C-chord.mid')
 ```
