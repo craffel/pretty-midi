@@ -629,6 +629,14 @@ class PrettyMIDI(object):
                 bend_event.set_pitch(bend.pitch)
                 bend_event.channel = channel
                 track += [bend_event]
+            # Add all control change events
+            for control_change in instrument.control_changes:
+                tick = self.time_to_tick(control_change.time)
+                control_event = midi.ControlChangeEvent(tick=tick)
+                control_event.set_control(control_change.number)
+                control_event.set_value(control_change.value)
+                control_event.channel = channel
+                track += [control_event]
             # Sort all the events by tick time before converting to relative
             tick_sort = np.argsort([event.tick for event in track])
             track = midi.Track([track[n] for n in tick_sort],
