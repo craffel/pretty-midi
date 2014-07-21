@@ -641,6 +641,17 @@ class PrettyMIDI(object):
             tick_sort = np.argsort([event.tick for event in track])
             track = midi.Track([track[n] for n in tick_sort],
                                tick_relative=False)
+            # If there's a note off event and a note on event with the same
+            # tick and pitch, put the note off event first
+            for n, (event1, event2) in enumerate(zip(track[:-1], track[1:])):
+                if (event1.tick == event2.tick and
+                        event1.name == 'Note On' and
+                        event2.name == 'Note On' and
+                        event1.pitch == event2.pitch and
+                        event1.velocity != 0 and
+                        event2.velocity == 0):
+                    track[n] = event2
+                    track[n + 1] = event1
             # Finally, add in an end of track event
             track += [midi.EndOfTrackEvent(tick=track[-1].tick + 1)]
             # Add to the list of output tracks
@@ -946,8 +957,9 @@ class Instrument(object):
         for control_change in self.control_changes:
             event_list += [[control_change.time, 'control change',
                             control_change.number, control_change.value]]
-        # Sort the event list by time
-        event_list.sort(key=lambda x: x[0])
+        # Sort the event list by time, and secondarily by whether the event
+        # is a note off
+        event_list.sort(key=lambda x: (x[0], x[1] != 'note off'))
         # Add some silence at the beginning according to the time of the first
         # event
         current_time = event_list[0][0]
