@@ -10,6 +10,9 @@ http://www.fluidsynth.org/
 
 https://code.google.com/p/pyfluidsynth/
 
+Documentation is available here:
+http://craffel.github.io/pretty-midi/
+
 Example usage for analyzing, manipulating and synthesizing a MIDI file:
 
 ```python
