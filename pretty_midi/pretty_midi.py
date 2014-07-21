@@ -309,7 +309,7 @@ class PrettyMIDI(object):
         clusters = clusters[cluster_sort]
         cluster_counts = cluster_counts[cluster_sort]
         # Normalize the cluster scores
-        cluster_counts /= cluster_counts.max()
+        cluster_counts /= cluster_counts.sum()
         return 60./clusters, cluster_counts
 
     def estimate_tempo(self):
