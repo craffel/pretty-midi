@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Top-level module for mir-evaluate."""
+"""Utility functions for handling MIDI data in an easy to read/manipulate
+format"""
 
 # Import all submodules (for each task)
 from pretty_midi import *
