@@ -22,25 +22,25 @@ MAX_TICK = 1e7
 
 class PrettyMIDI(object):
     '''
-    A container for MIDI data in a nice format.
+    A container for MIDI data in an easily-manipulable format.
 
-    Members:
-        instruments - list of pretty_midi.Instrument objects,
-            corresponding to the instruments in the MIDI file
+    :attributes:
+        - instruments : list
+            List of pretty_midi.Instrument objects
     '''
 
     def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
         '''
         Initialize the PrettyMIDI container with some midi data
 
-        Input:
-            midi_file - str or file
+        :parameters:
+            - midi_file : str or file
                 Path or file pointer to a MIDI file.
                 Default None which means create an empty class with the
                 supplied values for resolutiona and initial tempo.
-            resolution - int
+            - resolution : int
                 Resolution of the MIDI data, when no file is provided.
-            intitial_tempo - float
+            - intitial_tempo : float
                 Initial tempo for the MIDI data, when no file is provided.
         '''
         if midi_file is not None:
@@ -86,8 +86,9 @@ class PrettyMIDI(object):
         '''
         Populates self.__tick_scales with tuples of (tick, tick_scale)
 
-        Input:
-            midi_data - midi.FileReader object
+        :parameters:
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
         '''
         # MIDI data is given in "ticks".
         # We need to convert this to clock seconds.
@@ -119,8 +120,9 @@ class PrettyMIDI(object):
         Creates __tick_to_time, a class member array which maps ticks to time
         starting from tick 0 and ending at max_tick
 
-        Input:
-            max_tick - last tick to compute time for
+        :parameters:
+            - max_tick : int
+                last tick to compute time for
         '''
         # Allocate tick to time array - indexed by tick from 0 to max_tick
         self.__tick_to_time = np.zeros(max_tick + 1)
@@ -146,8 +148,9 @@ class PrettyMIDI(object):
         '''
         Populates the list of instruments in midi_data.
 
-        Input:
-            midi_data - midi.FileReader object
+        :parameters:
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
         '''
         # Initialize empty list of instruments
         self.instruments = []
@@ -241,9 +244,11 @@ class PrettyMIDI(object):
         Return arrays of tempo changes and their times.
         This is direct from the MIDI file.
 
-        Output:
-            tempo_change_times - Times, in seconds, where the tempo changes.
-            tempii - np.ndarray of tempos, same size as tempo_change_times
+        :returns:
+            - tempo_change_times : np.ndarray
+                Times, in seconds, where the tempo changes.
+            - tempii : np.ndarray
+                What the tempo is at each point in time in tempo_change_times
         '''
         # Pre-allocate return arrays
         tempo_change_times = np.zeros(len(self.__tick_scales))
@@ -259,8 +264,9 @@ class PrettyMIDI(object):
         '''
         Returns the time of the end of this MIDI file (latest note-off event).
 
-        Output:
-            end_time - Time, in seconds, where this MIDI file ends
+        :returns:
+            - end_time : float
+                Time, in seconds, where this MIDI file ends
         '''
         # Cycle through all notes from all instruments and find the largest
         return max([n.end for i in self.instruments for n in i.notes] +
@@ -268,12 +274,16 @@ class PrettyMIDI(object):
 
     def estimate_tempii(self):
         '''
-        Return an empirical estimate of tempos in the piece
+        Return an empirical estimate of tempos in the piece and each tempo's
+        probability
         Based on "Automatic Extraction of Tempo and Beat from Expressive
-            Performance", Dixon 2001
+        Performance", Dixon 2001
 
-        Output:
-            tempo - Estimated tempo, in bpm
+        :returns:
+            - tempos : np.ndarray
+                Array of estimated tempos, in bpm
+            - probabilities : np.ndarray
+                Array of the probability of each tempo estimate
         '''
         # Grab the list of onsets
         onsets = self.get_onsets()
@@ -316,20 +326,22 @@ class PrettyMIDI(object):
         '''
         Returns the best tempo estimate from estimate_tempii(), for convenience
 
-        Output:
-            tempo - Estimated tempo, in bpm
+        :returns:
+            - tempo : float
+                Estimated tempo, in bpm
         '''
         return self.estimate_tempii()[0][0]
 
     def get_beats(self):
         '''
-        Return a list of beat locations,
-            estimated according to the MIDI file tempo changes.
-        Will not be correct if the MIDI data has been modified
-            without changing tempo information.
+        Return a list of beat locations, estimated according to the MIDI file
+        tempo changes.
+        Will not be correct if the MIDI data has been modified without changing
+        tempo information.
 
-        Output:
-            beats - np.ndarray of beat locations, in seconds
+        :returns:
+            - beats : np.ndarray
+                Beat locations, in seconds
         '''
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
@@ -420,10 +432,11 @@ class PrettyMIDI(object):
     def get_onsets(self):
         '''
         Return a sorted list of the times of all onsets of all notes from all
-        instruments.
+        instruments.  May have duplicate entries.
 
-        Output:
-            onsets - np.ndarray of onset locations, in seconds
+        :returns:
+            - onsets : np.ndarray
+                Onset locations, in seconds
         '''
         onsets = np.array([])
         # Just concatenate onsets from all the instruments
@@ -436,12 +449,14 @@ class PrettyMIDI(object):
         '''
         Get the MIDI data in piano roll notation.
 
-        Input:
-            times - times of the start of each column in the piano roll.
-                Default None which is np.arange(0, event_times.max(), 1/100.0)
-        Output:
-            piano_roll - piano roll of MIDI data, flattened across instruments,
-                np.ndarray of size 128 x times.shape[0]
+        :parameters:
+            - times : np.ndarray
+                Times of the start of each column in the piano roll.
+                Default None which is np.arange(0, get_end_time(), 1/100.0)
+
+        :returns:
+            - piano_roll : np.ndarray, shape=(128,times.shape[0])
+                Piano roll of MIDI data, flattened across instruments
         '''
         # Get piano rolls for each instrument
         piano_rolls = [i.get_piano_roll(times=times) for i in self.instruments]
@@ -458,12 +473,14 @@ class PrettyMIDI(object):
         '''
         Get the MIDI data as a sequence of chroma vectors.
 
-        Input:
-            times - times of the start of each column in the chroma matrix.
-                Default None which is np.arange(0, event_times.max(), 1/100.0)
-        Output:
-            chroma - chroma matrix, flattened across instruments,
-                np.ndarray of size 12 x times.shape[0]
+        :parameters:
+            - times : np.ndarray
+                Times of the start of each column in the piano roll.
+                Default None which is np.arange(0, get_end_time(), 1/100.0)
+
+        :returns:
+            - piano_roll : np.ndarray, shape=(12,times.shape[0])
+                Chromagram of MIDI data, flattened across instruments
         '''
         # First, get the piano roll
         piano_roll = self.get_piano_roll(times=times)
@@ -477,12 +494,16 @@ class PrettyMIDI(object):
         '''
         Synthesize the pattern using some waveshape.  Ignores drum track.
 
-        Input:
-            fs - Sampling rate
-            wave - Function which returns a periodic waveform,
-                e.g. np.sin, scipy.signal.square, etc.
-        Output:
-            synthesized - Waveform of the MIDI data, synthesized at fs
+        :parameters:
+            - fs : int
+                Sampling rate of the synthesized audio signal, default 44100
+            - wave : function
+                Function which returns a periodic waveform,
+                e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+
+        :returns:
+            - synthesized : np.ndarray
+                Waveform of the MIDI data, synthesized at fs
         '''
         # Get synthesized waveform for each instrument
         waveforms = [i.synthesize(fs=fs, wave=wave) for i in self.instruments]
@@ -552,10 +573,13 @@ class PrettyMIDI(object):
         Converts from a time in seconds to absolute tick using
         self.__tick_scales
 
-        Input:
-            time - time, in seconds, of the event
-        Output:
-            tick - tick - an integer
+        :parameters:
+            - time : float
+                Time, in seconds
+
+        :returns:
+            - tick : int
+                Absolute tick corresponding to the supplied time
         '''
         # Ticks will be accumulated over tick scale changes
         tick = 0
@@ -571,8 +595,9 @@ class PrettyMIDI(object):
         '''
         Write the PrettyMIDI object out to a .mid file
 
-        Input:
-            filename - Path to write .mid file to
+        :parameters:
+            - filename : str
+                Path to write .mid file to
         '''
         # Initialize list of tracks to output
         tracks = []
@@ -670,12 +695,17 @@ class Instrument(object):
     '''
     Object to hold event information for a single instrument
 
-    Members:
-        program - The program number of this instrument.
-        is_drum - Is the instrument a drum instrument (channel 9)?
-        notes - List of Note objects
-        pitch_bends - List of of PitchBend objects
-        control_changes - List of ControlChange objects
+    :attributes:
+        - program : int
+            The program number of this instrument.
+        - is_drum : bool
+            Is the instrument a drum instrument (channel 9)?
+        - notes : list
+            List of Note objects
+        - pitch_bends : list
+            List of of PitchBend objects
+        - control_changes : list
+            List of ControlChange objects
     '''
 
     def __init__(self, program, is_drum=False):
@@ -684,9 +714,11 @@ class Instrument(object):
         notes gets initialized to empty list.
         Fill with (Instrument).notes.append(event)
 
-        Input:
-            program - MIDI program number (instrument index)
-            is_drum - Is the instrument a drum instrument (channel 9)?
+        :parameters:
+            - program : int
+                MIDI program number (instrument index), in [0, 127]
+            - is_drum : bool
+                Is the instrument a drum instrument (channel 9)?
                 Default False
         '''
         self.program = program
@@ -698,9 +730,11 @@ class Instrument(object):
     def get_onsets(self):
         '''
         Get all onsets of all notes played by this instrument.
+        May contain duplicates
 
-        Output:
-            onsets - np.ndarray of all onsets
+        :returns:
+            - onsets : np.ndarray
+                List of all note onsets
         '''
         onsets = []
         # Get the note-on time of each note played by this instrument
@@ -713,12 +747,14 @@ class Instrument(object):
         '''
         Get a piano roll notation of the note events of this instrument.
 
-        Input:
-            times - times of the start of each column in the piano roll,
-                Default None which is np.arange(0, event_times.max(), 1/100.0)
-        Output:
-            piano_roll - Piano roll matrix
-                np.ndarray of size 128 x times.shape[0]
+        :parameters:
+            - times : np.ndarray
+                times of the start of each column in the piano roll,
+                Default None which is np.arange(0, get_end_time(), 1/100.0)
+
+        :returns:
+            - piano_roll : np.ndarray, shape=(128,times.shape[0])
+                Piano roll matrix of this instrument
         '''
         # If there are no notes, return an empty matrix
         if self.notes == []:
@@ -795,11 +831,14 @@ class Instrument(object):
         '''
         Get a chroma matrix for the note events in this instrument.
 
-        Input:
-            times - times of the start of each column in the chroma matrix,
-                Default None which is np.arange(0, event_times.max(), 1/100.0)
-        Output:
-            chroma - chroma matrix, np.ndarray of size 12 x times.shape[0]
+        :parameters:
+            - times : np.ndarray
+                times of the start of each column in the chroma matrix,
+                Default None which is np.arange(0, get_end_time(), 1/100.0)
+
+        :returns:
+            - chroma : np.ndarray, shape=(12,times.shape[0])
+                Chromagram matrix of this instrument
         '''
         # First, get the piano roll
         piano_roll = self.get_piano_roll(times=times)
@@ -813,8 +852,9 @@ class Instrument(object):
         '''
         Returns the time of the end of the events in this instrument
 
-        Output:
-            end_time - Time, in seconds, of the end of the last event
+        :returns:
+            - end_time : float
+                Time, in seconds, of the end of the last event
         '''
         # Cycle through all note ends and all pitch bends and find the largest
         return max([n.end for n in self.notes] +
@@ -825,13 +865,16 @@ class Instrument(object):
         Synthesize the instrument's notes using some waveshape.
         For drum instruments, returns zeros.
 
-        Input:
-            fs - Sampling rate
-            wave - Function which returns a periodic waveform,
-                e.g. np.sin, scipy.signal.square, etc.
-        Output:
-            synthesized - Waveform of the MIDI data, synthesized at fs.
-                Not normalized!
+        :parameters:
+            - fs : int
+                Sampling rate of the synthesized audio signal, default 44100
+            - wave : function
+                Function which returns a periodic waveform,
+                e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+
+        :returns:
+            - synthesized : np.ndarray
+                Waveform of the instrument's notes, synthesized at fs
         '''
         # Pre-allocate output waveform
         synthesized = np.zeros(int(fs*(self.get_end_time() + 1)))
@@ -1004,22 +1047,30 @@ class Note(object):
     '''
     A note event.
 
-    Members:
-        velocity - Note velocity
-        pitch - Note pitch, as a MIDI note number
-        start - Note on time, absolute, in seconds
-        end - Note off time, absolute, in seconds
+    :attributes:
+        - velocity : int
+            Note velocity, in [0, 127]
+        - pitch : int
+            Note pitch, as a MIDI note number, in [0, 127]
+        - start : float
+            Note on time, absolute, in seconds
+        - end : float
+            Note off time, absolute, in seconds
     '''
 
     def __init__(self, velocity, pitch, start, end):
         '''
         Create a note object.
 
-        Input:
-            velocity - Note velocity
-            pitch - Note pitch, as a MIDI note number
-            start - Note on time, absolute, in seconds
-            end - Note off time, absolute, in seconds
+        :parameters:
+            - velocity : int
+                Note velocity
+            - pitch : int
+                Note pitch, as a MIDI note number
+            - start : float
+                Note on time, absolute, in seconds
+            - end : float
+                Note off time, absolute, in seconds
         '''
         self.velocity = velocity
         self.pitch = pitch
@@ -1035,18 +1086,22 @@ class PitchBend(object):
     '''
     A pitch bend event.
 
-    Members:
-        pitch - MIDI pitch bend amount, in the range [-8192, 8191]
-        time - Time where the pitch bend occurs
+    :attributes:
+        - pitch : int
+            MIDI pitch bend amount, in the range [-8192, 8191]
+        - time : float
+            Time where the pitch bend occurs
     '''
 
     def __init__(self, pitch, time):
         '''
         Create pitch bend object.
 
-        Input:
-            pitch - MIDI pitch bend amount, in the range [-8192, 8191]
-            time - Time where the pitch bend occurs
+        :parameters:
+            - pitch : int
+                MIDI pitch bend amount, in the range [-8192, 8191]
+            - time : float
+                Time where the pitch bend occurs
         '''
         self.pitch = pitch
         self.time = time
@@ -1059,20 +1114,26 @@ class ControlChange(object):
     '''
     A control change event.
 
-    Members:
-        number - The control change number
-        value - The value of the control change
-        time - Time where the pitch bend occurs
+    :attributes:
+        - number : int
+            The control change number, in [0, 127]
+        - value : int
+            The value of the control change, in [0, 127]
+        - time : float
+            Time where the pitch bend occurs
     '''
 
     def __init__(self, number, value, time):
         '''
         Create pitch bend object.
 
-        Input:
-            number - The control change number, in [0, 127]
-            value - Value of the control change, also in [0, 127]
-            time - Time where the control change occurs
+        :parameters:
+            - number : int
+                The control change number, in [0, 127]
+            - value : int
+                The value of the control change, in [0, 127]
+            - time : float
+                Time where the pitch bend occurs
         '''
         self.number = number
         self.value = value
