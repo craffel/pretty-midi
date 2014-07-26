@@ -269,8 +269,13 @@ class PrettyMIDI(object):
                 Time, in seconds, where this MIDI file ends
         '''
         # Cycle through all notes from all instruments and find the largest
-        return max([n.end for i in self.instruments for n in i.notes] +
-                   [b.time for i in self.instruments for b in i.pitch_bends])
+        events = ([n.end for i in self.instruments for n in i.notes] +
+                  [b.time for i in self.instruments for b in i.pitch_bends])
+        # If there are no events, return 0
+        if len(events) == 0:
+            return 0.
+        else:
+            return max(events)
 
     def estimate_tempii(self):
         '''
@@ -458,6 +463,9 @@ class PrettyMIDI(object):
             - piano_roll : np.ndarray, shape=(128,times.shape[0])
                 Piano roll of MIDI data, flattened across instruments
         '''
+        # If there are no instruments, return an empty array
+        if len(self.instruments) == 0:
+            return np.zeros((128, 0))
         # Get piano rolls for each instrument
         piano_rolls = [i.get_piano_roll(times=times) for i in self.instruments]
         # Allocate piano roll,
@@ -505,6 +513,9 @@ class PrettyMIDI(object):
             - synthesized : np.ndarray
                 Waveform of the MIDI data, synthesized at fs
         '''
+        # If there are no instruments, return an empty array
+        if len(self.instruments) == 0:
+            return np.array([])
         # Get synthesized waveform for each instrument
         waveforms = [i.synthesize(fs=fs, wave=wave) for i in self.instruments]
         # Allocate output waveform, with #sample = max length of all waveforms
@@ -531,6 +542,9 @@ class PrettyMIDI(object):
             - synthesized : np.ndarray
                 Waveform of the MIDI data, synthesized at fs
         '''
+        # If there are no instruments, return an empty array
+        if len(self.instruments) == 0:
+            return np.zeros((128, 0))
         # Get synthesized waveform for each instrument
         waveforms = [i.fluidsynth(fs=fs,
                                   sf2_path=sf2_path) for i in self.instruments]
@@ -857,8 +871,13 @@ class Instrument(object):
                 Time, in seconds, of the end of the last event
         '''
         # Cycle through all note ends and all pitch bends and find the largest
-        return max([n.end for n in self.notes] +
-                   [b.time for b in self.pitch_bends])
+        events = ([n.end for n in self.notes] +
+                  [b.time for b in self.pitch_bends])
+        # If there are no events, just return 0
+        if len(events) == 0:
+            return 0.
+        else:
+            return max(events)
 
     def synthesize(self, fs=44100, wave=np.sin):
         '''
