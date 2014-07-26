@@ -1445,7 +1445,7 @@ __INSTRUMENT_CLASSES = ['Piano', 'Chromatic Percussion', 'Organ', 'Guitar',
                         'Bass', 'Strings', 'Ensemble', 'Brass', 'Reed', 'Pipe',
                         'Synth Lead', 'Synth Pad', 'Synth Effects', 'Ethnic',
                         'Percussive',
-                        'Sound effects']
+                        'Sound Effects']
 
 
 def program_to_instrument_class(program_number):
