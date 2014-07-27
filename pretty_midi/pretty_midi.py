@@ -450,11 +450,14 @@ class PrettyMIDI(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, times=None):
+    def get_piano_roll(self, fs=100, times=None):
         '''
         Get the MIDI data in piano roll notation.
 
         :parameters:
+            - fs : int
+                Sampling frequency of the columns, i.e. each column is spaced
+                apart by 1./fs seconds
             - times : np.ndarray
                 Times of the start of each column in the piano roll.
                 Default None which is np.arange(0, get_end_time(), 1/100.0)
@@ -467,7 +470,8 @@ class PrettyMIDI(object):
         if len(self.instruments) == 0:
             return np.zeros((128, 0))
         # Get piano rolls for each instrument
-        piano_rolls = [i.get_piano_roll(times=times) for i in self.instruments]
+        piano_rolls = [i.get_piano_roll(fs=fs, times=times)
+                       for i in self.instruments]
         # Allocate piano roll,
         # number of columns is max of # of columns in all piano rolls
         piano_roll = np.zeros((128, np.max([p.shape[1] for p in piano_rolls])),
@@ -477,11 +481,14 @@ class PrettyMIDI(object):
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
 
-    def get_chroma(self, times=None):
+    def get_chroma(self, fs=100, times=None):
         '''
         Get the MIDI data as a sequence of chroma vectors.
 
         :parameters:
+            - fs : int
+                Sampling frequency of the columns, i.e. each column is spaced
+                apart by 1./fs seconds
             - times : np.ndarray
                 Times of the start of each column in the piano roll.
                 Default None which is np.arange(0, get_end_time(), 1/100.0)
@@ -491,7 +498,7 @@ class PrettyMIDI(object):
                 Chromagram of MIDI data, flattened across instruments
         '''
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
@@ -757,14 +764,17 @@ class Instrument(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, times=None):
+    def get_piano_roll(self, fs=100, times=None):
         '''
         Get a piano roll notation of the note events of this instrument.
 
         :parameters:
+            - fs : int
+                Sampling frequency of the columns, i.e. each column is spaced
+                apart by 1./fs seconds
             - times : np.ndarray
                 times of the start of each column in the piano roll,
-                Default None which is np.arange(0, get_end_time(), 1/100.0)
+                Default None which is np.arange(0, get_end_time(), 1./fs)
 
         :returns:
             - piano_roll : np.ndarray, shape=(128,times.shape[0])
@@ -775,8 +785,6 @@ class Instrument(object):
             return np.array([[]]*128)
         # Get the end time of the last event
         end_time = self.get_end_time()
-        # Sample at 100 Hz
-        fs = 100
         # Allocate a matrix of zeros - we will add in as we go
         piano_roll = np.zeros((128, int(fs*end_time)), dtype=np.int16)
         # Drum tracks don't have pitch, so return a matrix of zeros
@@ -841,11 +849,14 @@ class Instrument(object):
                                                   axis=1)
         return piano_roll_integrated
 
-    def get_chroma(self, times=None):
+    def get_chroma(self, fs=100, times=None):
         '''
         Get a chroma matrix for the note events in this instrument.
 
         :parameters:
+            - fs : int
+                Sampling frequency of the columns, i.e. each column is spaced
+                apart by 1./fs seconds
             - times : np.ndarray
                 times of the start of each column in the chroma matrix,
                 Default None which is np.arange(0, get_end_time(), 1/100.0)
@@ -855,7 +866,7 @@ class Instrument(object):
                 Chromagram matrix of this instrument
         '''
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
