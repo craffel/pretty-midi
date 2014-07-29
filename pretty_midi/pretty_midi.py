@@ -13,6 +13,7 @@ import os
 import warnings
 import pkg_resources
 import re
+import collections
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
@@ -158,7 +159,7 @@ class PrettyMIDI(object):
             # Keep track of last note on location:
             # key = (instrument, is_drum, note),
             # value = (note on time, velocity)
-            last_note_on = {}
+            last_note_on = collections.defaultdict(list)
             # Keep track of which instrument is playing in each channel
             # initialize to program 0 for all channels
             current_instrument = np.zeros(16, dtype=np.int)
@@ -174,9 +175,9 @@ class PrettyMIDI(object):
                     # Store this as the last note-on location
                     note_on_index = (current_instrument[event.channel],
                                      is_drum, event.pitch)
-                    last_note_on[note_on_index] = (
+                    last_note_on[note_on_index].append((
                         self.__tick_to_time[event.tick],
-                        event.velocity)
+                        event.velocity))
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On'
                                                   and event.velocity == 0):
@@ -185,19 +186,23 @@ class PrettyMIDI(object):
                     # Check that a note-on exists (ignore spurious note-offs)
                     if (current_instrument[event.channel],
                             is_drum, event.pitch) in last_note_on:
-                        # Get the start/stop times and velocity of this note
-                        start, velocity = last_note_on[
+                        # Get the start/stop times and velocity of every note
+                        # which was turned on with this instrument/drum/pitch
+                        for start, velocity in last_note_on[
                             (current_instrument[event.channel],
-                             is_drum, event.pitch)]
-                        end = self.__tick_to_time[event.tick]
-                        # Create the note event
-                        note = Note(velocity, event.pitch, start, end)
-                        # Get the program and drum type for the current inst
-                        program = current_instrument[event.channel]
-                        # Retrieve the Instrument instance for the current inst
-                        instrument = self.__get_instrument(program, is_drum)
-                        # Add the note event
-                        instrument.notes.append(note)
+                             is_drum, event.pitch)]:
+                            end = self.__tick_to_time[event.tick]
+                            # Create the note event
+                            note = Note(velocity, event.pitch, start, end)
+                            # Get the program and drum type for the current
+                            # instrument
+                            program = current_instrument[event.channel]
+                            # Retrieve the Instrument instance for the current
+                            # instrument
+                            instrument = self.__get_instrument(program,
+                                                               is_drum)
+                            # Add the note event
+                            instrument.notes.append(note)
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel],
                                 is_drum, event.pitch)]
