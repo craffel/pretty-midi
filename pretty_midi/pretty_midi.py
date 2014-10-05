@@ -465,7 +465,7 @@ class PrettyMIDI(object):
                 apart by 1./fs seconds
             - times : np.ndarray
                 Times of the start of each column in the piano roll.
-                Default None which is np.arange(0, get_end_time(), 1/100.0)
+                Default None which is np.arange(0, get_end_time(), 1./fs)
 
         :returns:
             - piano_roll : np.ndarray, shape=(128,times.shape[0])
@@ -496,7 +496,7 @@ class PrettyMIDI(object):
                 apart by 1./fs seconds
             - times : np.ndarray
                 Times of the start of each column in the piano roll.
-                Default None which is np.arange(0, get_end_time(), 1/100.0)
+                Default None which is np.arange(0, get_end_time(), 1./fs)
 
         :returns:
             - piano_roll : np.ndarray, shape=(12,times.shape[0])
@@ -864,7 +864,7 @@ class Instrument(object):
                 apart by 1./fs seconds
             - times : np.ndarray
                 times of the start of each column in the chroma matrix,
-                Default None which is np.arange(0, get_end_time(), 1/100.0)
+                Default None which is np.arange(0, get_end_time(), 1./fs)
 
         :returns:
             - chroma : np.ndarray, shape=(12,times.shape[0])
