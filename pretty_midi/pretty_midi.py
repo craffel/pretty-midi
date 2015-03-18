@@ -790,6 +790,9 @@ class Instrument(object):
             return np.array([[]]*128)
         # Get the end time of the last event
         end_time = self.get_end_time()
+        # Extend end time if one was provided
+        if times is not None and times[-1] > end_time:
+            end_time = times[-1]
         # Allocate a matrix of zeros - we will add in as we go
         piano_roll = np.zeros((128, int(fs*end_time)), dtype=np.int16)
         # Drum tracks don't have pitch, so return a matrix of zeros
