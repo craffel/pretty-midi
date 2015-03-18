@@ -10,17 +10,18 @@ setup(
     packages=['pretty_midi'],
     package_data={'': ['TimGM6mb.sf2']},
     long_description="""\
-    A class which makes handling MIDI data easy in Python.  Provides methods for extracting and modifying the useful parts of MIDI files.
+    A class which makes handling MIDI data easy in Python.  Provides methods
+    for extracting and modifying the useful parts of MIDI files.
     """,
     classifiers=[
-          "License :: OSI Approved :: GNU General Public License (GPL)",
-          "Programming Language :: Python",
-          "Development Status :: 3 - Alpha",
-          "Intended Audience :: Developers",
-          "Topic :: Multimedia :: Sound/Audio :: Analysis",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Topic :: Multimedia :: Sound/Audio :: Analysis",
     ],
     keywords='audio music midi mir',
-    license='GPL',
+    license='MIT',
     install_requires=[
         'numpy >= 1.7.0',
     ],
