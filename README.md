@@ -13,6 +13,11 @@ https://code.google.com/p/pyfluidsynth/
 Documentation is available here:
 http://craffel.github.io/pretty-midi/
 
+If you end up using pretty_midi in a published research project, please cite the following report:
+
+Colin Raffel and Daniel P. W. Ellis. [_Intuitive Analysis, Creation and Manipulation of MIDI Data with pretty_midi_](http://colinraffel.com/publications/ismir2014intuitive.pdf). In Proceedings of the 15th International Conference on Music Information Retrieval Late Breaking and Demo Papers, 2014.
+
+
 Example usage for analyzing, manipulating and synthesizing a MIDI file:
 
 ```python
