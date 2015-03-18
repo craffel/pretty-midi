@@ -738,7 +738,7 @@ class Instrument(object):
         '''
         Create the Instrument.
         notes gets initialized to empty list.
-        Fill with (Instrument).notes.append(event)
+        Fill with `(Instrument).notes.append(event)`
 
         :parameters:
             - program : int
@@ -1160,7 +1160,7 @@ class ControlChange(object):
 
     def __init__(self, number, value, time):
         '''
-        Create pitch bend object.
+        Create control change object.
 
         :parameters:
             - number : int
