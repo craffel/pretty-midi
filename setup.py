@@ -24,5 +24,6 @@ setup(
     license='MIT',
     install_requires=[
         'numpy >= 1.7.0',
+	'midi'
     ],
 )
