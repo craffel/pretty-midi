@@ -135,7 +135,7 @@ class PrettyMIDI(object):
             # Convert ticks in this interval to times
             ticks = np.arange(end_tick - start_tick + 1)
             self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
-                                                          tick_scale*ticks)
+                                                            tick_scale*ticks)
             # Update the time of the last tick in this interval
             last_end_time = self.__tick_to_time[end_tick]
         # For the final interval, use the final tempo setting
@@ -143,7 +143,7 @@ class PrettyMIDI(object):
         start_tick, tick_scale = self.__tick_scales[-1]
         ticks = np.arange(max_tick + 1 - start_tick)
         self.__tick_to_time[start_tick:] = (last_end_time +
-                                          tick_scale*ticks)
+                                            tick_scale*ticks)
 
     def _load_instruments(self, midi_data):
         '''
@@ -205,7 +205,7 @@ class PrettyMIDI(object):
                             instrument.notes.append(note)
                         # Remove the last note on for this instrument
                         del last_note_on[(current_instrument[event.channel],
-                                is_drum, event.pitch)]
+                                          is_drum, event.pitch)]
                 # Store pitch bends
                 elif event.name == 'Pitch Wheel':
                     # Create pitch bend class instance
@@ -220,9 +220,9 @@ class PrettyMIDI(object):
                     instrument.pitch_bends.append(bend)
                 # Store control changes
                 elif event.name == 'Control Change':
-                    control_change = ControlChange(event.data[0],
-                                         event.data[1],
-                                         self.__tick_to_time[event.tick])
+                    control_change = ControlChange(
+                        event.data[0], event.data[1],
+                        self.__tick_to_time[event.tick])
                     # Get the program and drum type for the current inst
                     program = current_instrument[event.channel]
                     is_drum = (event.channel == 9)
