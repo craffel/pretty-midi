@@ -12,7 +12,7 @@ base_note = 60
 # Time between each chord
 chord_duration = .1
 # Length of each note
-note_duration = chord_duration*.9
+note_duration = chord_duration*.8
 
 # Make a pretty midi object
 pm = pretty_midi.PrettyMIDI()
@@ -36,7 +36,7 @@ for offset_1, offset_2 in itertools.combinations(range(1, 12), 2):
         velocity, base_note + offset_1, curr_time, curr_time + note_duration))
     pm.instruments[0].notes.append(pretty_midi.Note(
         velocity, base_note + offset_2, curr_time, curr_time + note_duration))
-    # Increment curr_time with note_duration
+    # Increment curr_time with chord_duration
     curr_time += chord_duration
 
 midi_filename = "all_chords.mid"
