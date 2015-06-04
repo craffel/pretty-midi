@@ -14,6 +14,7 @@ import warnings
 import pkg_resources
 import re
 import collections
+import copy
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
@@ -616,6 +617,57 @@ class PrettyMIDI(object):
                 tick += (time - change_time)/tick_scale
                 time = change_time
         return int(tick)
+
+    def adjust_times(self, original_times, new_times):
+        '''
+        Adjusts the timing of the events in the MIDI object.
+        The parameters `original_times` and `new_times` define a mapping, so
+        that if an event originally occurs at time `original_times[n]`, it
+        will be moved so that it occurs at `new_times[n]`.  If events don't
+        occur exactly on a time in `original_times`, their timing will be
+        linearly interpolated.
+
+        :parameters:
+            - original_times : np.ndarray
+                Times to map from
+            - new_times : np.ndarray
+                New times to map to
+        '''
+        # Only include notes within start/end time of the provided times
+        for instrument in self.instruments:
+            valid_notes = []
+            for note in instrument.notes:
+                if note.start >= original_times[0] and \
+                        note.end <= original_times[-1]:
+                    valid_notes.append(copy.deepcopy(note))
+            instrument.notes = valid_notes
+        # Get array of note-on locations and correct them
+        note_ons = np.array([note.start for instrument in self.instruments
+                             for note in instrument.notes])
+        aligned_note_ons = np.interp(note_ons, original_times, new_times)
+        # Same for note-offs
+        note_offs = np.array([note.end for instrument in self.instruments
+                              for note in instrument.notes])
+        aligned_note_offs = np.interp(note_offs, original_times, new_times)
+        # Same for pitch bends
+        pitch_bends = np.array([bend.time for instrument in self.instruments
+                                for bend in instrument.pitch_bends])
+        aligned_pitch_bends = np.interp(pitch_bends, original_times, new_times)
+        ccs = np.array([cc.time for instrument in self.instruments
+                        for cc in instrument.control_changes])
+        aligned_ccs = np.interp(ccs, original_times, new_times)
+        # Correct notes
+        for n, note in enumerate([note for instrument in self.instruments
+                                  for note in instrument.notes]):
+            note.start = (aligned_note_ons[n] > 0)*aligned_note_ons[n]
+            note.end = (aligned_note_offs[n] > 0)*aligned_note_offs[n]
+        # Correct pitch changes
+        for n, bend in enumerate([bend for instrument in self.instruments
+                                  for bend in instrument.pitch_bends]):
+            bend.time = (aligned_pitch_bends[n] > 0)*aligned_pitch_bends[n]
+        for n, cc in enumerate([cc for instrument in self.instruments
+                                for cc in instrument.control_changes]):
+            cc.time = (aligned_ccs[n] > 0)*aligned_ccs[n]
 
     def write(self, filename):
         '''
