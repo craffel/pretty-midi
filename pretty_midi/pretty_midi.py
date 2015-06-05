@@ -661,6 +661,9 @@ class PrettyMIDI(object):
                                   for note in instrument.notes]):
             note.start = (aligned_note_ons[n] > 0)*aligned_note_ons[n]
             note.end = (aligned_note_offs[n] > 0)*aligned_note_offs[n]
+        # After performing alignment, some notes may have an end time which is
+        # on or before the start time.  Remove these!
+        self.remove_invalid_notes()
         # Correct pitch changes
         for n, bend in enumerate([bend for instrument in self.instruments
                                   for bend in instrument.pitch_bends]):
@@ -668,6 +671,14 @@ class PrettyMIDI(object):
         for n, cc in enumerate([cc for instrument in self.instruments
                                 for cc in instrument.control_changes]):
             cc.time = (aligned_ccs[n] > 0)*aligned_ccs[n]
+
+    def remove_invalid_notes(self):
+        '''
+        Removes any notes which have an end time <= start time.
+        '''
+        # Simply call the child method on all instruments
+        for instrument in self.instruments:
+            instrument.remove_invalid_notes()
 
     def write(self, filename):
         '''
@@ -949,6 +960,19 @@ class Instrument(object):
             return 0.
         else:
             return max(events)
+
+    def remove_invalid_notes(self):
+        '''
+        Removes any notes which have an end time <= start time.
+        '''
+        # Crete a list of all invalid notes
+        notes_to_delete = []
+        for note in self.notes:
+            if note.end <= note.start:
+                notes_to_delete.append(note)
+        # Remove the notes found
+        for note in notes_to_delete:
+            self.notes.remove(note)
 
     def synthesize(self, fs=44100, wave=np.sin):
         '''
