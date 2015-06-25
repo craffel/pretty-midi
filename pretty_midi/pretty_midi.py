@@ -110,7 +110,7 @@ class PrettyMIDI(object):
         # (tick, num_beats, beat_value, ticks_per_bar, ticks_per_beat)
         # resolution is ticks_per_quarter_note
         ticks_per_whole_note = 4.0 * self.resolution
-        self.__time_signatures = []
+        self.__time_signatures = [(0, 4, 4, 4 * self.resolution, self.resolution)]
         for event in midi_data[0]:
             if event.name == 'Set Tempo':
                 # Only allow one tempo change event at the beginning
