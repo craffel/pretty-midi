@@ -1,6 +1,7 @@
-'''
-Utility functions for handling MIDI data in an easy to read/manipulate format
-'''
+"""Utility functions for handling MIDI data in an easy to read/manipulate
+format
+
+"""
 
 import midi
 import numpy as np
@@ -23,28 +24,31 @@ MAX_TICK = 1e7
 
 
 class PrettyMIDI(object):
-    '''
-    A container for MIDI data in an easily-manipulable format.
+    """A container for MIDI data in an easily-manipulable format.
 
-    :attributes:
-        - instruments : list
-            List of pretty_midi.Instrument objects
-    '''
+    Parameters
+    ----------
+    midi_file : str or file
+        Path or file pointer to a MIDI file.
+        Default None which means create an empty class with the supplied values
+        for resolutiona and initial tempo.
+    resolution : int
+        Resolution of the MIDI data, when no file is provided.
+    intitial_tempo : float
+        Initial tempo for the MIDI data, when no file is provided.
+
+    Attributes
+    ----------
+    instruments : list
+        List of pretty_midi.Instrument objects.
+
+    """
 
     def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
-        '''
-        Initialize the PrettyMIDI container with some midi data
+        """Initialize the PrettyMIDI container, either by populating it with
+        MIDI data from a file or from scratch with no data.
 
-        :parameters:
-            - midi_file : str or file
-                Path or file pointer to a MIDI file.
-                Default None which means create an empty class with the
-                supplied values for resolutiona and initial tempo.
-            - resolution : int
-                Resolution of the MIDI data, when no file is provided.
-            - intitial_tempo : float
-                Initial tempo for the MIDI data, when no file is provided.
-        '''
+        """
         if midi_file is not None:
             # Load in the MIDI data using the midi module
             midi_data = midi.read_midifile(midi_file)
@@ -85,13 +89,14 @@ class PrettyMIDI(object):
             self.instruments = []
 
     def _load_tempo_changes(self, midi_data):
-        '''
-        Populates self.__tick_scales with tuples of (tick, tick_scale)
+        """Populates self.__tick_scales with tuples of (tick, tick_scale)
 
-        :parameters:
-            - midi_data : midi.FileReader
-                MIDI object from which data will be read
-        '''
+        Parameters
+        ----------
+        midi_data : midi.FileReader
+            MIDI object from which data will be read
+
+        """
         # MIDI data is given in "ticks".
         # We need to convert this to clock seconds.
         # The conversion factor involves the BPM, which may change over time.
@@ -118,14 +123,15 @@ class PrettyMIDI(object):
                         self.__tick_scales.append((event.tick, tick_scale))
 
     def _update_tick_to_time(self, max_tick):
-        '''
-        Creates __tick_to_time, a class member array which maps ticks to time
+        """Creates __tick_to_time, a class member array which maps ticks to time
         starting from tick 0 and ending at max_tick
 
-        :parameters:
-            - max_tick : int
-                last tick to compute time for
-        '''
+        Parameters
+        ----------
+        max_tick : int
+            last tick to compute time for
+
+        """
         # Allocate tick to time array - indexed by tick from 0 to max_tick
         self.__tick_to_time = np.zeros(max_tick + 1)
         # Keep track of the end time of the last tick in the previous interval
@@ -147,13 +153,14 @@ class PrettyMIDI(object):
                                             tick_scale*ticks)
 
     def _load_instruments(self, midi_data):
-        '''
-        Populates the list of instruments in midi_data.
+        """Populates the list of instruments in midi_data.
 
-        :parameters:
-            - midi_data : midi.FileReader
-                MIDI object from which data will be read
-        '''
+        Parameters
+        ----------
+        midi_data : midi.FileReader
+            MIDI object from which data will be read
+
+        """
         # Initialize empty list of instruments
         self.instruments = []
         for track in midi_data:
@@ -233,8 +240,10 @@ class PrettyMIDI(object):
                     instrument.control_changes.append(control_change)
 
     def __get_instrument(self, program, is_drum):
-        ''' Gets the Instrument corresponding to the given program number and
-        drum/non-drum type.  If no such instrument exists, one is created.'''
+        """Gets the Instrument corresponding to the given program number and
+        drum/non-drum type.  If no such instrument exists, one is created.
+
+        """
         for instrument in self.instruments:
             if (instrument.program == program
                     and instrument.is_drum == is_drum):
@@ -246,16 +255,17 @@ class PrettyMIDI(object):
         return instrument
 
     def get_tempo_changes(self):
-        '''
-        Return arrays of tempo changes and their times.
+        """Return arrays of tempo changes and their times.
         This is direct from the MIDI file.
 
-        :returns:
-            - tempo_change_times : np.ndarray
-                Times, in seconds, where the tempo changes.
-            - tempii : np.ndarray
-                What the tempo is at each point in time in tempo_change_times
-        '''
+        Returns
+        -------
+        tempo_change_times : np.ndarray
+            Times, in seconds, where the tempo changes.
+        tempii : np.ndarray
+            What the tempo is at each point in time in tempo_change_times
+
+        """
         # Pre-allocate return arrays
         tempo_change_times = np.zeros(len(self.__tick_scales))
         tempii = np.zeros(len(self.__tick_scales))
@@ -267,13 +277,14 @@ class PrettyMIDI(object):
         return tempo_change_times, tempii
 
     def get_end_time(self):
-        '''
-        Returns the time of the end of this MIDI file (latest note-off event).
+        """Returns the time of the end of this MIDI file (latest note-off event).
 
-        :returns:
-            - end_time : float
-                Time, in seconds, where this MIDI file ends
-        '''
+        Returns
+        -------
+        end_time : float
+            Time, in seconds, where this MIDI file ends
+
+        """
         # Cycle through all notes from all instruments and find the largest
         events = ([n.end for i in self.instruments for n in i.notes] +
                   [b.time for i in self.instruments for b in i.pitch_bends])
@@ -284,18 +295,19 @@ class PrettyMIDI(object):
             return max(events)
 
     def estimate_tempii(self):
-        '''
-        Return an empirical estimate of tempos in the piece and each tempo's
-        probability
+        """Return an empirical estimate of tempos in the piece and each tempo's
+        probability.
         Based on "Automatic Extraction of Tempo and Beat from Expressive
         Performance", Dixon 2001
 
-        :returns:
-            - tempos : np.ndarray
-                Array of estimated tempos, in bpm
-            - probabilities : np.ndarray
-                Array of the probability of each tempo estimate
-        '''
+        Returns
+        -------
+        tempos : np.ndarray
+            Array of estimated tempos, in bpm
+        probabilities : np.ndarray
+            Array of the probability of each tempo estimate
+
+        """
         # Grab the list of onsets
         onsets = self.get_onsets()
         # Compute inner-onset intervals
@@ -334,26 +346,29 @@ class PrettyMIDI(object):
         return 60./clusters, cluster_counts
 
     def estimate_tempo(self):
-        '''
-        Returns the best tempo estimate from estimate_tempii(), for convenience
+        """Returns the best tempo estimate from estimate_tempii(), for
+        convenience
 
-        :returns:
-            - tempo : float
-                Estimated tempo, in bpm
-        '''
+        Returns
+        -------
+        tempo : float
+            Estimated tempo, in bpm
+
+        """
         return self.estimate_tempii()[0][0]
 
     def get_beats(self):
-        '''
-        Return a list of beat locations, estimated according to the MIDI file
-        tempo changes.
+        """Return a list of beat locations, estimated according to the MIDI
+        file tempo changes.
         Will not be correct if the MIDI data has been modified without changing
         tempo information.
 
-        :returns:
-            - beats : np.ndarray
-                Beat locations, in seconds
-        '''
+        Returns
+        -------
+        beats : np.ndarray
+            Beat locations, in seconds
+
+        """
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
@@ -361,8 +376,10 @@ class PrettyMIDI(object):
         tempo_change_times, tempii = self.get_tempo_changes()
 
         def beat_track_using_tempo(start_time):
-            ''' Starting from start_time, place beats according to the MIDI
-            file's designated tempo changes '''
+            """Starting from start_time, place beats according to the MIDI
+            file's designated tempo changes.
+
+            """
             # Create beat list; first beat is at first onset
             beats = [start_time]
             # Index of the tempo we're using
@@ -441,14 +458,15 @@ class PrettyMIDI(object):
         return beat_candidates[np.argmax(onset_scores)]
 
     def get_onsets(self):
-        '''
-        Return a sorted list of the times of all onsets of all notes from all
-        instruments.  May have duplicate entries.
+        """Return a sorted list of the times of all onsets of all notes from
+        all instruments.  May have duplicate entries.
 
-        :returns:
-            - onsets : np.ndarray
-                Onset locations, in seconds
-        '''
+        Returns
+        -------
+        onsets : np.ndarray
+            Onset locations, in seconds
+
+        """
         onsets = np.array([])
         # Just concatenate onsets from all the instruments
         for instrument in self.instruments:
@@ -457,21 +475,23 @@ class PrettyMIDI(object):
         return np.sort(onsets)
 
     def get_piano_roll(self, fs=100, times=None):
-        '''
-        Get the MIDI data in piano roll notation.
+        """Get the MIDI data in piano roll notation.
 
-        :parameters:
-            - fs : int
-                Sampling frequency of the columns, i.e. each column is spaced
-                apart by 1./fs seconds
-            - times : np.ndarray
-                Times of the start of each column in the piano roll.
-                Default None which is np.arange(0, get_end_time(), 1./fs)
+        Parameters
+        ----------
+        fs : int
+            Sampling frequency of the columns, i.e. each column is spaced apart
+            by 1./fs seconds
+        times : np.ndarray
+            Times of the start of each column in the piano roll.
+            Default None which is np.arange(0, get_end_time(), 1./fs)
 
-        :returns:
-            - piano_roll : np.ndarray, shape=(128,times.shape[0])
-                Piano roll of MIDI data, flattened across instruments
-        '''
+        Returns
+        -------
+        piano_roll : np.ndarray, shape=(128,times.shape[0])
+            Piano roll of MIDI data, flattened across instruments
+
+        """
         # If there are no instruments, return an empty array
         if len(self.instruments) == 0:
             return np.zeros((128, 0))
@@ -488,21 +508,23 @@ class PrettyMIDI(object):
         return piano_roll
 
     def get_chroma(self, fs=100, times=None):
-        '''
-        Get the MIDI data as a sequence of chroma vectors.
+        """Get the MIDI data as a sequence of chroma vectors.
 
-        :parameters:
-            - fs : int
-                Sampling frequency of the columns, i.e. each column is spaced
-                apart by 1./fs seconds
-            - times : np.ndarray
-                Times of the start of each column in the piano roll.
-                Default None which is np.arange(0, get_end_time(), 1./fs)
+        Parameters
+        ----------
+        fs : int
+            Sampling frequency of the columns, i.e. each column is spaced apart
+            by 1./fs seconds
+        times : np.ndarray
+            Times of the start of each column in the piano roll.
+            Default None which is np.arange(0, get_end_time(), 1./fs)
 
-        :returns:
-            - piano_roll : np.ndarray, shape=(12,times.shape[0])
-                Chromagram of MIDI data, flattened across instruments
-        '''
+        Returns
+        -------
+        piano_roll : np.ndarray, shape=(12,times.shape[0])
+            Chromagram of MIDI data, flattened across instruments
+
+        """
         # First, get the piano roll
         piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
@@ -512,20 +534,22 @@ class PrettyMIDI(object):
         return chroma_matrix
 
     def synthesize(self, fs=44100, wave=np.sin):
-        '''
-        Synthesize the pattern using some waveshape.  Ignores drum track.
+        """Synthesize the pattern using some waveshape.  Ignores drum track.
 
-        :parameters:
-            - fs : int
-                Sampling rate of the synthesized audio signal, default 44100
-            - wave : function
-                Function which returns a periodic waveform,
-                e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+        Parameters
+        ----------
+        fs : int
+            Sampling rate of the synthesized audio signal, default 44100
+        wave : function
+            Function which returns a periodic waveform,
+            e.g. np.sin, scipy.signal.square, etc.  Default np.sin
 
-        :returns:
-            - synthesized : np.ndarray
-                Waveform of the MIDI data, synthesized at fs
-        '''
+        Returns
+        -------
+        synthesized : np.ndarray
+            Waveform of the MIDI data, synthesized at fs
+
+        """
         # If there are no instruments, return an empty array
         if len(self.instruments) == 0:
             return np.array([])
@@ -541,20 +565,23 @@ class PrettyMIDI(object):
         return synthesized
 
     def fluidsynth(self, fs=44100, sf2_path=None):
-        ''' Synthesize using fluidsynth.
+        """Synthesize using fluidsynth.
 
-        :parameters:
-            - fs : int
-                Sampling rate to synthesize
-            - sf2_path : str
-                Path to a .sf2 file.
-                Default None, which uses the TimGM6mb.sf2 file included with
-                pretty_midi.
+        Parameters
+        ----------
+        fs : int
+            Sampling rate to synthesize
+        sf2_path : str
+            Path to a .sf2 file.
+            Default None, which uses the TimGM6mb.sf2 file included with
+            pretty_midi.
 
-        :returns:
-            - synthesized : np.ndarray
-                Waveform of the MIDI data, synthesized at fs
-        '''
+        Returns
+        -------
+        synthesized : np.ndarray
+            Waveform of the MIDI data, synthesized at fs
+
+        """
         # If there are no instruments, return an empty array
         if len(self.instruments) == 0:
             return np.zeros((128, 0))
@@ -571,18 +598,20 @@ class PrettyMIDI(object):
         return synthesized
 
     def tick_to_time(self, tick):
-        '''
-        Converts from an absolute tick to time in seconds using
+        """Converts from an absolute tick to time in seconds using
         self.__tick_to_time
 
-        :parameters:
-            - tick : int
-                absolute tick to convert
+        Parameters
+        ----------
+        tick : int
+            absolute tick to convert
 
-        :returns:
-            - time : float
-                time in seconds of tick
-        '''
+        Returns
+        -------
+        time : float
+            time in seconds of tick
+
+        """
         # Check that the tick isn't too big
         if tick >= MAX_TICK:
             raise IndexError('Supplied tick is too large.')
@@ -596,18 +625,20 @@ class PrettyMIDI(object):
         return self.__tick_to_time[int(tick)]
 
     def time_to_tick(self, time):
-        '''
-        Converts from a time in seconds to absolute tick using
+        """Converts from a time in seconds to absolute tick using
         self.__tick_scales
 
-        :parameters:
-            - time : float
-                Time, in seconds
+        Parameters
+        ----------
+        time : float
+            Time, in seconds
 
-        :returns:
-            - tick : int
-                Absolute tick corresponding to the supplied time
-        '''
+        Returns
+        -------
+        tick : int
+            Absolute tick corresponding to the supplied time
+
+        """
         # Ticks will be accumulated over tick scale changes
         tick = 0
         # Iterate through all the tempo changes (tick scale changes!)
@@ -619,20 +650,21 @@ class PrettyMIDI(object):
         return int(tick)
 
     def adjust_times(self, original_times, new_times):
-        '''
-        Adjusts the timing of the events in the MIDI object.
+        """Adjusts the timing of the events in the MIDI object.
         The parameters `original_times` and `new_times` define a mapping, so
         that if an event originally occurs at time `original_times[n]`, it
         will be moved so that it occurs at `new_times[n]`.  If events don't
         occur exactly on a time in `original_times`, their timing will be
         linearly interpolated.
 
-        :parameters:
-            - original_times : np.ndarray
-                Times to map from
-            - new_times : np.ndarray
-                New times to map to
-        '''
+        Parameters
+        ----------
+        original_times : np.ndarray
+            Times to map from
+        new_times : np.ndarray
+            New times to map to
+
+        """
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
             valid_notes = []
@@ -673,21 +705,22 @@ class PrettyMIDI(object):
             cc.time = (aligned_ccs[n] > 0)*aligned_ccs[n]
 
     def remove_invalid_notes(self):
-        '''
-        Removes any notes which have an end time <= start time.
-        '''
+        """Removes any notes which have an end time <= start time.
+
+        """
         # Simply call the child method on all instruments
         for instrument in self.instruments:
             instrument.remove_invalid_notes()
 
     def write(self, filename):
-        '''
-        Write the PrettyMIDI object out to a .mid file
+        """Write the PrettyMIDI object out to a .mid file
 
-        :parameters:
-            - filename : str
-                Path to write .mid file to
-        '''
+        Parameters
+        ----------
+        filename : str
+            Path to write .mid file to
+
+        """
         # Initialize list of tracks to output
         tracks = []
         # Create track 0 with timing information
@@ -781,35 +814,37 @@ class PrettyMIDI(object):
 
 
 class Instrument(object):
-    '''
-    Object to hold event information for a single instrument
+    """Object to hold event information for a single instrument
 
-    :attributes:
-        - program : int
-            The program number of this instrument.
-        - is_drum : bool
-            Is the instrument a drum instrument (channel 9)?
-        - notes : list
-            List of Note objects
-        - pitch_bends : list
-            List of of PitchBend objects
-        - control_changes : list
-            List of ControlChange objects
-    '''
+    Parameters
+    ----------
+    program : int
+        MIDI program number (instrument index), in [0, 127]
+    is_drum : bool
+        Is the instrument a drum instrument (channel 9)?
+        Default False
+
+    Attributes
+    ----------
+    program : int
+        The program number of this instrument.
+    is_drum : bool
+        Is the instrument a drum instrument (channel 9)?
+    notes : list
+        List of Note objects
+    pitch_bends : list
+        List of of PitchBend objects
+    control_changes : list
+        List of ControlChange objects
+
+    """
 
     def __init__(self, program, is_drum=False):
-        '''
-        Create the Instrument.
+        """Create the Instrument.
         notes gets initialized to empty list.
         Fill with `(Instrument).notes.append(event)`
 
-        :parameters:
-            - program : int
-                MIDI program number (instrument index), in [0, 127]
-            - is_drum : bool
-                Is the instrument a drum instrument (channel 9)?
-                Default False
-        '''
+        """
         self.program = program
         self.is_drum = is_drum
         self.notes = []
@@ -817,14 +852,15 @@ class Instrument(object):
         self.control_changes = []
 
     def get_onsets(self):
-        '''
-        Get all onsets of all notes played by this instrument.
+        """Get all onsets of all notes played by this instrument.
         May contain duplicates
 
-        :returns:
-            - onsets : np.ndarray
+        Returns
+        -------
+        onsets : np.ndarray
                 List of all note onsets
-        '''
+
+        """
         onsets = []
         # Get the note-on time of each note played by this instrument
         for note in self.notes:
@@ -833,21 +869,23 @@ class Instrument(object):
         return np.sort(onsets)
 
     def get_piano_roll(self, fs=100, times=None):
-        '''
-        Get a piano roll notation of the note events of this instrument.
+        """Get a piano roll notation of the note events of this instrument.
 
-        :parameters:
-            - fs : int
-                Sampling frequency of the columns, i.e. each column is spaced
-                apart by 1./fs seconds
-            - times : np.ndarray
-                times of the start of each column in the piano roll,
-                Default None which is np.arange(0, get_end_time(), 1./fs)
+        Parameters
+        ----------
+        fs : int
+            Sampling frequency of the columns, i.e. each column is spaced apart
+            by 1./fs seconds
+        times : np.ndarray
+            times of the start of each column in the piano roll,
+            Default None which is np.arange(0, get_end_time(), 1./fs)
 
-        :returns:
-            - piano_roll : np.ndarray, shape=(128,times.shape[0])
-                Piano roll matrix of this instrument
-        '''
+        Returns
+        -------
+        piano_roll : np.ndarray, shape=(128, times.shape[0])
+            Piano roll matrix of this instrument
+
+        """
         # If there are no notes, return an empty matrix
         if self.notes == []:
             return np.array([[]]*128)
@@ -921,21 +959,23 @@ class Instrument(object):
         return piano_roll_integrated
 
     def get_chroma(self, fs=100, times=None):
-        '''
-        Get a chroma matrix for the note events in this instrument.
+        """Get a chroma matrix for the note events in this instrument.
 
-        :parameters:
-            - fs : int
-                Sampling frequency of the columns, i.e. each column is spaced
-                apart by 1./fs seconds
-            - times : np.ndarray
-                times of the start of each column in the chroma matrix,
-                Default None which is np.arange(0, get_end_time(), 1./fs)
+        Parameters
+        ----------
+        fs : int
+            Sampling frequency of the columns, i.e. each column is spaced
+            apart by 1./fs seconds
+        times : np.ndarray
+            times of the start of each column in the chroma matrix,
+            Default None which is np.arange(0, get_end_time(), 1./fs)
 
-        :returns:
-            - chroma : np.ndarray, shape=(12,times.shape[0])
-                Chromagram matrix of this instrument
-        '''
+        Returns
+        -------
+        chroma : np.ndarray, shape=(12,times.shape[0])
+            Chromagram matrix of this instrument
+
+        """
         # First, get the piano roll
         piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
@@ -945,13 +985,14 @@ class Instrument(object):
         return chroma_matrix
 
     def get_end_time(self):
-        '''
-        Returns the time of the end of the events in this instrument
+        """Returns the time of the end of the events in this instrument
 
-        :returns:
-            - end_time : float
-                Time, in seconds, of the end of the last event
-        '''
+        Returns
+        -------
+        end_time : float
+            Time, in seconds, of the end of the last event
+
+        """
         # Cycle through all note ends and all pitch bends and find the largest
         events = ([n.end for n in self.notes] +
                   [b.time for b in self.pitch_bends])
@@ -962,9 +1003,9 @@ class Instrument(object):
             return max(events)
 
     def remove_invalid_notes(self):
-        '''
-        Removes any notes which have an end time <= start time.
-        '''
+        """Removes any notes which have an end time <= start time.
+
+        """
         # Crete a list of all invalid notes
         notes_to_delete = []
         for note in self.notes:
@@ -975,21 +1016,23 @@ class Instrument(object):
             self.notes.remove(note)
 
     def synthesize(self, fs=44100, wave=np.sin):
-        '''
-        Synthesize the instrument's notes using some waveshape.
+        """Synthesize the instrument's notes using some waveshape.
         For drum instruments, returns zeros.
 
-        :parameters:
-            - fs : int
-                Sampling rate of the synthesized audio signal, default 44100
-            - wave : function
-                Function which returns a periodic waveform,
-                e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+        Parameters
+        ----------
+        fs : int
+            Sampling rate of the synthesized audio signal, default 44100
+        wave : function
+            Function which returns a periodic waveform,
+            e.g. np.sin, scipy.signal.square, etc.  Default np.sin
 
-        :returns:
-            - synthesized : np.ndarray
-                Waveform of the instrument's notes, synthesized at fs
-        '''
+        Returns
+        -------
+        synthesized : np.ndarray
+            Waveform of the instrument's notes, synthesized at fs
+
+        """
         # Pre-allocate output waveform
         synthesized = np.zeros(int(fs*(self.get_end_time() + 1)))
 
@@ -1061,20 +1104,23 @@ class Instrument(object):
         return synthesized
 
     def fluidsynth(self, fs=44100, sf2_path=None):
-        ''' Synthesize using fluidsynth.
+        """Synthesize using fluidsynth.
 
-        :parameters:
-            - fs : int
-                Sampling rate to synthesize
-            - sf2_path : str
-                Path to a .sf2 file.
-                Default None, which uses the TimGM6mb.sf2 file included with
-                pretty_midi.
+        Parameters
+        ----------
+        fs : int
+            Sampling rate to synthesize
+        sf2_path : str
+            Path to a .sf2 file.
+            Default None, which uses the TimGM6mb.sf2 file included with
+            pretty_midi.
 
-        :returns:
-            - synthesized : np.ndarray
-                Waveform of the MIDI data, synthesized at fs
-        '''
+        Returns
+        -------
+        synthesized : np.ndarray
+            Waveform of the MIDI data, synthesized at fs
+
+        """
         # If sf2_path is None, use the included TimGM6mb.sf2 path
         if sf2_path is None:
             sf2_path = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
@@ -1158,34 +1204,29 @@ class Instrument(object):
 
 
 class Note(object):
-    '''
-    A note event.
+    """A note event.
 
-    :attributes:
-        - velocity : int
-            Note velocity, in [0, 127]
-        - pitch : int
-            Note pitch, as a MIDI note number, in [0, 127]
-        - start : float
-            Note on time, absolute, in seconds
-        - end : float
-            Note off time, absolute, in seconds
-    '''
+    Parameters
+    ----------
+    velocity : int
+        Note velocity
+    pitch : int
+        Note pitch, as a MIDI note number
+    start : float
+        Note on time, absolute, in seconds
+    end : float
+        Note off time, absolute, in seconds
+
+    Notes
+    -----
+    This class is simply a container for its parameters.
+
+    """
 
     def __init__(self, velocity, pitch, start, end):
-        '''
-        Create a note object.
+        """Create a note object.
 
-        :parameters:
-            - velocity : int
-                Note velocity
-            - pitch : int
-                Note pitch, as a MIDI note number
-            - start : float
-                Note on time, absolute, in seconds
-            - end : float
-                Note off time, absolute, in seconds
-        '''
+        """
         self.velocity = velocity
         self.pitch = pitch
         self.start = start
@@ -1197,26 +1238,25 @@ class Note(object):
 
 
 class PitchBend(object):
-    '''
-    A pitch bend event.
+    """A pitch bend event.
 
-    :attributes:
-        - pitch : int
-            MIDI pitch bend amount, in the range [-8192, 8191]
-        - time : float
-            Time where the pitch bend occurs
-    '''
+    Parameters
+    ----------
+    pitch : int
+        MIDI pitch bend amount, in the range [-8192, 8191]
+    time : float
+        Time where the pitch bend occurs
+
+    Notes
+    -----
+    This class is simply a container for its parameters.
+
+    """
 
     def __init__(self, pitch, time):
-        '''
-        Create pitch bend object.
+        """Create pitch bend object.
 
-        :parameters:
-            - pitch : int
-                MIDI pitch bend amount, in the range [-8192, 8191]
-            - time : float
-                Time where the pitch bend occurs
-        '''
+        """
         self.pitch = pitch
         self.time = time
 
@@ -1225,30 +1265,27 @@ class PitchBend(object):
 
 
 class ControlChange(object):
-    '''
-    A control change event.
+    """A control change event.
 
-    :attributes:
-        - number : int
-            The control change number, in [0, 127]
-        - value : int
-            The value of the control change, in [0, 127]
-        - time : float
-            Time where the pitch bend occurs
-    '''
+    Parameters
+    ----------
+    number : int
+        The control change number, in [0, 127]
+    value : int
+        The value of the control change, in [0, 127]
+    time : float
+        Time where the pitch bend occurs
+
+    Notes
+    -----
+    This class is simply a container for its parameters.
+
+    """
 
     def __init__(self, number, value, time):
-        '''
-        Create control change object.
+        """Create control change object.
 
-        :parameters:
-            - number : int
-                The control change number, in [0, 127]
-            - value : int
-                The value of the control change, in [0, 127]
-            - time : float
-                Time where the pitch bend occurs
-        '''
+        """
         self.number = number
         self.value = value
         self.time = time
@@ -1259,42 +1296,45 @@ class ControlChange(object):
 
 
 def note_number_to_hz(note_number):
-    '''
-    Convert a (fractional) MIDI note number to its frequency in Hz.
+    """Convert a (fractional) MIDI note number to its frequency in Hz.
 
-    :parameters:
-        - note_number : float
-            MIDI note number, can be fractional
+    Parameters
+    ----------
+    note_number : float
+        MIDI note number, can be fractional
 
-    :returns:
-        - note_frequency : float
-            Frequency of the note in Hz
-    '''
+    Returns
+    -------
+    note_frequency : float
+        Frequency of the note in Hz
+
+    """
     # MIDI note numbers are defined as the number of semitones relative to C0
     # in a 440 Hz tuning
     return 440.0*(2.0**((note_number - 69)/12.0))
 
 
 def hz_to_note_number(frequency):
-    '''
-    Convert a frequency in Hz to a (fractional) frequency
+    """Convert a frequency in Hz to a (fractional) frequency
 
-    :parameters:
-        - frequency : float
-            Frequency of the note in Hz
+    Parameters
+    ----------
+    frequency : float
+        Frequency of the note in Hz
 
-    :returns:
-        - note_number : float
-            MIDI note number, can be fractional
-    '''
+    Returns
+    -------
+    note_number : float
+        MIDI note number, can be fractional
+
+    """
     # MIDI note numbers are defined as the number of semitones relative to C0
     # in a 440 Hz tuning
     return 12*(np.log2(frequency) - np.log2(440.0)) + 69
 
 
 def note_name_to_number(note_name):
-    '''
-    Converts a note name in the format (note)(accidental)(octave number)
+    """Converts a note name in the format (note)(accidental)(octave number)
     to MIDI note number.
 
     (note) is required, and is case-insensitive.
@@ -1304,17 +1344,21 @@ def note_name_to_number(note_name):
 
     If (octave) is '', octave 0 is assumed.
 
-    :parameters:
-        - note_name : str
-            A note name, as described above
+    Parameters
+    ----------
+    note_name : str
+        A note name, as described above
 
-    :returns:
-        - note_number : int
-            MIDI note number corresponding to the provided note name.
+    Returns
+    -------
+    note_number : int
+        MIDI note number corresponding to the provided note name.
 
-    :note:
+    Notes
+    -----
         Thanks to Brian McFee.
-    '''
+
+    """
 
     # Map note name to the semitone
     pitch_map = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
@@ -1338,21 +1382,24 @@ def note_name_to_number(note_name):
 
 
 def note_number_to_name(note_number):
-    '''
-    Convert a MIDI note number to its name, in the format
+    """Convert a MIDI note number to its name, in the format
     (note)(accidental)(octave number) (e.g. 'C#4')
 
-    :parameters:
-        - note_number : int
-            MIDI note number.  If not an int, it will be rounded.
+    Parameters
+    ----------
+    note_number : int
+        MIDI note number.  If not an int, it will be rounded.
 
-    :returns:
-        - note_name : str
-            Name of the supplied MIDI note number.
+    Returns
+    -------
+    note_name : str
+        Name of the supplied MIDI note number.
 
-    :note:
+    Notes
+    -----
         Thanks to Brian McFee.
-    '''
+
+    """
 
     # Note names within one octave
     semis = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -1384,24 +1431,27 @@ __DRUM_MAP = ['Acoustic Bass Drum', 'Bass Drum 1', 'Side Stick',
 
 
 def note_number_to_drum_name(note_number):
-    '''
-    Converts a MIDI note number in a percussion instrument to the corresponding
-    drum name, according to the General MIDI standard.
+    """Converts a MIDI note number in a percussion instrument to the
+    corresponding drum name, according to the General MIDI standard.
 
     Any MIDI note number outside of the valid range (note 35-81, zero-indexed)
     will result in an empty string.
 
-    :parameters:
-        - note_number : int
-            MIDI note number.  If not an int, it will be rounded.
+    Parameters
+    ----------
+    note_number : int
+        MIDI note number.  If not an int, it will be rounded.
 
-    :returns:
-        - drum_name : str
-            Name of the drum for this note for a percussion instrument.
+    Returns
+    -------
+    drum_name : str
+        Name of the drum for this note for a percussion instrument.
 
-    :note:
+    Notes
+    -----
         See http://www.midi.org/techspecs/gm1sound.php
-    '''
+
+    """
 
     # Ensure note is an int
     note_number = int(np.round(note_number))
@@ -1414,29 +1464,34 @@ def note_number_to_drum_name(note_number):
 
 
 def __normalize_str(name):
-    ''' Removes all non-alphanumeric characters from a string and converts
-    it to lowercase'''
+    """Removes all non-alphanumeric characters from a string and converts
+    it to lowercase.
+
+    """
     return ''.join(ch for ch in name if ch.isalnum()).lower()
 
 
 def drum_name_to_note_number(drum_name):
-    '''
-    Converts a drum name to the corresponding MIDI note number for a percussion
-    instrument.  Conversion is case, whitespace, and non-alphanumeric character
-    insensitive.
+    """Converts a drum name to the corresponding MIDI note number for a
+    percussion instrument.  Conversion is case, whitespace, and
+    non-alphanumeric character insensitive.
 
-    :parameters:
-        - drum_name : str
-            Name of a drum which exists in the general MIDI standard.
-            If the drum is not found, a ValueError is raised.
+    Parameters
+    ----------
+    drum_name : str
+        Name of a drum which exists in the general MIDI standard.
+        If the drum is not found, a ValueError is raised.
 
-    :returns:
-        - note_number : int
-            The MIDI note number corresponding to this drum.
+    Returns
+    -------
+    note_number : int
+        The MIDI note number corresponding to this drum.
 
-    :note:
+    Notes
+    -----
         See http://www.midi.org/techspecs/gm1sound.php
-    '''
+
+    """
 
     normalized_drum_name = __normalize_str(drum_name)
     # Create a list of the entries __DRUM_MAP, normalized, to search over
@@ -1496,21 +1551,24 @@ __INSTRUMENT_MAP = ['Acoustic Grand Piano', 'Bright Acoustic Piano',
 
 
 def program_to_instrument_name(program_number):
-    '''
-    Converts a MIDI program number to the corresponding General MIDI instrument
-    name.
+    """Converts a MIDI program number to the corresponding General MIDI
+    instrument name.
 
-    :parameters:
-        - program_number : int
-            MIDI program number, between 0 and 127
+    Parameters
+    ----------
+    program_number : int
+        MIDI program number, between 0 and 127
 
-    :returns:
-        - instrument_name : str
-            Name of the instrument corresponding to this program number.
+    Returns
+    -------
+    instrument_name : str
+        Name of the instrument corresponding to this program number.
 
-    :note:
+    Notes
+    -----
         See http://www.midi.org/techspecs/gm1sound.php
-    '''
+
+    """
 
     # Check that the supplied program is in the valid range
     if program_number < 0 or program_number > 127:
@@ -1521,23 +1579,26 @@ def program_to_instrument_name(program_number):
 
 
 def instrument_name_to_program(instrument_name):
-    '''
-    Converts an instrument name to the corresponding General MIDI program
+    """Converts an instrument name to the corresponding General MIDI program
     number.  Conversion is case, whitespace, and non-alphanumeric character
     insensitive.
 
-    :parameters:
-        - instrument_name : str
-            Name of an instrument which exists in the general MIDI standard.
-            If the instrument is not found, a ValueError is raised.
+    Parameters
+    ----------
+    instrument_name : str
+        Name of an instrument which exists in the general MIDI standard.
+        If the instrument is not found, a ValueError is raised.
 
-    :returns:
-        - program_number : int
-            The MIDI program number corresponding to this instrument.
+    Returns
+    -------
+    program_number : int
+        The MIDI program number corresponding to this instrument.
 
-    :note:
+    Notes
+    -----
         See http://www.midi.org/techspecs/gm1sound.php
-    '''
+
+    """
 
     normalized_inst_name = __normalize_str(instrument_name)
     # Create a list of the entries __INSTRUMENT_MAP, normalized, to search over
@@ -1563,21 +1624,24 @@ __INSTRUMENT_CLASSES = ['Piano', 'Chromatic Percussion', 'Organ', 'Guitar',
 
 
 def program_to_instrument_class(program_number):
-    '''
-    Converts a MIDI program number to the corresponding General MIDI instrument
-    class.
+    """Converts a MIDI program number to the corresponding General MIDI
+    instrument class.
 
-    :parameters:
-        - program_number : int
-            MIDI program number, between 0 and 127
+    Parameters
+    ----------
+    program_number : int
+        MIDI program number, between 0 and 127
 
-    :returns:
-        - instrument_class : str
-            Name of the instrument class corresponding to this program number.
+    Returns
+    -------
+    instrument_class : str
+        Name of the instrument class corresponding to this program number.
 
-    :note:
+    Notes
+    -----
         See http://www.midi.org/techspecs/gm1sound.php
-    '''
+
+    """
 
     # Check that the supplied program is in the valid range
     if program_number < 0 or program_number > 127:
@@ -1588,38 +1652,42 @@ def program_to_instrument_class(program_number):
 
 
 def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
-    '''
-    Convert a MIDI pitch bend value (in the range -8192, 8191) to the bend
+    """Convert a MIDI pitch bend value (in the range -8192, 8191) to the bend
     amount in semitones.
 
-    :parameters:
-        - pitch_bend : int
-            MIDI pitch bend amount, in [-8192, 8191]
-        - semitone_range : float
-            Convert to +/- this semitone range.  Default is 2., which is the
-            General MIDI standard +/-2 semitone range.
+    Parameters
+    ----------
+    pitch_bend : int
+        MIDI pitch bend amount, in [-8192, 8191]
+    semitone_range : float
+        Convert to +/- this semitone range.  Default is 2., which is the
+        General MIDI standard +/-2 semitone range.
 
-    :returns:
-        - semitones : float
-            Number of semitones corresponding to this pitch bend amount
-    '''
+    Returns
+    -------
+    semitones : float
+        Number of semitones corresponding to this pitch bend amount
+
+    """
 
     return semitone_range*pitch_bend/8192.0
 
 
 def semitones_to_pitch_bend(semitones, semitone_range=2.):
-    '''
-    Convert a semitone value to the corresponding MIDI pitch bend int
+    """Convert a semitone value to the corresponding MIDI pitch bend int
 
-    :parameters:
-        - semitones : float
-            Number of semitones for the pitch bend
-        - semitone_range : float
-            Convert to +/- this semitone range.  Default is 2., which is the
-            General MIDI standard +/-2 semitone range.
+    Parameters
+    ----------
+    semitones : float
+        Number of semitones for the pitch bend
+    semitone_range : float
+        Convert to +/- this semitone range.  Default is 2., which is the
+        General MIDI standard +/-2 semitone range.
 
-    :returns:
-        - pitch_bend : int
-            MIDI pitch bend amount, in [-8192, 8191]
-    '''
+    Returns
+    -------
+    pitch_bend : int
+        MIDI pitch bend amount, in [-8192, 8191]
+
+    """
     return int(8192*(semitones/semitone_range))

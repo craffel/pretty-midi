@@ -14,6 +14,7 @@
 
 import sys
 import os
+sys.path.append('..')
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -30,9 +31,7 @@ import os
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.coverage',
-    'sphinx.ext.mathjax',
+    'numpydoc'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -261,6 +260,12 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+# Fix autosummary warnings
+numpydoc_show_class_members = False
+
+# Order members by source
+autodoc_member_order = 'bysource'
 
 def skip(app, what, name, obj, skip, options):
     if name == "__init__":

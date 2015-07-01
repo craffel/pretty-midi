@@ -9,7 +9,6 @@ pretty_midi
    :members:
    :undoc-members:
    :show-inheritance:
-   :member-order: bysource
 
 
 Indices and tables
