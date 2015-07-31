@@ -67,13 +67,25 @@ class PrettyMIDI(object):
             if max_tick > MAX_TICK:
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
+
+            # Create list that maps ticks to time in seconds
             self._update_tick_to_time(max_tick)
-            # Check that there are only tempo change events on track 0
-            if sum([sum([event.name == 'Set Tempo' for event in track])
-                    for track in midi_data[1:]]):
-                warnings.warn(("Tempo change events found on non-zero tracks."
-                               "  This is not a valid type 0 or type 1 MIDI "
-                               "file.  Timing may be wrong."), RuntimeWarning)
+
+            # Populate the list of key and time signature changes
+            self._load_metadata(midi_data)
+
+            # Check that there are tempo, key and time change events
+            # only on track 0
+            if sum([sum([isinstance(event, (midi.events.SetTempoEvent,
+                                            midi.events.KeySignatureEvent,
+                                            midi.events.TimeSignatureEvent))
+                        for event in track]) for track in midi_data[1:]]):
+                warnings.warn(("Tempo, Key or Time signature change events"
+                               " found on non-zero tracks."
+                               "  This is not a valid type 0 or type 1 MIDI"
+                               " file. Tempo, Key or Time Signature"
+                               " may be wrong."),
+                              RuntimeWarning)
 
             # Populate the list of instruments
             self._load_instruments(midi_data)
@@ -109,7 +121,7 @@ class PrettyMIDI(object):
         # Everyone ignores type 2.
         # So, just look at events on track 0
         for event in midi_data[0]:
-            if event.name == 'Set Tempo':
+            if isinstance(event, midi.events.SetTempoEvent):
                 # Only allow one tempo change event at the beginning
                 if event.tick == 0:
                     bpm = event.get_bpm()
@@ -122,9 +134,72 @@ class PrettyMIDI(object):
                     if tick_scale != last_tick_scale:
                         self.__tick_scales.append((event.tick, tick_scale))
 
+    def _load_metadata(self, midi_data):
+        """Populates self.time_signature_changes with TimeSignature objects and
+        populates self.key_changes with KeySignature objects.
+
+        Parameters
+        ----------
+        midi_data : midi.FileReader
+            MIDI object from which data will be read
+        """
+
+        # helper function to get key number from midi key
+        def midi_key_to_key_number(key_signature_event):
+            """Convert midi package's midi.event.KeySignature to pretty_midi's
+            key_number
+
+            Parameters
+            ----------
+            key_signature_event : midi.event.KeySignature
+                Converts the midi.event.KeySignature to conform with
+                pretty_midi's key_number.
+            """
+
+            sharp_keys = 'CGDAEBF'
+            flat_keys = 'CFBEADG'
+            num_accidentals, mode = key_signature_event.data
+
+            # check if key signature has sharps or flats
+            if num_accidentals >= 0 and num_accidentals < 2**7:
+                num_sharps = num_accidentals / 6
+                key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
+            else:
+                num_accidentals = 256 - num_accidentals
+                num_flats = num_accidentals / 2
+                key = flat_keys[num_accidentals % 7] + 'b' * num_flats
+
+            # append mode to string
+            if mode == 0:
+                key += ' Major'
+            else:
+                key += ' minor'
+
+            # use routine to convert from string notation to number notation
+            return key_name_to_key_number(key)
+
+        # _load_metadata routine proper starts here
+        # list to store key signature changes
+        self.key_changes = []
+
+        # list to store time signatures changes
+        self.time_signature_changes = []
+
+        for event in midi_data[0]:
+            if isinstance(event, midi.events.KeySignatureEvent):
+                key_obj = KeySignature(midi_key_to_key_number(event),
+                                       self.__tick_to_time[event.tick])
+                self.key_changes.append(key_obj)
+
+            elif isinstance(event, midi.events.TimeSignatureEvent):
+                ts_obj = TimeSignature(event.get_numerator(),
+                                       event.get_denominator(),
+                                       self.__tick_to_time[event.tick])
+                self.time_signature_changes.append(ts_obj)
+
     def _update_tick_to_time(self, max_tick):
-        """Creates __tick_to_time, a class member array which maps ticks to time
-        starting from tick 0 and ending at max_tick
+        """Creates __tick_to_time, a class member array which maps ticks to
+        time starting from tick 0 and ending at max_tick
 
         Parameters
         ----------
@@ -266,6 +341,7 @@ class PrettyMIDI(object):
             What the tempo is at each point in time in tempo_change_times
 
         """
+
         # Pre-allocate return arrays
         tempo_change_times = np.zeros(len(self.__tick_scales))
         tempii = np.zeros(len(self.__tick_scales))
@@ -372,7 +448,7 @@ class PrettyMIDI(object):
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
-        # Get tempo changs and tempos
+        # Get tempo changes and tempos
         tempo_change_times, tempii = self.get_tempo_changes()
 
         def beat_track_using_tempo(start_time):
@@ -492,9 +568,11 @@ class PrettyMIDI(object):
             Piano roll of MIDI data, flattened across instruments
 
         """
+
         # If there are no instruments, return an empty array
         if len(self.instruments) == 0:
             return np.zeros((128, 0))
+
         # Get piano rolls for each instrument
         piano_rolls = [i.get_piano_roll(fs=fs, times=times)
                        for i in self.instruments]
@@ -1295,6 +1373,196 @@ class ControlChange(object):
                 'time={:f})'.format(self.number, self.value, self.time))
 
 
+class TimeSignature(object):
+    """Container for a Time Signature event, which contains the time signature
+    numerator, denominator and the event time in seconds
+
+    Attributes
+    ----------
+        numerator : int
+            Numerator of time signature
+        denominator : int
+            Denominator of time signature
+        time : float
+            Time of event in seconds
+
+    Examples
+    --------
+    Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds
+    >>> ts = TimeSignature(6, 8, 3.14)
+    >>> print ts
+    6/8 at 3.14 seconds
+
+    """
+
+    def __init__(self, numerator, denominator, time):
+        if not (isinstance(numerator, int) and numerator > 0):
+            raise ValueError(
+                '{} is not a valid `numerator` type or value'.format(
+                    numerator))
+        if not (isinstance(denominator, int) and denominator > 0):
+            raise ValueError(
+                '{} is not a valid `denominator` type or value'.format(
+                    denominator))
+        if not (isinstance(time, (int, float)) and time >= 0):
+            raise ValueError(
+                '{} is not a valid `time` type or value'.format(time))
+
+        self.numerator = numerator
+        self.denominator = denominator
+        self.time = time
+
+    def __repr__(self):
+        return "TimeSignature(numerator={}, denominator={}, time={})".format(
+            self.numerator, self.denominator, self.time)
+
+    def __str__(self):
+        return '{}/{} at {:.2f} seconds'.format(
+            self.numerator, self.denominator, self.time)
+
+
+class KeySignature(object):
+    """Contains the key signature and the event time in seconds
+
+    Only supports major and minor keys.
+
+    Attributes
+    ----------
+    key_number : int
+        key number accordingly to [0,11] Major, [12,23] minor
+        For example, 0 is C Major, 12 is C minor
+    time : float
+        time of event in seconds
+
+    Examples
+    --------
+    Instantiate a C# minor KeySignature object at 3.14 seconds.
+
+    >>> ks = KeySignature(13, 3.14)
+    >>> print ks
+    C# minor at 3.14 seconds
+    """
+
+    def __init__(self, key_number, time):
+        if not all((isinstance(key_number, int),
+                    key_number >= 0,
+                    key_number < 24)):
+            raise ValueError(
+                '{} is not a valid `key_number` type or value'.format(
+                    key_number))
+        if not (isinstance(time, (int, float)) and time >= 0):
+            raise ValueError(
+                '{} is not a valid `time` type or value'.format(time))
+
+        self.key_number = key_number
+        self.time = time
+
+    def __repr__(self):
+        return "KeySignature(key_number={}, time={})".format(
+            self.key_number, self.time)
+
+    def __str__(self):
+        return '{} at {:.2f} seconds'.format(
+            key_number_to_key_name(self.key_number), self.time)
+
+
+def key_number_to_key_name(key_number):
+    """Convert a key number to a key string
+
+    Parameters
+    ----------
+    key_number : int
+        Uses pitch classes to represent major and minor keys.
+        For minor keys, adds a 12 offset.
+        For example, C major is 0 and C minor is 12.
+
+    Returns
+    -------
+    str
+        'Root mode', e.g. Gb minor.
+        Gives preference for keys with flats, with the
+        exception of F#, G# and C# minor.
+    """
+
+    if not isinstance(key_number, int):
+        raise ValueError('`key_number` is not int!')
+    if not ((key_number >= 0) and (key_number < 24)):
+        raise ValueError('`key_number` is larger than 24')
+
+    # preference to keys with flats
+    keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb',
+            'G', 'Ab', 'A', 'Bb', 'B']
+
+    # circle around 12 pitch classes
+    key_idx = key_number % 12
+    mode = key_number / 12
+
+    # check if mode is major or minor
+    if mode == 0:
+        return keys[key_idx] + ' Major'
+    elif mode == 1:
+        # preference to C#, F# and G# minor
+        if key_idx in [1, 6, 8]:
+            return keys[key_idx-1] + '# minor'
+        else:
+            return keys[key_idx] + ' minor'
+
+
+def key_name_to_key_number(key_string):
+    """Convert a correctly formated string key to key number
+
+    Parameters
+    ----------
+    key_string : str
+        Format is ``'key mode'``, where:
+            `key` is notaded using ABCDEFG with # or b;
+            `mode` is notated using 'major' or 'minor'.
+        Letter case is irrelevant for mode.
+    """
+
+    if not isinstance(key_string, str):
+        raise ValueError('key_string is not String')
+    if not key_string[1] in ['#', 'b', ' ']:
+        raise ValueError(
+            '2nd character {} is not #, b nor blank_space'.format(
+                key_string[1]))
+
+    # split key and mode, ignore case
+    key_str, mode_str = key_string.split()
+    key_str = key_str.upper()
+    mode_str = mode_str.lower()
+
+    # instantiate default pitch classes and supported modes
+    note_names_pc = {'C': 0, 'D': 2, 'E': 4,
+                     'F': 5, 'G': 7, 'A': 9, 'B': 11}
+    modes = ['major', 'minor']
+
+    # check that both key and mode are valid
+    if not key_str[0] in note_names_pc:
+        raise ValueError('Key {} is not recognized'.format(key_str[0]))
+    if mode_str not in modes:
+        raise ValueError('Mode {} is not recognized'.format(mode_str))
+
+    # lookup dictionary
+    key_number = note_names_pc[key_str[0]]
+
+    # if len is 2, has a sharp or flat
+    if len(key_str) == 2:
+        if key_str[1] == '#':
+            key_number += 1
+        else:
+            key_number -= 1
+
+    # circle around 12 pitch classes
+    key_number = key_number % 12
+
+    # offset if mode is minor
+    if mode_str == 'minor':
+        key_number += 12
+
+    return key_number
+
+
 def note_number_to_hz(note_number):
     """Convert a (fractional) MIDI note number to its frequency in Hz.
 
@@ -1375,7 +1643,7 @@ def note_name_to_number(note_name):
         offset = acc_map[match.group('off')]
         octave = int(match.group('oct'))
     except:
-        raise ValueError('Improper note format: %s' % note_name)
+        raise ValueError('Improper note format: {}'.format(note_name))
 
     # Convert from the extrated ints to a full note number
     return 12*octave + pitch_map[pitch] + offset
