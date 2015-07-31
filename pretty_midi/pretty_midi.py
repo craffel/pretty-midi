@@ -5,23 +5,28 @@ format
 
 import midi
 import numpy as np
+import scipy as sp
+import scipy.stats
+import cPickle as pkl
+
 try:
     import fluidsynth
     _HAS_FLUIDSYNTH = True
 except ImportError:
     _HAS_FLUIDSYNTH = False
+
 import os
 import warnings
 import pkg_resources
 import re
 import collections
 import copy
+from fractions import Fraction
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
-
 
 class PrettyMIDI(object):
     """A container for MIDI data in an easily-manipulable format.
@@ -78,6 +83,12 @@ class PrettyMIDI(object):
             # Populate the list of instruments
             self._load_instruments(midi_data)
 
+            # Populate the list of key signature changes
+            self._load_key_changes(midi_data)
+
+            # Populate the list of time signatures
+            self._load_time_signatures(midi_data)
+
         else:
             self.resolution = resolution
             # Compute the tick scale for the provided initial tempo
@@ -122,6 +133,40 @@ class PrettyMIDI(object):
                     if tick_scale != last_tick_scale:
                         self.__tick_scales.append((event.tick, tick_scale))
 
+    def _load_key_changes(self, midi_data):
+        """
+        Populates self.__key_changes with KeySignature objects
+
+        :parameters:
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
+        """
+        self.__key_changes = []
+        for event in midi_data[0]:
+            if isinstance(event, midi.events.KeySignatureEvent):
+                key_number = midi_key_to_pretty_key(event)
+                time = self.__tick_to_time[event.tick]
+                key_obj = KeySignature(key_number, time)
+                self.__key_changes.append(key_obj)
+
+    def _load_time_signatures(self, midi_data):
+        """
+        Populates self.__time_signatures with time signature fractions and their
+        respective time of occurrence
+
+        :parameters:
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
+        """
+        self.__time_signatures = []
+        for event in midi_data[0]:
+            if isinstance(event, midi.events.TimeSignatureEvent):
+                numerator = event.get_numerator()
+                denominator = event.get_denominator()
+                time = self.__tick_to_time[event.tick]
+                ts_obj = TimeSignature(numerator, denominator, time)
+                self.__time_signatures.append(ts_obj)
+
     def _update_tick_to_time(self, max_tick):
         """Creates __tick_to_time, a class member array which maps ticks to time
         starting from tick 0 and ending at max_tick
@@ -139,6 +184,7 @@ class PrettyMIDI(object):
         # Cycle through intervals of different tempii
         for (start_tick, tick_scale), (end_tick, _) in \
                 zip(self.__tick_scales[:-1], self.__tick_scales[1:]):
+
             # Convert ticks in this interval to times
             ticks = np.arange(end_tick - start_tick + 1)
             self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
@@ -372,9 +418,8 @@ class PrettyMIDI(object):
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
-        # Get tempo changs and tempos
+        # Get tempo changes and tempos
         tempo_change_times, tempii = self.get_tempo_changes()
-
         def beat_track_using_tempo(start_time):
             """Starting from start_time, place beats according to the MIDI
             file's designated tempo changes.
@@ -474,7 +519,7 @@ class PrettyMIDI(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None):
+    def get_piano_roll(self, fs=100, times=None, include_pitch_bends=True):
         """Get the MIDI data in piano roll notation.
 
         Parameters
@@ -492,11 +537,12 @@ class PrettyMIDI(object):
             Piano roll of MIDI data, flattened across instruments
 
         """
+
         # If there are no instruments, return an empty array
         if len(self.instruments) == 0:
             return np.zeros((128, 0))
         # Get piano rolls for each instrument
-        piano_rolls = [i.get_piano_roll(fs=fs, times=times)
+        piano_rolls = [i.get_piano_roll(fs=fs, times=times, include_pitch_bends=include_pitch_bends)
                        for i in self.instruments]
         # Allocate piano roll,
         # number of columns is max of # of columns in all piano rolls
@@ -507,7 +553,7 @@ class PrettyMIDI(object):
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
 
-    def get_chroma(self, fs=100, times=None):
+    def get_chroma(self, fs=100, times=None, include_pitch_bends=True):
         """Get the MIDI data as a sequence of chroma vectors.
 
         Parameters
@@ -525,13 +571,311 @@ class PrettyMIDI(object):
             Chromagram of MIDI data, flattened across instruments
 
         """
+
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(fs=fs, times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times, include_pitch_bends=include_pitch_bends)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
+
+    def get_pitch_class_histogram(self, use_duration=True, normalize=True):
+        """
+        Computes the frequency of pitch classes in the entire track optionally weighted by their durations.
+
+        :parameters:
+            - use_duration : boolean
+                Increase frequency by note duration
+            - normalize : boolean
+                Normalizes the histogram such that the sum of bin values is 1.
+
+        :returns:
+            - histogram : np.ndarray, shape=(12,)
+                Histogram of pitch classes optionally weighted by their durations
+        """
+        histogram = np.zeros(12)
+
+        for ins in self.instruments:
+            for note in ins.notes:
+                if use_duration:
+                    histogram[note.pitch % 12] += note.end - note.start
+                else:
+                    histogram[note.pitch % 12] += 1
+
+        if normalize:
+            histogram /= histogram.sum()
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, use_duration=False, normalize=True):
+        """
+        Compute the pitch class transition matrix.
+
+        :parameters:
+            - use_duration : boolean
+                Increase frequency by transition duration (current and next note)
+            - normalize : boolean
+                Normalize transition matrix such that matrix sum equals is 1.
+
+        :returns:
+            -  pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+        """
+
+        pitch_class_transition_matrix = np.zeros((12,12))
+
+        for ins in self.instruments:
+            for i in xrange(1, len(ins.notes)):
+                cur_pc = (ins.notes[i-1].pitch) % 12
+                nxt_pc = (ins.notes[i].pitch) % 12
+
+                cur_dur = ins.notes[i-1].end - ins.notes[i-1].start
+                nxt_dur = ins.notes[i].end - ins.notes[i].start
+
+                if use_duration:
+                    pitch_class_transition_matrix[cur_pc, nxt_pc] = cur_dur + nxt_dur
+                else:
+                    pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+
+        if normalize:
+            pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
+
+        return pitch_class_transition_matrix
+
+    def estimate_key(self, algorithm, distance, key_profile_id, use_duration=True, normalize=True):
+        """
+        Estimates the track's global key by using the KeyEstimator class.
+        For detailed information about the algorithms implemented, please check
+        the KeyEstimator class
+
+        :parameters:
+            - algorithm : str
+                Represents the implemented algorithms ('pitch_class', 'interval', 'temperley')
+            - distance : str
+                Represents the implemented distance measures ('euclidean', 'correlation')
+            - key_profile_id : str
+                Represents the key profile ID to instantiate the KeyProfile or
+                KeyProfileInterval object
+            - use_duration : boolean
+                Increase frequency of feature data (histogram, transition matrix) by using duration
+            - normalize : boolean
+                Normalize feature data
+
+        :returns:
+            - key : int
+                Returns numeric representation of key
+        """
+        assert algorithm in KeyEstimator._algorithms, 'Algorithm %s is not supported'
+
+        if algorithm == 'pitch_class':
+            data = self.get_pitch_class_histogram(use_duration, normalize)
+            key_profile = KeyProfile(key_profile_id, normalize)
+        elif algorithm == 'interval':
+            data = self.get_pitch_class_transition_matrix(use_duration, normalize)
+            key_profile = KeyProfileInterval(key_profile_id, normalize)
+        elif algorithm == 'temperley':
+            times = self.get_beats()
+            data = self.get_chroma(times=times, include_pitch_bends=False)
+            key_profile = KeyProfile(key_profile_id, normalize)
+        else:
+            return None
+
+        key_estimator = KeyEstimator(algorithm, distance, key_profile)
+        results = key_estimator.estimate(data)
+        key, confidence = results[0], results[1]
+        return (key, confidence)
+
+    def estimate_chord_progression(self, distance='correlation', chord_profile_id='standard', \
+        fs=100, times=None):
+        """
+        Estimates the chord progression of a MIDI track.
+
+        :parameters:
+            - distance : str
+                String that represents the distance measures ('euclidean', 'correlation')
+            - chord_profile : str
+                String that represents the chord profile ('bach_chorales')
+            - fs : int
+                Sampling rate for chromagram
+        :returns:
+            - chord progression : np.ndarray, shape(n_chunks,)
+                chord progression is estimated using a median filtered windowed key estimation, where
+        """
+
+        #temporary beat extraction method
+        def from_beats_to_timestamps(data, beat_resolution):
+            # Get tempo changes and tempos
+            tempo_change_times, tempi = data.get_tempo_changes()
+
+            #if there's only one tempo, interpolate until the end
+            if len(tempo_change_times) == 1:
+                timestamps = np.arange(tempo_change_times[0], data.get_end_time(), 60.0/tempi[0])
+                #add end time
+                timestamps = np.append(timestamps, data.get_end_time())
+                return timestamps
+
+            #strong assumption, piece might start on offbeat
+            cur_beat = 1
+            time_data_matrix = []
+
+            #extract beat locations given tempi and their location in time
+            for i in xrange(1, len(tempo_change_times)):
+                tempo = tempi[i-1]
+                cur_tempo_change_time = tempo_change_times[i-1]
+                nxt_tempo_change_time = tempo_change_times[i]
+
+                if cur_tempo_change_time >= 1:
+                    beat_len = 60.0 / tempo
+                    beat_dur = (nxt_tempo_change_time - cur_tempo_change_time) / beat_len
+                    time_data_matrix.append((cur_tempo_change_time, beat_len, cur_beat))
+                    cur_beat += Fraction(beat_dur).limit_denominator(16)
+
+            #convert to np.ndarray for convenience
+            time_data_matrix = np.array(time_data_matrix)
+
+            #given beat, find timestamp in seconds
+            timestamps = []
+            last_beat = time_data_matrix[:,2][-1]
+
+            beats = np.arange(1, last_beat, beat_resolution)
+
+            for beat in beats:
+                cur_idx = np.argmax(time_data_matrix[:,2] > beat) - 1
+                cur_time = time_data_matrix[cur_idx, 0]
+                cur_beat_len = time_data_matrix[cur_idx, 1]
+                cur_beat = time_data_matrix[cur_idx, 2]
+
+                if cur_beat == beat:
+                    timestamps.append(cur_time)
+                else:
+                    beat_dif = beat - cur_beat
+                    beat_time = cur_time + cur_beat_len * beat_dif
+                    timestamps.append(beat_time)
+
+            return np.array(timestamps)
+
+        chord_profile = ChordProfile(chord_profile_id)
+        chord_estimator = ChordProgressionEstimator(distance, chord_profile)
+        chord_progression = []
+
+        #extract chromagrams replacing amplitdes by hard mask
+        chromagram = self.get_chroma(fs=fs, include_pitch_bends=False).astype(bool)
+
+        #extract beat locations if not provided
+        if times == None:
+            times = from_beats_to_timestamps(self, 1)
+
+        # if time signature has more than 4 beats per measure, analyze two beats at a time
+        time_signatures = collections.deque(self.get_time_signatures())
+        time_signature = time_signatures.pop()
+        analysis_window = 1
+
+        frame_idx = 1
+        while frame_idx < len(times):
+            #update analysis window
+            if time_signature != None and time_signature.time <= times[frame_idx - 1]:
+                if time_signature.numerator > 3:
+                    analysis_window = 2
+                else:
+                    analysis_window = 1
+
+            #update time signature if necessary
+            if len(time_signatures) > 0:
+                time_signature = time_signatures.pop()
+            else:
+                time_signature = None
+
+            start_idx = int(times[frame_idx-1]*fs)
+            #if last beat, set end_idx to last frame and do not concatenate
+            if frame_idx - 1 > len(times) - 1 - 2 * analysis_window:
+                #aggregate and normalize
+                cur_histogram = chromagram[:,start_idx:-1].sum(axis=1).astype(float)
+                cur_histogram /= cur_histogram.sum()
+
+                #compute key
+                cur_root, cur_type, cur_correlation = chord_estimator.estimate(cur_histogram)
+                chord_progression.append((cur_root, cur_type, cur_correlation))
+                break
+            else:
+                end_idx = int(times[frame_idx - 1 + analysis_window]*fs)
+                nxt_end_idx = int(times[frame_idx - 1 + 2 * analysis_window]*fs)
+
+            #concatenate, compress and normalize histograms
+            cur_histogram = chromagram[:,start_idx:end_idx].sum(axis=1).astype(float)
+            cur_histogram = np.power(cur_histogram, 0.5)
+            cur_histogram /= cur_histogram.sum()
+
+            nxt_histogram = chromagram[:,end_idx+1:nxt_end_idx].sum(axis=1).astype(float)
+            nxt_histogram = np.power(nxt_histogram, 0.5)
+            nxt_histogram /= nxt_histogram.sum()
+
+            #two beats as the analysis window, normalize
+            sum_histogram = (cur_histogram + nxt_histogram) * 0.5
+
+            #compute best matches
+            cur_root, cur_type, cur_correlation = chord_estimator.estimate(cur_histogram)
+            nxt_root, nxt_type, nxt_correlation = chord_estimator.estimate(nxt_histogram)
+            sum_root, sum_type, sum_correlation = chord_estimator.estimate(sum_histogram)
+
+            #compare one 2 beats window against two 1 beat window
+            if sum_correlation > (cur_correlation + nxt_correlation) * 0.5:
+                chord_progression.append((sum_root, sum_type, sum_correlation))
+                chord_progression.append((sum_root, sum_type, sum_correlation))
+            else:
+                chord_progression.append((cur_root, cur_type, cur_correlation))
+                chord_progression.append((nxt_root, nxt_type, nxt_correlation))
+
+            frame_idx += analysis_window * 2
+        return np.array(chord_progression)
+
+
+    def compute_durational_accent(data, sat_dur=0.75, acc_idx=0.125):
+        """
+        Computes the durational accent:
+            dur_accent = (1 - exp(-dur/sat_dur))^acc_idx
+            dur = duration
+            sat_dur = saturation duration
+            acc_idx = accent index (minimal discernible note duration)
+
+        Parncutt, R. (1994). A perceptual model of pulse salience and metrical
+        accent in musical rhythms. Music Perception. 11(4), 409-464.
+
+        :parameters:
+            - data : 1d numerical array
+                array of note durations in seconds
+            - sat_dur : float
+                saturation duration
+            - acc_idx : float
+                accent index (minimal discernible note duration)
+
+        :returns:
+            - dur_weights : 1d numerical array
+                weights to be applied to the original durations
+        """
+
+        dur_accent = lambda dur : np.power(1 - np.exp(-dur/sat_dur), acc_idx)
+        dur_weights = map(dur_accent, data)
+        return dur_weights
+
+    def get_key_changes(self):
+        """
+        Returns an array with the key changes extracted directly from the midi file.
+
+        :returns:
+            - self.__key_changes : array with KeySignatures, len(#key changes)
+                Array with KeySignature objects
+        """
+        return self.__key_changes
+
+    def get_time_signatures(self):
+        """
+        Returns an array with the time signatures extracted directly from the midi file.
+
+        :returns:
+            - self.__time_signatures : np.array (Fraction, float)
+                Array with time signature fractions and their time of occurence in seconds
+        """
+        return self.__time_signatures
 
     def synthesize(self, fs=44100, wave=np.sin):
         """Synthesize the pattern using some waveshape.  Ignores drum track.
@@ -868,7 +1212,7 @@ class Instrument(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None):
+    def get_piano_roll(self, fs=100, times=None, include_pitch_bends=True):
         """Get a piano roll notation of the note events of this instrument.
 
         Parameters
@@ -886,6 +1230,7 @@ class Instrument(object):
             Piano roll matrix of this instrument
 
         """
+
         # If there are no notes, return an empty matrix
         if self.notes == []:
             return np.array([[]]*128)
@@ -907,45 +1252,45 @@ class Instrument(object):
             # Should interpolate
             piano_roll[note.pitch,
                        int(note.start*fs):int(note.end*fs)] += note.velocity
-
-        # Process pitch changes
-        # Need to sort the pitch bend list for the following to work
-        ordered_bends = sorted(self.pitch_bends, key=lambda bend: bend.time)
-        # Add in a bend of 0 at the end of time
-        end_bend = PitchBend(0, end_time)
-        for start_bend, end_bend in zip(ordered_bends,
-                                        ordered_bends[1:] + [end_bend]):
-            # Piano roll is already generated with everything bend = 0
-            if np.abs(start_bend.pitch) < 1:
-                continue
-            # Get integer and decimal part of bend amount
-            start_pitch = pitch_bend_to_semitones(start_bend.pitch)
-            bend_int = int(np.sign(start_pitch)*np.floor(np.abs(start_pitch)))
-            bend_decimal = np.abs(start_pitch - bend_int)
-            # Column indices effected by the bend
-            bend_range = np.r_[int(start_bend.time*fs):int(end_bend.time*fs)]
-            # Construct the bent part of the piano roll
-            bent_roll = np.zeros(piano_roll[:, bend_range].shape)
-            # Easiest to process differently depending on bend sign
-            if start_bend.pitch >= 0:
-                # First, pitch shift by the int amount
-                if bend_int is not 0:
-                    bent_roll[bend_int:] = piano_roll[:-bend_int, bend_range]
+        if include_pitch_bends:
+            # Process pitch changes
+            # Need to sort the pitch bend list for the following to work
+            ordered_bends = sorted(self.pitch_bends, key=lambda bend: bend.time)
+            # Add in a bend of 0 at the end of time
+            end_bend = PitchBend(0, end_time)
+            for start_bend, end_bend in zip(ordered_bends,
+                                            ordered_bends[1:] + [end_bend]):
+                # Piano roll is already generated with everything bend = 0
+                if np.abs(start_bend.pitch) < 1:
+                    continue
+                # Get integer and decimal part of bend amount
+                start_pitch = pitch_bend_to_semitones(start_bend.pitch)
+                bend_int = int(np.sign(start_pitch)*np.floor(np.abs(start_pitch)))
+                bend_decimal = np.abs(start_pitch - bend_int)
+                # Column indices effected by the bend
+                bend_range = np.r_[int(start_bend.time*fs):int(end_bend.time*fs)]
+                # Construct the bent part of the piano roll
+                bent_roll = np.zeros(piano_roll[:, bend_range].shape)
+                # Easiest to process differently depending on bend sign
+                if start_bend.pitch >= 0:
+                    # First, pitch shift by the int amount
+                    if bend_int is not 0:
+                        bent_roll[bend_int:] = piano_roll[:-bend_int, bend_range]
+                    else:
+                        bent_roll = piano_roll[:, bend_range]
+                    # Now, linear interpolate by the decimal place
+                    bent_roll[1:] = ((1 - bend_decimal)*bent_roll[1:]
+                                     + bend_decimal*bent_roll[:-1])
                 else:
-                    bent_roll = piano_roll[:, bend_range]
-                # Now, linear interpolate by the decimal place
-                bent_roll[1:] = ((1 - bend_decimal)*bent_roll[1:]
-                                 + bend_decimal*bent_roll[:-1])
-            else:
-                # Same procedure as for positive bends
-                if bend_int is not 0:
-                    bent_roll[:bend_int] = piano_roll[-bend_int:, bend_range]
-                else:
-                    bent_roll = piano_roll[:, bend_range]
-                bent_roll[:-1] = ((1 - bend_decimal)*bent_roll[:-1]
-                                  + bend_decimal*bent_roll[1:])
-            # Store bent portion back in piano roll
-            piano_roll[:, bend_range] = bent_roll
+                    # Same procedure as for positive bends
+                    if bend_int is not 0:
+                        bent_roll[:bend_int] = piano_roll[-bend_int:, bend_range]
+                    else:
+                        bent_roll = piano_roll[:, bend_range]
+                    bent_roll[:-1] = ((1 - bend_decimal)*bent_roll[:-1]
+                                      + bend_decimal*bent_roll[1:])
+                # Store bent portion back in piano roll
+                piano_roll[:, bend_range] = bent_roll
 
         if times is None:
             return piano_roll
@@ -958,7 +1303,7 @@ class Instrument(object):
                                                   axis=1)
         return piano_roll_integrated
 
-    def get_chroma(self, fs=100, times=None):
+    def get_chroma(self, fs=100, times=None, include_pitch_bends=True):
         """Get a chroma matrix for the note events in this instrument.
 
         Parameters
@@ -976,8 +1321,9 @@ class Instrument(object):
             Chromagram matrix of this instrument
 
         """
+
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(fs=fs, times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times, include_pitch_bends=include_pitch_bends)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
@@ -1202,6 +1548,446 @@ class Instrument(object):
         return 'Instrument(program={}, is_drum={})'.format(
             self.program, self.is_drum, len(self.notes))
 
+class KeyEstimator(object):
+    """
+    Key estimator class.
+    """
+    _algorithms = set(['pitch_class', 'interval', 'temperley'])
+    _distance = set(['euclidean', 'correlation'])
+
+    def __init__(self, algorithm, distance, key_profile):
+        """
+        :attributes:
+            - algorithm : str
+                Represents the implemented algorithms ('pitch_class', 'interval', 'temperley')
+            - distance : str
+                Represents the implemented distance measures ('euclidean', 'correlation')
+            - key_profile : KeyProfile
+                KeyProfile or KeyProfileInterval object
+        """
+        assert algorithm in KeyEstimator._algorithms, 'Algorithm %s is not supported'
+        assert distance in KeyEstimator._distance, 'Distance %s is not supported' % distance
+
+        if algorithm == 'interval':
+            assert len(key_profile.major.shape) == 2, 'Key Profile of shape %s is not a valid Transition Matrix' % str(key_profile.shape)
+        elif algorithm != 'interval':
+            assert len(key_profile.major.shape) == 1, 'Key Profile of shape %s is not a valid Data shape' % str(key_profile.shape)
+
+        self.algorithm = algorithm
+        self.distance = distance
+        self.key_profile = key_profile
+
+    def estimate(self, data):
+        """
+        Estimates the key using the respective algorithm.
+
+        :parameters:
+            - data : various
+                Data to be used with the respective algorithm.
+                'pitch_class' expects pitch class histograms
+                'interval' expects pitch class transition matrix
+                'temperley' expects beat aligned chromagrams
+        :returns:
+            - best_key, confidence, _ : int, float, various
+                Estimated key using numeric notation, confidence and other values,
+                dependent on algorithm
+        """
+        if self.algorithm == 'pitch_class':
+            return self.estimate_key_pitch_class(data)
+        elif self.algorithm == 'interval':
+            return self.estimate_key_interval(data)
+        elif self.algorithm == 'temperley':
+            return self.estimate_key_temperley(data)
+        else:
+            return None
+
+    def estimate_key_pitch_class(self, histogram):
+        """
+        Estimates the key signature by using Krumhansl and Schmucker algorithm
+        Krumhansl, C. "Cognitive Foundations of Musical Pitch, ch. 4"
+
+        :parameters:
+            - histogram : np.ndarray, shape=(12,1)
+                pitch class histogram
+            - distance : str
+                distance metric to be used <'euclidean', 'correlation'>
+            - key_profile : KeyProfile
+                KeyProfile object with respective major and minor profiles.
+        :returns:
+            - best_key : int
+                Estimated key using numeric notation
+            - confidence : float
+                Estimated confidence
+            - best_correlation : float
+                Correlation given best key and histogram
+            - p_value : float
+                2-tailed p-value. Not reliable
+        """
+        mode = 0
+        best_key = 0
+
+        if self.distance == 'euclidean':
+            best_distance = np.linalg.norm(histogram - self.key_profile.major)
+            second_best_distance = None
+            #find best major match
+            for i in xrange(1, 12):
+                cur_distance = np.linalg.norm(histogram - np.roll(self.key_profile.major, i))
+                if cur_distance < best_distance:
+                    second_best_distance = best_distance
+                    best_distance = cur_distance
+                    best_key = i
+                elif second_best_distance is None:
+                    second_best_distance = cur_distance
+
+            #check if minor is a better fit than major.
+            for i in xrange(0, 12):
+                cur_distance = np.linalg.norm(histogram - np.roll(self.key_profile.minor, i))
+                if cur_distance < best_distance:
+                    second_best_distance = best_distance
+                    best_distance = cur_distance
+                    best_key = i
+                    mode=12
+                elif cur_distance < second_best_distance:
+                    second_best_distance = cur_distance
+
+            #add mode offset
+            best_key = best_key + mode
+            confidence = 1 - best_distance / second_best_distance
+            return (best_key, confidence, best_distance)
+        elif self.distance == 'correlation':
+            best_correlation, best_p_value = sp.stats.pearsonr(histogram, self.key_profile.major)
+            second_best_correlation = None
+            #find best major match
+            for i in xrange(1, 12):
+                cur_correlation, p_value = sp.stats.pearsonr(histogram, np.roll(self.key_profile.major, i))
+                if cur_correlation > best_correlation:
+                    second_best_correlation = best_correlation
+                    best_correlation = cur_correlation
+                    best_p_value = p_value
+                    best_key = i
+                elif second_best_correlation is None:
+                    second_best_correlation = cur_correlation
+
+            #check if minor is a better fit than major.
+            for i in xrange(0, 12):
+                cur_correlation, p_value = sp.stats.pearsonr(histogram, np.roll(self.key_profile.minor, i))
+                if cur_correlation > best_correlation:
+                    second_best_correlation = best_correlation
+                    best_correlation = cur_correlation
+                    best_p_value = p_value
+                    best_key = i
+                    mode=12
+                elif cur_correlation > second_best_correlation:
+                    second_best_correlation = cur_correlation
+
+            #add mode offset
+            best_key = best_key + mode
+            confidence = (best_correlation - second_best_correlation) / best_correlation
+            return (best_key, confidence, best_correlation, p_value)
+        else:
+            return None
+
+    def estimate_key_interval(self, transition_matrix):
+        """
+        Estimates the key signature by using Soren Madsen and Gerhard Widmer algorithm.
+        Madsen, S. T. and Widmer, G. "Key-Finding With Interval Profiles"
+
+        :parameters:
+            - transition_matrix : np.ndarray, shape=(12,12)
+                pitch class transition matrix, can be extracted with get_pitch_class_transition_matrix
+        :returns:
+            - best_key : int
+                Estimated key using numeric notation
+            - best_distance : float
+                Correlation or distance given best key and transition matrix
+        """
+
+        mode = 0
+        best_key = 0
+
+        if self.distance == 'euclidean':
+            best_distance = np.linalg.norm(transition_matrix - self.key_profile.major)
+            second_best_distance = None
+            #find best major match
+            for i in xrange(1, 12):
+                cur_distance = np.linalg.norm(transition_matrix - np.roll(np.roll(self.key_profile.major, i, axis=0), i, axis=1))
+                if cur_distance < best_distance:
+                    second_best_distance = best_distance
+                    best_distance = cur_distance
+                    best_key = i
+                elif second_best_distance is None:
+                    second_best_distance = cur_distance
+
+            #check if minor is a better fit than major.
+            for i in xrange(0, 12):
+                cur_distance = np.linalg.norm(transition_matrix - np.roll(np.roll(self.key_profile.minor, i, axis=0), i, axis=1))
+                if cur_distance < best_distance:
+                    second_best_distance = best_distance
+                    best_distance = cur_distance
+                    best_key = i
+                    mode = 12
+                elif cur_distance < second_best_distance:
+                    second_best_distance = cur_distance
+
+            #add mode offset
+            best_key = best_key + mode
+            confidence = (best_distance - second_best_distance) / best_distance
+            return (best_key, best_distance)
+        elif self.distance=='correlation':
+            #as described in Madsen's paper
+            #P is interval profile, D is interval distribution
+            #cor(P, D) = \sum_j \sum_k P(j,k) D(j,k)
+            best_correlation = (transition_matrix * self.key_profile.major).sum()
+            second_best_correlation = None
+            #find best major match
+            for i in xrange(1, 12):
+                cur_correlation = (transition_matrix * np.roll(np.roll(self.key_profile.major, i, axis=0), i, axis=1)).sum()
+                if cur_correlation > best_correlation:
+                    second_best_correlation = best_correlation
+                    best_correlation = cur_correlation
+                    best_key = i
+                elif second_best_correlation is None:
+                    second_best_correlation = cur_correlation
+            #check if minor is a better fit than major.
+            for i in xrange(0, 12):
+                cur_correlation = (transition_matrix * np.roll(np.roll(self.key_profile.minor, i, axis=0), i, axis=1)).sum()
+                if cur_correlation > best_correlation:
+                    second_best_correlation = best_correlation
+                    best_correlation = cur_correlation
+                    best_key = i
+                    mode = 12
+                elif cur_correlation > second_best_correlation:
+                    second_best_correlation = cur_correlation
+
+            #add mode offset
+            best_key = best_key + mode
+            confidence = (best_correlation - second_best_correlation) / best_correlation
+            return (best_key, confidence, best_correlation)
+        else:
+            return None
+
+    def estimate_key_temperley(self, chromagram, rep_key=.9, hard_mask=True):
+        """
+        Estimates the key signature by using Temperley's algorithm.
+        Temperley, David. "A Bayesian key-finding model." MIREX extended abstract (2005).
+
+        :parameters:
+            - chromagram : np.ndarray, shape=(12, ...)
+                Chromagram matrix
+            - rep_key : float
+                Harmonic persistence weight for repeated key
+            - hard_mask : boolean
+                Apply hard mask (note present or not) as in Temperley original algorithm or soft mask
+        :returns:
+            - best_key : int
+                Estimated key using numeric notation
+            - predictions : np.array,
+                Estimated harmonic progression
+        """
+
+        #predictions for each time frame
+        predictions = np.zeros(chromagram.shape[1], dtype=int)
+        prev_key_number = None
+        prev_scores = np.zeros(12)
+
+        #set initial and transition probabilities
+        uni_key = np.log(1.0/24)
+        rep_key = np.log(rep_key)
+        dif_key = np.log((1-rep_key)/23.0)
+
+        for frame_idx in xrange(chromagram.shape[1]):
+            chroma = chromagram[:, frame_idx]
+            #use soft or hard mask
+            if hard_mask: chroma = chroma.astype(bool)
+            else: chroma /= chroma.sum()
+            #store index of non-existing pcs
+            zero_indices = ~chroma.astype(bool)
+
+            #estimate major keys
+            scores = np.zeros(24)
+            for key in xrange(12):
+                rotated_profile = np.roll(self.key_profile.major, key)
+                #probability of existing pitch classes given key
+                prob_key = rotated_profile * chroma
+                #probability of non-existing pitch classes given key
+                prob_key[zero_indices] = 1 - rotated_profile[zero_indices]
+                #probability of key
+                prob_key = np.log(prob_key).sum()
+                scores[key] = prob_key
+
+            #estimate minor keys
+            for key in xrange(12):
+                rotated_profile = np.roll(self.key_profile.minor, key)
+                #probability of existing pitch classes given key
+                prob_key = rotated_profile * chroma
+                #probability of non-existing pitch classes given key
+                prob_key[zero_indices] = 1 - rotated_profile[zero_indices]
+                #probability of key
+                prob_key = np.log(prob_key).sum()
+                scores[key+12] = prob_key
+
+            #transition probabilities, as described by Temperley
+            if frame_idx == 0:
+                #uniform prior
+                scores += uni_key
+            else:
+                #weight scores by transition probabilities as described by Temperley
+                scores += dif_key
+                scores[prev_key_number] += rep_key - dif_key
+                #add previous scores to current scores
+                scores += prev_scores
+            #find highest score
+            best_key_number = np.argmax(scores)
+            predictions[frame_idx] = best_key_number
+            #update frame_idx and previous key and score
+            prev_key_number = best_key_number
+            prev_scores = scores
+
+        best_key = np.argmax(prev_scores)
+        best_indices = np.argsort(prev_scores)[-2:][::-1]
+        confidence = 1 - prev_scores[best_indices[0]] / prev_scores[best_indices[1]]
+
+        return best_key, confidence, predictions
+
+class ChordProgressionEstimator(object):
+    """
+    Chord Progression Estimator class
+    """
+    _distance = set(['euclidean', 'correlation', 'correlation_intersection', 'npmus'])
+
+    def __init__(self, distance, chord_profiles):
+        """
+        :attributes:
+            - distance : str
+                Represents the implemented distance measures ('euclidean', 'correlation')
+            - chord_profile : ChordProfile
+                ChordProfile or ChordProfileInterval object
+        """
+        assert distance in ChordProgressionEstimator._distance, 'Distance %s is not supported' % distance
+        self.distance = distance
+        self.chord_profiles = chord_profiles
+
+    def estimate(self, histogram):
+        """
+        :parameters:
+            - histogram : np.ndarray, shape=(12,)
+                Histogram of pitch classes
+        :returns:
+            - best_root : int
+                Best root using pitch class notation
+            - best_type : str
+                Best chord type using Chris Harte's chord syntax, described in his PhD thesis
+            - best_distance : float
+                Best distance or correlation
+        """
+        # if histogram has rests only, return None
+        if np.isnan(histogram.sum()):
+            return None, '', 0
+
+        mode = 0
+        best_key = 0
+
+        pc_present = np.argwhere(histogram.astype(bool) > 0).ravel()
+        #if just one note, return it as chord key
+        if len(pc_present) == 1:
+            return pc_present[0], '', 0.
+        elif len(pc_present) == 2:
+            #if two notes, return the lowest given an interval < 7, else the highest
+            if pc_present[1] - pc_present[0] in [1,5,7,9,10]:
+                return pc_present[1], '', 0.
+            else:
+                return pc_present[0], '', 0.
+
+        if self.distance == 'euclidean':
+            best_distance = np.linalg.norm(histogram - self.chord_profiles.profiles['maj'])
+            best_type = 'maj'
+            best_root = 0
+            #treat present pitches as root
+            for pc in pc_present:
+                #rotate histogam such that existing note is the root of the chord
+                histogram_rotated = np.roll(histogram, -pc)
+                #find best chord match
+                for chord, chord_profile in self.chord_profiles.profiles.items():
+                    cur_distance = np.linalg.norm(histogram - chord_profile)
+                    if cur_distance < best_distance:
+                        best_distance = cur_distance
+                        best_type = chord
+                        best_root = pc
+            return (best_root, best_type, best_distance)
+        elif self.distance == 'correlation':
+            best_type, profile = self.chord_profiles.profiles.items()[0]
+            best_correlation, best_p_value = sp.stats.pearsonr(histogram, profile)
+            best_root = 0
+            #treat present pitches as root
+            for pc in pc_present:
+                #rotate histogam such that existing note is the root of the chord
+                histogram_rotated = np.roll(histogram, -pc)
+                #find best chord match
+                for chord, chord_profile in self.chord_profiles.profiles.items():
+                    cur_correlation, _ = sp.stats.pearsonr(chord_profile, histogram_rotated)
+                    if cur_correlation > best_correlation:
+                        best_correlation = cur_correlation
+                        best_type = chord
+                        best_root = pc
+            return (best_root, best_type, best_correlation)
+        elif self.distance == 'correlation_intersection':
+            #intersection
+            intersection_weight = 0.0
+            pc_mask = histogram.astype(bool)
+            chord_mask = self.chord_profiles.profiles['maj'].astype(bool)
+            best_intersection = (pc_mask & chord_mask).sum() / float(sum(chord_mask))
+            #correlation
+            best_correlation, best_p_value = sp.stats.pearsonr(histogram, self.chord_profiles.profiles['maj'])
+            #total score
+            best_score = (best_correlation + 1)/2.0 + (best_intersection * intersection_weight)
+            best_type = 'maj'
+            best_root = 0
+
+            #treat present pitches as root
+            for pc in pc_present:
+                #rotate histogam such that existing note is the root of the chord
+                histogram_rotated = np.roll(histogram, -pc)
+
+                pc_mask = histogram_rotated.astype(bool)
+                #find best chord match
+                for chord, chord_profile in self.chord_profiles.profiles.items():
+                    #intersection
+                    chord_mask = chord_profile.astype(bool)
+                    cur_intersection = (pc_mask & chord_mask).sum() / float(chord_mask.sum())
+                    #correlation
+                    cur_correlation, _ = sp.stats.pearsonr(chord_profile, histogram_rotated)
+                    #total score
+                    cur_score = (cur_correlation + 1)/2.0 + (cur_intersection * intersection_weight)
+                    if cur_score > best_score:
+                        best_score = cur_score
+                        best_type = chord
+                        best_root = pc
+            return (best_root, best_type, best_score)
+        elif self.distance == 'npmus':
+            #get pitchclasses
+            pitch_classes = np.argwhere(histogram > 0).ravel()
+            chord_profile_pcs = np.argwhere(self.chord_profiles.profiles['maj'] > 0).ravel()
+            #set starting best match
+            best_distance, _ = npmus.DTW(pitch_classes, chord_profile_pcs)
+            best_type = 'maj'
+            best_root = 0
+            #treat present pitches as root
+            for pc in pc_present:
+                #rotate histogam such that existing note is the root of the chord
+                histogram_rotated = np.roll(histogram, -pc)
+                pitch_classes = np.argwhere(histogram_rotated > 0).ravel()
+                #find best chord match
+                for chord, chord_profile in self.chord_profiles.profiles.items():
+                    chord_profile_pcs = np.argwhere(chord_profile > 0).ravel()
+                    cur_distance, _ = npmus.DTW(pitch_classes, chord_profile_pcs)
+                    print pc, chord, best_distance
+                    if cur_distance < best_distance:
+                        best_distance = cur_distance
+                        best_type = chord
+                        best_root = pc
+            return (best_root, best_type, best_distance)
+        else:
+            return None
 
 class Note(object):
     """A note event.
@@ -1293,6 +2079,232 @@ class ControlChange(object):
     def __repr__(self):
         return ('ControlChange(number={:d}, value={:d}, '
                 'time={:f})'.format(self.number, self.value, self.time))
+
+
+
+class TimeSignature(object):
+    def __init__(self, numerator, denominator, time):
+        """
+        Create TimeSignature object. Containts the time signature and the event time in seconds
+        :attributes:
+            - numerator : int
+                numerator of time signature
+            - denominator : int
+                denominator of time signature
+            - time : float
+                time of event in seconds
+        """
+        assert isinstance(numerator, (int, np.int)), '%s is not a recognized Key Number type' % str(type(numerator))
+        assert isinstance(denominator, (int, np.int)), '%s is not a recognized Key Number type' % str(type(denominator))
+        assert isinstance(time, (float, np.float)), '%s is not a recognized Time type' % str(type(key_number))
+        self.numerator = numerator
+        self.denominator = denominator
+        self.time = time
+
+    def __repr__(self):
+        return '%d / %d' % (self.numerator, self.denominator)
+
+class KeySignature(object):
+    def __init__(self, key_number, time):
+        """
+        Create KeySignature object. Contains the key signature and the event time in seconds
+
+        :attributes:
+            - key_number : int
+                key number accordingly to [0,11] Major, [12,23] minor
+                For example, 0 is C Major, 12 is C minor
+            - time : float
+                time of event in seconds
+        """
+        assert isinstance(key_number, (int, np.int)), '%s is not a recognized key_number type' % str(type(key_number))
+        assert isinstance(time, (float, np.float)), '%s is not a recognized time type' % str(type(key_number))
+        self.key_number = key_number
+        self.time = time
+
+    def __repr__(self):
+        return KeySignature.key_number_to_key_string(self.key_number)
+
+    @staticmethod
+    def key_number_to_key_string(key_number):
+        assert isinstance(key_number, (int, np.int)), 'key_number is not int!';
+        assert ((key_number >= 0) and (key_number < 24)), 'key_number is larger than 24';
+
+        #preference to keys with flats
+        keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+        key_idx = key_number % 12;
+        mode = key_number / 12;
+
+        if mode == 0:
+            return keys[key_idx] + ' Major'
+        elif mode == 1:
+            #preference to C#, F# and G# minor
+            if key_idx in [1,6,8]:
+                return keys[key_idx-1] + '# minor'
+            else:
+                return keys[key_idx] + ' minor'
+
+    @staticmethod
+    def key_string_to_key_number(key_string):
+        """
+        Convert a correctly formated key in string to key number
+
+        :parameters:
+            - key_string : str
+                Key in a string. format is 'key mode', where
+                key is notaded using ABCDEFG and # or b
+                mode is notated using major or minor. Letter case is irrelevant for mode.
+        """
+        assert isinstance(key_string, str), "KeyString is not String"
+        assert key_string[1] in ['#', 'b', ' '], "Second character %s is not #, b nor blank_space" % key_string[1]
+
+        key_str, mode_str = key_string.split()
+        key_str = key_str.upper()
+        mode_str = mode_str.lower()
+
+        #instantiate default pitch classes and supported modes
+        note_names_pc = {'C':0, 'D':2, 'E':4, 'F':5, 'G':7, 'A':9, 'B':11}
+        modes = ['major', 'minor']
+        assert key_str[0] in note_names_pc, 'Key is not recognized';
+        assert mode_str in modes, 'Mode is not recognized';
+
+        #lookup dictionary
+        key = note_names_pc[key_str[0]]
+
+        #offset key_index according to sharp or flat key
+        key_offset = 0
+        if len(key_str) == 2:
+            if key_str[1] == '#':
+                key_offset = 1
+            else:
+                key_offset = -1
+
+        key += key_offset
+        key = key % 12
+
+        #offset if mode is minor (1)
+        if mode_str == 'minor':
+            key += 12
+
+        return key
+
+
+class KeyProfileInterval(object):
+    _profile_ids = set(['SG', 'bach'])
+    def __init__(self, profile_id, normalize=True):
+        """
+        Create KeyProfileInterval object. Contains the major and minor key interval profile
+
+        :attributes:
+            - profile_id : str
+                String name of the profile to be used, options include:
+                'SG' : 'Soren Madsen and Gerhard Widmer'
+                'bach'  : 'Extracted from Bach's Two part Inventions'
+            - normalize : boolean
+                Normalize the key profiles such that the sum equals to one
+        """
+        assert profile_id in KeyProfileInterval._profile_ids, 'Profile id %s is not recognized' % profile_id
+
+        if profile_id == 'SG':
+            self.major = np.array([15326.0, 2.0, 9356.0, 53.0, 10513.0, 1929.0, 32.0, 6188.0, 9.0, 2949.0, 94.0, 9128.0, 0.0, 66.0, 357.0, 0.0, 54.0, 2.0, 0.0, 6.0, 0.0, 70.0, 0.0, 54.0, 12941.0, 327.0, 9321.0, 104.0, 10435.0, 3363.0, 84.0, 4478.0, 0.0, 1058.0, 57.0, 4249.0, 48.0, 0.0, 133.0, 19.0, 27.0, 22.0, 4.0, 52.0, 2.0, 4.0, 7.0, 1.0, 8527.0, 99.0, 13932.0, 29.0, 7412.0, 9844.0, 171.0, 9408.0, 14.0, 671.0, 9.0, 380.0, 833.0, 0.0, 3938.0, 45.0, 12395.0, 4873.0, 19.0, 5981.0, 42.0, 2819.0, 20.0, 392.0, 0.0, 0.0, 66.0, 0.0, 190.0, 2.0, 123.0, 771.0, 3.0, 177.0, 0.0, 12.0, 9703.0, 0.0, 3373.0, 63.0, 8086.0, 9014.0, 744.0, 16512.0, 32.0, 6439.0, 118.0, 3214.0, 20.0, 0.0, 8.0, 0.0, 16.0, 36.0, 5.0, 29.0, 38.0, 109.0, 8.0, 9.0, 1457.0, 42.0, 843.0, 0.0, 580.0, 2133.0, 136.0, 10278.0, 108.0, 5102.0, 158.0, 3994.0, 68.0, 0.0, 63.0, 4.0, 9.0, 9.0, 0.0, 85.0, 11.0, 224.0, 103.0, 2.0, 8285.0, 72.0, 4934.0, 0.0, 218.0, 103.0, 26.0, 2619.0, 18.0, 5185.0, 3.0, 2657.0])
+            self.minor = np.array([8311.0, 121.0, 6263.0, 3395.0, 79.0, 1130.0, 3.0, 2947.0, 195.0, 242.0, 3305.0, 2335.0, 134.0, 9.0, 1.0, 71.0, 0.0, 3.0, 0.0, 0.0, 1.0, 0.0, 4.0, 17.0, 8276.0, 0.0, 5369.0, 7397.0, 70.0, 2791.0, 35.0, 3037.0, 12.0, 234.0, 1552.0, 1187.0, 3537.0, 80.0, 11290.0, 4084.0, 0.0, 4162.0, 1.0, 2108.0, 76.0, 4.0, 328.0, 72.0, 59.0, 0.0, 98.0, 1.0, 45.0, 116.0, 2.0, 48.0, 0.0, 7.0, 0.0, 0.0, 661.0, 9.0, 1994.0, 6017.0, 118.0, 3105.0, 4.0, 4378.0, 418.0, 187.0, 323.0, 7.0, 0.0, 3.0, 4.0, 0.0, 4.0, 2.0, 41.0, 261.0, 3.0, 55.0, 1.0, 7.0, 3219.0, 0.0, 2486.0, 3716.0, 55.0, 5203.0, 175.0, 9816.0, 1063.0, 978.0, 1928.0, 886.0, 116.0, 2.0, 7.0, 46.0, 1.0, 250.0, 17.0, 1859.0, 294.0, 3.0, 362.0, 9.0, 191.0, 3.0, 56.0, 8.0, 1.0, 92.0, 86.0, 1880.0, 13.0, 514.0, 1024.0, 111.0, 1869.0, 6.0, 1335.0, 614.0, 1.0, 261.0, 17.0, 2210.0, 876.0, 1664.0, 2160.0, 2.0, 3131.0, 10.0, 774.0, 43.0, 2.0, 6.0, 0.0, 588.0, 9.0, 94.0, 3.0, 665.0])
+            self.major = self.major.reshape((12,12))
+            self.minor = self.minor.reshape((12,12))
+        elif profile_id == 'bach':
+            self.major = np.array([29., 0., 62., 2., 25., 3., 5., 28., 0., 36., 2., 107., 0., 0., 6., 2., 2., 0., 0., 0., 0., 0., 0., 0., 76., 5., 8., 0., 88., 20., 3., 24., 1., 6., 0., 30., 0., 2., 0., 0., 12., 0., 4., 0., 0., 0., 0., 0., 46., 0., 105., 6., 8., 58., 28., 35., 0., 17., 0., 4., 3., 0., 22., 0., 79., 2., 2., 46., 0., 11., 1., 3., 2., 0., 9., 4., 14., 6., 0., 43., 6., 8., 0., 7., 24., 0., 11., 0., 54., 61., 41., 42., 0., 54., 3., 27., 0., 0., 0., 0., 1., 1., 1., 0., 0., 12., 0., 3., 27., 0., 11., 0., 7., 14., 13., 67., 9., 11., 3., 84., 1., 0., 0., 0., 0., 0., 0., 1., 0., 15., 0., 6., 91., 3., 27., 4., 17., 4., 2., 31., 2., 76., 14., 5.])
+            self.minor = np.array([21., 1., 73., 12., 1., 12., 2., 13., 6., 9., 59., 26., 1., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 94., 0., 13., 68., 4., 10., 2., 22., 0., 0., 14., 3., 19., 0., 94., 8., 0., 50., 1.,16., 12., 1., 8., 0., 1., 1., 6., 0., 0., 2., 3., 1., 0., 0., 0., 0., 5., 0., 11., 83., 1., 15., 0., 57., 5., 3., 13., 5., 0., 0., 2., 3., 4., 0., 0., 11., 0., 2., 1., 0., 26., 0., 5., 15., 0., 83., 14., 22., 38., 19., 7., 3., 3., 0., 3., 2., 0., 14., 0., 51., 3., 0., 27., 7., 4., 0., 9., 1., 0., 0., 1., 23., 0., 5., 25., 9., 42., 0., 6., 16., 3., 9., 0., 10., 37., 31., 9., 0., 20., 0., 8., 1., 0., 3., 0., 5., 9., 7., 0., 0.])
+            self.major = self.major.reshape((12,12))
+            self.minor = self.minor.reshape((12,12))
+        if normalize:
+            self.major /= self.major.sum()
+            self.minor /= self.minor.sum()
+
+
+class KeyProfile(object):
+    _profile_ids = set(['KS', 'KK', 'AE', 'BB', 'TKP'])
+    def __init__(self, profile_id, normalize=True):
+        """
+        Create KeyProfile object. Contains the major and minor key profile
+
+        :attributes:
+            - profile_id : str
+                String name of the profile to be used, options include:
+                'KS'  : 'Krumhansl and Schmucker'
+                'KK'  : 'Krumhansl and Kessler'
+                'AE'  : 'Aarden and Essen'
+                'BB'  : 'Bellman and Budge'
+                'TKP' : 'Temperly and Kostka and Payne'
+                http://extras.humdrum.org/man/keycor/
+            - normalize : boolean
+                Normalize the key profiles such that the sum equals to one
+        """
+        assert profile_id in KeyProfile._profile_ids, 'Profile id %s is not recognized' % profile_id
+
+        if profile_id == 'KS':
+            self.major = np.array([6.35, 2.33, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+            self.minor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+        elif profile_id == 'KK':
+            self.major = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+            self.minor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
+        elif profile_id == 'AE':
+            self.major = np.array([17.7661, 0.145624, 14.9265, 0.160186, 19.8049, 11.3587, 0.291248, 22.062, 0.145624, 8.15494, 0.232998, 4.95122])
+            self.minor = np.array([18.2648, 0.737619, 14.0499, 16.8599, 0.702494, 14.4362, 0.702494, 18.6161, 4.56621, 1.93186, 7.37619, 1.75623])
+        elif profile_id == 'BB':
+            self.major = np.array([16.80, 0.86, 12.95, 1.41, 13.49, 11.93, 1.25, 20.28, 1.80, 8.04, 0.62, 10.57])
+            self.minor = np.array([18.16, 0.69, 12.99, 13.34, 1.07, 11.15, 1.38, 21.07, 7.49, 1.53, 0.92, 10.21])
+        else: #TKP
+            self.major = np.array([0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057, 0.400])
+            self.minor = np.array([0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133, 0.330])
+        if normalize:
+            self.major /= self.major.sum()
+            self.minor /= self.minor.sum()
+
+
+class ChordProfile(object):
+    _profile_ids = set(['bach_chorales', 'standard'])
+    def __init__(self, profile_id, normalize=False, boolean=False):
+        """
+        Create ChordProfile object. Contains the general chord profiles
+
+        :attributes:
+            - profile_id : str
+                String name of the profile to be used, options include:
+                'bach_chorales'  : dictionary
+                    Binary mask extracted from Bach's Chorales by D. Radicioni and R. Esposito
+                'standard' : dictionary
+                    Chord profiles created using heuristics
+            - normalize : boolean
+                Normalize the key profiles such that the sum equals to one
+        """
+        assert profile_id in ChordProfile._profile_ids, 'Profile id %s is not recognized' % profile_id
+        if profile_id == 'bach_chorales':
+            self.profiles = pkl.load(open('bach_chord_profiles.pkl', 'rb'))
+        elif profile_id == 'standard':
+            self.profiles = {'maj' : np.array([1,  0,  0,  0,  1, 0, 0,  1,  0, 0,  0,  0]),
+                             'min' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 0,  0,  0]),
+                             'aug' : np.array([1,  0,  0,  0,  1, 0, 0,  0,  1, 0,  0,  0]),
+                             'dim' : np.array([1,  0,  0,  1,  0, 0, 1,  0,  0, 0,  0,  0]),
+                            'maj7' : np.array([1,  0,  0,  0, .8, 0, 0, .8,  0, 0,  0, .8]),
+                            'min7' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 0,  1,  0]),
+                               '7' : np.array([1,  0,  0,  0, .7, 0,.1, .9,  0,.1, .7,  0]),
+                            'dim7' : np.array([1,  0,  0, .7,  0, 0,.7,  0,  0,.9,  0,  0]),
+                           'hdim7' : np.array([1,  0,  0, .7,  0, 0,.7,  0,  0, 0, .9,  0]),
+                         'minmaj7' : np.array([1,  0,  0, .7,  0, 0, 0, .7,  0, 0,  0, .7]),
+                            'maj6' : np.array([1,  0,  0,  0,  1, 0, 0,  1,  0, 1,  0,  0]),
+                            'min6' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 1,  0,  0]),
+                               '9' : np.array([1,  0,  1,  0,  1, 0, 0,  1,  0, 0,  0,  0]),
+                            'maj9' : np.array([1,  0,  1,  0,  1, 0, 0,  1,  0, 0,  0,  1]),
+                            'min9' : np.array([1,  0, .9, .9,  0, 0, 0, .9,  0, 0, .9,  0]),
+                            'sus4' : np.array([1,  0,  0,  0,  0,.9, 0, .9,  0, 0,  0,  0])}
+        else:
+            return None
+
+        if normalize:
+            for name, data in self.profiles.items():
+                self.profiles[name] = data / data.sum()
+
+        if boolean:
+            for name, data in self.profiles.items():
+                self.profiles[name] = data.astype(bool)
 
 
 def note_number_to_hz(note_number):
@@ -1691,3 +2703,33 @@ def semitones_to_pitch_bend(semitones, semitone_range=2.):
 
     """
     return int(8192*(semitones/semitone_range))
+
+def midi_key_to_pretty_key(key_signature_event):
+    """
+    Routine to convert midi package's midi.event.KeySignature to pretty_midi's key_number
+
+    :parameter:
+        - key_signature_event : midi.event.KeySignature
+            Converts the midi.event.KeySignature to conform with preety_midi's key_number.
+    """
+    sharp_keys = 'CGDAEBF'
+    flat_keys = 'CFBEADG'
+    num_accidentals, mode = key_signature_event.data
+
+    #check if key signature has sharps or flats
+    if num_accidentals >= 0 and num_accidentals < 2**7:
+        num_sharps = num_accidentals / 6
+        key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
+    else:
+        num_accidentals = 256 - num_accidentals
+        num_flats = num_accidentals / 2
+        key = flat_keys[num_accidentals % 7] + 'b' * num_flats
+
+    #append mode to string
+    if mode == 0:
+      key += ' Major'
+    else:
+      key += ' minor'
+
+    #use routine to convert from stringt notation to number notation
+    return KeySignature.key_string_to_key_number(key)
