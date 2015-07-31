@@ -618,6 +618,7 @@ class PrettyMIDI(object):
             Chromagram of MIDI data, flattened across instruments
 
         """
+
         # First, get the piano roll
         piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
