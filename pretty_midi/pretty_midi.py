@@ -83,6 +83,8 @@ class PrettyMIDI(object):
             # Compute the tick scale for the provided initial tempo
             # and let the tick scale start from 0
             self.__tick_scales = [(0, 60.0/(initial_tempo*self.resolution))]
+            # Set the time signature to 4 / 4
+            self.__time_signatures = [(0, 4, 4, 4 * self.resolution, self.resolution)]
             # Only need to convert one tick to time
             self.__tick_to_time = [0]
             # Empty instruments list
@@ -108,6 +110,12 @@ class PrettyMIDI(object):
         # For type 1, all tempo events should be on track 1.
         # Everyone ignores type 2.
         # So, just look at events on track 0
+
+        # Store time signatures as
+        # (tick, num_beats, beat_value, ticks_per_bar, ticks_per_beat)
+        # resolution is ticks_per_quarter_note
+        ticks_per_whole_note = 4.0 * self.resolution
+        self.__time_signatures = [(0, 4, 4, 4 * self.resolution, self.resolution)]
         for event in midi_data[0]:
             if event.name == 'Set Tempo':
                 # Only allow one tempo change event at the beginning
@@ -121,6 +129,19 @@ class PrettyMIDI(object):
                     # Ignore repetition of BPM, which happens often
                     if tick_scale != last_tick_scale:
                         self.__tick_scales.append((event.tick, tick_scale))
+
+            if event.name == 'Time Signature':  # if type(event) is midi.TimeSignatureEvent
+                num_beats = event.numerator
+                beat_value = event.denominator
+                ticks_per_beat = ticks_per_whole_note / beat_value
+                ticks_per_bar = num_beats * ticks_per_beat
+
+                if len(self.__time_signatures) > 0:
+                    if event.tick == self.__time_signatures[-1][0]:  # replace duplicated events
+                        del self.__time_signatures[-1]
+
+                self.__time_signatures.append((event.tick, num_beats, beat_value,
+                                               ticks_per_bar, ticks_per_beat))
 
     def _update_tick_to_time(self, max_tick):
         """Creates __tick_to_time, a class member array which maps ticks to time
@@ -275,6 +296,33 @@ class PrettyMIDI(object):
             # Convert tick scale to a tempo
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
+
+    def get_time_signatures(self):
+        '''
+        Return arrays of time signatures changes and their times.
+        This is direct from the MIDI file.
+
+        :returns:
+            - time_signature_change_times : np.ndarray
+                Times, in seconds, where the time signature changes.
+            - time_signatures : np.ndarray
+                What the time signature is at each point in time in time_signature_change_times
+                Each time signature is a row, and columns are
+                num_beats, beat_value, bar duration, beat duration
+        '''
+        # Pre-allocate return arrays
+        ts_change_times = np.zeros(len(self.__time_signatures))
+        ts = np.zeros((len(self.__time_signatures), 4))
+        for n, (tick, num_beats, beat_value, ticks_per_bar, _) \
+            in enumerate(self.__time_signatures):
+            # Convert tick of this time signature change to time in seconds
+            ts_change_times[n] = self.__tick_to_time[tick]
+            # Convert ticks to time
+            bar_duration = self.__tick_to_time[tick + ticks_per_bar] - self.__tick_to_time[tick]
+            beat_duration = bar_duration / num_beats
+            ts[n, :] = [num_beats, beat_value, bar_duration, beat_duration]
+
+        return ts_change_times, ts
 
     def get_end_time(self):
         """Returns the time of the end of this MIDI file (latest note-off event).
@@ -725,8 +773,12 @@ class PrettyMIDI(object):
         tracks = []
         # Create track 0 with timing information
         timing_track = midi.Track(tick_relative=False)
-        # Not sure if time signature is actually necessary
-        timing_track += [midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
+        # Add time signature change events
+        for (tick, num_beats, beat_value, _, _) in self.__time_signatures:
+            ts = midi.TimeSignatureEvent(tick=tick)
+            ts.set_numerator(num_beats)
+            ts.set_denominator(beat_value)
+            timing_track += [ts]
         # Add in each tempo change event
         for (tick, tick_scale) in self.__tick_scales:
             tempo_event = midi.SetTempoEvent(tick=tick)
