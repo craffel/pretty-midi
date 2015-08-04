@@ -1477,29 +1477,32 @@ class KeySignature(object):
         Parameters
         ----------
             key_number : int
-                Uses pitch classes to represent major keys.
+                Uses pitch classes to represent major and minor keys.
                 For minor keys, adds a 12 offset.
                 For example, C major is 0 and C minor is 12.
 
         Returns
         -------
         str
-            Root and mode, e.g. Gb minor.
+            'Root mode', e.g. Gb minor.
             Gives preference for keys with flats, with the
             exception of F#, G# and C# minor.
         """
 
         assert isinstance(key_number, int), \
-            'key_number is not int!'
+            '`key_number` is not int!'
         assert ((key_number >= 0) and (key_number < 24)), \
-            'key_number is larger than 24'
+            '`key_number` is larger than 24'
 
         # preference to keys with flats
         keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb',
                 'G', 'Ab', 'A', 'Bb', 'B']
+
+        # circle around 12 pitch classes
         key_idx = key_number % 12
         mode = key_number / 12
 
+        # check if mode is major or minor
         if mode == 0:
             return keys[key_idx] + ' Major'
         elif mode == 1:
@@ -1509,16 +1512,18 @@ class KeySignature(object):
             else:
                 return keys[key_idx] + ' minor'
 
+
     @staticmethod
     def key_string_to_key_number(key_string):
         """Convert a correctly formated string key to key number
 
         Parameters
+        ----------
             key_string : str
-                Key as string. format is 'key mode', where:
+                Format is 'key mode', where:
                     key is notaded using ABCDEFG with # or b;
                     mode is notated using 'major' or 'minor'.
-                Letter case is irrelevant for key and mode.
+                Letter case is irrelevant for mode.
         """
 
         assert isinstance(key_string, str), \
@@ -1537,21 +1542,25 @@ class KeySignature(object):
         modes = ['major', 'minor']
 
         # check that both key and mode are valid
-        assert key_str[0] in note_names_pc, 'Key is not recognized'
-        assert mode_str in modes, 'Mode is not recognized'
+        assert key_str[0] in note_names_pc, \
+        'Key %s is not recognized' % key_str[0]
+        assert mode_str in modes, \
+        'Mode is not recognized'
 
         # lookup dictionary
         key_number = note_names_pc[key_str[0]]
 
         # offset key_index according to sharp or flat key
         key_offset = 0
+
+        # if len is 2, has a sharp or flat
         if len(key_str) == 2:
             if key_str[1] == '#':
                 key_number += 1
             else:
                 key_number -= 1
 
-        # circle around 12
+        # circle around 12 pitch classes
         key_number = key_number % 12
 
         # offset if mode is minor
