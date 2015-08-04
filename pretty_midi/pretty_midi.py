@@ -92,7 +92,7 @@ class PrettyMIDI(object):
             self.instruments = []
 
     def _load_events(self, midi_data):
-      """Loads instruments, key signatures and tempo changes.
+      """Populates the list of instruments, key signatures and tempo changes.
 
       Parameters
       ----------
