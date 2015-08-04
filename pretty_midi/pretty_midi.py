@@ -57,9 +57,8 @@ class PrettyMIDI(object):
             # Store the resolution for later use
             self.resolution = midi_data.resolution
 
-            # Populate the list of tempo (tick scales), key
-            # and time signatures changes
-            self._load_metadata(midi_data)
+            # populate the list of tempo changes (tick scales)
+            self._load_tempo_changes(midi_data)
 
             # Update the array which maps ticks to time
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
@@ -68,7 +67,12 @@ class PrettyMIDI(object):
             if max_tick > MAX_TICK:
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
+
+            # Create list that maps ticks to time in seconds
             self._update_tick_to_time(max_tick)
+
+            # Populate the list of key and time signature changes
+            self._load_metadata(midi_data)
 
             # Check that there are only tempo change events on track 0
             if sum([sum([event.name == 'Set Tempo' for event in track])
@@ -108,26 +112,14 @@ class PrettyMIDI(object):
             # Empty instruments list
             self.instruments = []
 
-    def _load_metadata(self, midi_data):
-        """Populates the lists of tempo, key and time signature changes
-
-        Populates self.__tick_scales with tuples of (tick, tick_scale),
-        Populates self.__time_signatures with TimeSignature objects.
-            It can be accessed by the get_time_signatures method.
-        Populates self.__key_changes with KeySignature objects.
-            It can be accessed by the get_key_signatures method.
+    def _load_tempo_changes(self, midi_data):
+        """Populates self.__tick_scales with tuples of (tick, tick_scale),
 
         Parameters
         ----------
             - midi_data : midi.FileReader
                 MIDI object from which data will be read
         """
-
-        # list to store key signature changes
-        self.__key_changes = []
-
-        # list to store time signatures changes
-        self.__time_signatures = []
 
         # MIDI data is given in "ticks".
         # We need to convert this to clock seconds.
@@ -153,15 +145,37 @@ class PrettyMIDI(object):
                     # Ignore repetition of BPM, which happens often
                     if tick_scale != last_tick_scale:
                         self.__tick_scales.append((event.tick, tick_scale))
-            elif isinstance(event, midi.events.KeySignatureEvent):
-                key_obj = KeySignature(
-                    midi_key_to_key_name(event),
-                    self.__tick_to_time[event.tick])
+
+    def _load_metadata(self, midi_data):
+        """Populates the lists of tempo key and time signature changes
+
+        Populates self.__time_signatures with TimeSignature objects.
+            It can be accessed by the get_time_signatures method.
+        Populates self.__key_changes with KeySignature objects.
+            It can be accessed by the get_key_signatures method.
+
+        Parameters
+        ----------
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
+        """
+
+        # list to store key signature changes
+        self.__key_changes = []
+
+        # list to store time signatures changes
+        self.__time_signatures = []
+
+        for event in midi_data[0]:
+            if isinstance(event, midi.events.KeySignatureEvent):
+                key_obj = KeySignature(midi_key_to_key_name(event),
+                              self.__tick_to_time[event.tick])
                 self.__key_changes.append(key_obj)
+
             elif isinstance(event, midi.events.TimeSignatureEvent):
-                ts_obj = TimeSignature(
-                    event.get_numerator(), event.get_denominator(),
-                    self.__tick_to_time[event.tick])
+                ts_obj = TimeSignature(event.get_numerator(),
+                                       event.get_denominator(),
+                                       self.__tick_to_time[event.tick])
                 self.__time_signatures.append(ts_obj)
 
     def _update_tick_to_time(self, max_tick):
@@ -1357,23 +1371,24 @@ class TimeSignature(object):
     Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds
     >>> ts = TimeSignature(6, 8, 3.14)
     >>> print ts
-    6/8 at 3.140 seconds
+    6/8 at 3.14 seconds
 
     """
 
     def __init__(self, numerator, denominator, time):
-        assert isinstance(numerator, (int, np.int)), '%s is not a recognized'
-        '`numerator` type' % str(type(numerator))
-        assert isinstance(denominator, (int, np.int)), '%s is not a recognized'
-        '`denominator` type' % str(type(denominator))
-        assert isinstance(time, (float, np.float)), '%s is not a recognized'
-        '`time` type' % str(type(key_number))
+        assert isinstance(numerator, (int, np.int)), \
+        '%s is not a recognized `numerator` type' % str(type(numerator))
+        assert isinstance(denominator, (int, np.int)), \
+        '%s is not a recognized `denominator` type' % str(type(denominator))
+        assert isinstance(time, (float, np.float)), \
+        '%s is not a recognized `time` type' % str(type(key_number))
+
         self.numerator = numerator
         self.denominator = denominator
         self.time = time
 
     def __repr__(self):
-        return '%d/%d at %.3f seconds' % (
+        return '%d/%d at %.2f seconds' % (
             self.numerator,
             self.denominator,
             self.time)
@@ -1396,19 +1411,20 @@ class KeySignature(object):
     Instantiate a C# minor KeySignature object at 3.14 seconds.
     >>> ks = KeySignature(13, 3.14)
     >>> print ks
-    C# minor at 3.140 seconds
+    C# minor at 3.14 seconds
     """
 
     def __init__(self, key_number, time):
-        assert isinstance(key_number, (int, np.int)), '%s is not a recognized'
-        '`key_number` type' % str(type(key_number))
-        assert isinstance(time, (float, np.float)), '%s is not a recognized'
-        '`time` type' % str(type(key_number))
+        assert isinstance(key_number, (int, np.int)), \
+        '%s is not a recognized `key_number` type' % str(type(key_number))
+        assert isinstance(time, (float, np.float)), \
+        '%s is not a recognized `time` type' % str(type(key_number))
+
         self.key_number = key_number
         self.time = time
 
     def __repr__(self):
-        return '%s at %.3f seconds' % (
+        return '%s at %.2f seconds' % (
             KeySignature.key_number_to_key_string(self.key_number),
             self.time)
 
@@ -1492,7 +1508,7 @@ class KeySignature(object):
                 key_number -= 1
 
         # circle around 12
-        key_number = key % 12
+        key_number = key_number % 12
 
         # offset if mode is minor
         if mode_str == 'minor':
