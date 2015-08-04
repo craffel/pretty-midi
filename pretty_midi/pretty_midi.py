@@ -190,7 +190,7 @@ class PrettyMIDI(object):
         for (start_tick, tick_scale), (end_tick, _) in \
                 zip(self.__tick_scales[:-1], self.__tick_scales[1:]):
             # Convert ticks in this interval to times
-            ticks = np.arange(0, end_tick - start_tick + 1)
+            ticks = np.arange(end_tick - start_tick + 1)
             self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
                                                             tick_scale*ticks)
             # Update the time of the last tick in this interval
@@ -198,7 +198,7 @@ class PrettyMIDI(object):
         # For the final interval, use the final tempo setting
         # and ticks from the final tempo setting until max_tick
         start_tick, tick_scale = self.__tick_scales[-1]
-        ticks = np.arange(0, max_tick + 1 - start_tick)
+        ticks = np.arange(max_tick + 1 - start_tick)
         self.__tick_to_time[start_tick:] = (last_end_time +
                                             tick_scale*ticks)
 
