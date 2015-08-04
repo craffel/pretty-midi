@@ -400,7 +400,7 @@ class PrettyMIDI(object):
         '''
         return self.estimate_tempii()[0][0]
 
-    def get_beats(self, tick_resolution=1):
+    def get_beats(self):
         '''
         Return a list of beat locations, estimated according to the MIDI file
         tempo changes.
@@ -415,7 +415,7 @@ class PrettyMIDI(object):
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
         # Get tempo changes and tempos
-        tempo_change_times, tempii = self.get_tempo_changes(tick_resolution)
+        tempo_change_times, tempii = self.get_tempo_changes()
         def beat_track_using_tempo(start_time):
             ''' Starting from start_time, place beats according to the MIDI
             file's designated tempo changes '''
