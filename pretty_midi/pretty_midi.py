@@ -1337,7 +1337,7 @@ class TimeSignature(object):
     Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds
     >>> ts = TimeSignature(6, 8, 3.14)
     >>> print ts
-    (6/8)
+    6/8 at 3.140 seconds
 
     """
 
@@ -1350,7 +1350,7 @@ class TimeSignature(object):
         self.time = time
 
     def __repr__(self):
-        return '%d / %d at %.3f seconds' % (self.numerator, self.denominator, self.time)
+        return '%d/%d at %.3f seconds' % (self.numerator, self.denominator, self.time)
 
 class KeySignature(object):
     """Contains the key signature and the event time in seconds
@@ -1369,7 +1369,7 @@ class KeySignature(object):
     Instantiate a C# minor KeySignature object at 3.14 seconds.
     >>> ks = KeySignature(13, 3.14)
     >>> print ks
-    C# minor at 3.14 seconds
+    C# minor at 3.140 seconds
     """
 
     def __init__(self, key_number, time):
@@ -1383,6 +1383,21 @@ class KeySignature(object):
 
     @staticmethod
     def key_number_to_key_string(key_number):
+        """Convert a key number to a key string
+
+        Parameters
+        ----------
+            key_number : int
+                Uses pitch classes to represent major keys. For minor keys, adds a 12 offset.
+                For example, C major is 0 and C minor is 12.
+
+        Returns
+        -------
+        str
+            Root and mode, e.g. Gb minor.
+            Gives preference for keys with flats, with the exception of F#, G# and C# minor.
+        """
+
         assert isinstance(key_number, (int, np.int)), 'key_number is not int!';
         assert ((key_number >= 0) and (key_number < 24)), 'key_number is larger than 24';
 
@@ -1402,18 +1417,20 @@ class KeySignature(object):
 
     @staticmethod
     def key_string_to_key_number(key_string):
-        """
-        Convert a correctly formated key in string to key number
+        """Convert a correctly formated string key to key number
 
-        :parameters:
-            - key_string : str
-                Key in a string. format is 'key mode', where
-                key is notaded using ABCDEFG and # or b
-                mode is notated using major or minor. Letter case is irrelevant for mode.
+        Parameters
+            key_string : str
+                Key as string. format is 'key mode', where:
+                    key is notaded using ABCDEFG with # or b;
+                    mode is notated using 'major' or 'minor'.
+                Letter case is irrelevant for key and mode.
         """
+
         assert isinstance(key_string, str), "KeyString is not String"
         assert key_string[1] in ['#', 'b', ' '], "Second character %s is not #, b nor blank_space" % key_string[1]
 
+        #split key and mode, ignore case
         key_str, mode_str = key_string.split()
         key_str = key_str.upper()
         mode_str = mode_str.lower()
@@ -1421,147 +1438,30 @@ class KeySignature(object):
         #instantiate default pitch classes and supported modes
         note_names_pc = {'C':0, 'D':2, 'E':4, 'F':5, 'G':7, 'A':9, 'B':11}
         modes = ['major', 'minor']
+
+        #check that both key and mode are valid
         assert key_str[0] in note_names_pc, 'Key is not recognized';
         assert mode_str in modes, 'Mode is not recognized';
 
         #lookup dictionary
-        key = note_names_pc[key_str[0]]
+        key_number = note_names_pc[key_str[0]]
 
         #offset key_index according to sharp or flat key
         key_offset = 0
         if len(key_str) == 2:
             if key_str[1] == '#':
-                key_offset = 1
+                key_number += 1
             else:
-                key_offset = -1
+                key_number -= 1
 
-        key += key_offset
-        key = key % 12
+        #circle around 12
+        key_number = key % 12
 
-        #offset if mode is minor (1)
+        #offset if mode is minor
         if mode_str == 'minor':
-            key += 12
+            key_number += 12
 
-        return key
-
-
-class KeyProfileInterval(object):
-    _profile_ids = set(['SG', 'bach'])
-    def __init__(self, profile_id, normalize=True):
-        """
-        Create KeyProfileInterval object. Contains the major and minor key interval profile
-
-        :attributes:
-            - profile_id : str
-                String name of the profile to be used, options include:
-                'SG' : 'Soren Madsen and Gerhard Widmer'
-                'bach'  : 'Extracted from Bach's Two part Inventions'
-            - normalize : boolean
-                Normalize the key profiles such that the sum equals to one
-        """
-        assert profile_id in KeyProfileInterval._profile_ids, 'Profile id %s is not recognized' % profile_id
-
-        if profile_id == 'SG':
-            self.major = np.array([15326.0, 2.0, 9356.0, 53.0, 10513.0, 1929.0, 32.0, 6188.0, 9.0, 2949.0, 94.0, 9128.0, 0.0, 66.0, 357.0, 0.0, 54.0, 2.0, 0.0, 6.0, 0.0, 70.0, 0.0, 54.0, 12941.0, 327.0, 9321.0, 104.0, 10435.0, 3363.0, 84.0, 4478.0, 0.0, 1058.0, 57.0, 4249.0, 48.0, 0.0, 133.0, 19.0, 27.0, 22.0, 4.0, 52.0, 2.0, 4.0, 7.0, 1.0, 8527.0, 99.0, 13932.0, 29.0, 7412.0, 9844.0, 171.0, 9408.0, 14.0, 671.0, 9.0, 380.0, 833.0, 0.0, 3938.0, 45.0, 12395.0, 4873.0, 19.0, 5981.0, 42.0, 2819.0, 20.0, 392.0, 0.0, 0.0, 66.0, 0.0, 190.0, 2.0, 123.0, 771.0, 3.0, 177.0, 0.0, 12.0, 9703.0, 0.0, 3373.0, 63.0, 8086.0, 9014.0, 744.0, 16512.0, 32.0, 6439.0, 118.0, 3214.0, 20.0, 0.0, 8.0, 0.0, 16.0, 36.0, 5.0, 29.0, 38.0, 109.0, 8.0, 9.0, 1457.0, 42.0, 843.0, 0.0, 580.0, 2133.0, 136.0, 10278.0, 108.0, 5102.0, 158.0, 3994.0, 68.0, 0.0, 63.0, 4.0, 9.0, 9.0, 0.0, 85.0, 11.0, 224.0, 103.0, 2.0, 8285.0, 72.0, 4934.0, 0.0, 218.0, 103.0, 26.0, 2619.0, 18.0, 5185.0, 3.0, 2657.0])
-            self.minor = np.array([8311.0, 121.0, 6263.0, 3395.0, 79.0, 1130.0, 3.0, 2947.0, 195.0, 242.0, 3305.0, 2335.0, 134.0, 9.0, 1.0, 71.0, 0.0, 3.0, 0.0, 0.0, 1.0, 0.0, 4.0, 17.0, 8276.0, 0.0, 5369.0, 7397.0, 70.0, 2791.0, 35.0, 3037.0, 12.0, 234.0, 1552.0, 1187.0, 3537.0, 80.0, 11290.0, 4084.0, 0.0, 4162.0, 1.0, 2108.0, 76.0, 4.0, 328.0, 72.0, 59.0, 0.0, 98.0, 1.0, 45.0, 116.0, 2.0, 48.0, 0.0, 7.0, 0.0, 0.0, 661.0, 9.0, 1994.0, 6017.0, 118.0, 3105.0, 4.0, 4378.0, 418.0, 187.0, 323.0, 7.0, 0.0, 3.0, 4.0, 0.0, 4.0, 2.0, 41.0, 261.0, 3.0, 55.0, 1.0, 7.0, 3219.0, 0.0, 2486.0, 3716.0, 55.0, 5203.0, 175.0, 9816.0, 1063.0, 978.0, 1928.0, 886.0, 116.0, 2.0, 7.0, 46.0, 1.0, 250.0, 17.0, 1859.0, 294.0, 3.0, 362.0, 9.0, 191.0, 3.0, 56.0, 8.0, 1.0, 92.0, 86.0, 1880.0, 13.0, 514.0, 1024.0, 111.0, 1869.0, 6.0, 1335.0, 614.0, 1.0, 261.0, 17.0, 2210.0, 876.0, 1664.0, 2160.0, 2.0, 3131.0, 10.0, 774.0, 43.0, 2.0, 6.0, 0.0, 588.0, 9.0, 94.0, 3.0, 665.0])
-            self.major = self.major.reshape((12,12))
-            self.minor = self.minor.reshape((12,12))
-        elif profile_id == 'bach':
-            self.major = np.array([29., 0., 62., 2., 25., 3., 5., 28., 0., 36., 2., 107., 0., 0., 6., 2., 2., 0., 0., 0., 0., 0., 0., 0., 76., 5., 8., 0., 88., 20., 3., 24., 1., 6., 0., 30., 0., 2., 0., 0., 12., 0., 4., 0., 0., 0., 0., 0., 46., 0., 105., 6., 8., 58., 28., 35., 0., 17., 0., 4., 3., 0., 22., 0., 79., 2., 2., 46., 0., 11., 1., 3., 2., 0., 9., 4., 14., 6., 0., 43., 6., 8., 0., 7., 24., 0., 11., 0., 54., 61., 41., 42., 0., 54., 3., 27., 0., 0., 0., 0., 1., 1., 1., 0., 0., 12., 0., 3., 27., 0., 11., 0., 7., 14., 13., 67., 9., 11., 3., 84., 1., 0., 0., 0., 0., 0., 0., 1., 0., 15., 0., 6., 91., 3., 27., 4., 17., 4., 2., 31., 2., 76., 14., 5.])
-            self.minor = np.array([21., 1., 73., 12., 1., 12., 2., 13., 6., 9., 59., 26., 1., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 94., 0., 13., 68., 4., 10., 2., 22., 0., 0., 14., 3., 19., 0., 94., 8., 0., 50., 1.,16., 12., 1., 8., 0., 1., 1., 6., 0., 0., 2., 3., 1., 0., 0., 0., 0., 5., 0., 11., 83., 1., 15., 0., 57., 5., 3., 13., 5., 0., 0., 2., 3., 4., 0., 0., 11., 0., 2., 1., 0., 26., 0., 5., 15., 0., 83., 14., 22., 38., 19., 7., 3., 3., 0., 3., 2., 0., 14., 0., 51., 3., 0., 27., 7., 4., 0., 9., 1., 0., 0., 1., 23., 0., 5., 25., 9., 42., 0., 6., 16., 3., 9., 0., 10., 37., 31., 9., 0., 20., 0., 8., 1., 0., 3., 0., 5., 9., 7., 0., 0.])
-            self.major = self.major.reshape((12,12))
-            self.minor = self.minor.reshape((12,12))
-        if normalize:
-            self.major /= self.major.sum()
-            self.minor /= self.minor.sum()
-
-
-class KeyProfile(object):
-    _profile_ids = set(['KS', 'KK', 'AE', 'BB', 'TKP'])
-    def __init__(self, profile_id, normalize=True):
-        """
-        Create KeyProfile object. Contains the major and minor key profile
-
-        :attributes:
-            - profile_id : str
-                String name of the profile to be used, options include:
-                'KS'  : 'Krumhansl and Schmucker'
-                'KK'  : 'Krumhansl and Kessler'
-                'AE'  : 'Aarden and Essen'
-                'BB'  : 'Bellman and Budge'
-                'TKP' : 'Temperly and Kostka and Payne'
-                http://extras.humdrum.org/man/keycor/
-            - normalize : boolean
-                Normalize the key profiles such that the sum equals to one
-        """
-        assert profile_id in KeyProfile._profile_ids, 'Profile id %s is not recognized' % profile_id
-
-        if profile_id == 'KS':
-            self.major = np.array([6.35, 2.33, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
-            self.minor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
-        elif profile_id == 'KK':
-            self.major = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
-            self.minor = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
-        elif profile_id == 'AE':
-            self.major = np.array([17.7661, 0.145624, 14.9265, 0.160186, 19.8049, 11.3587, 0.291248, 22.062, 0.145624, 8.15494, 0.232998, 4.95122])
-            self.minor = np.array([18.2648, 0.737619, 14.0499, 16.8599, 0.702494, 14.4362, 0.702494, 18.6161, 4.56621, 1.93186, 7.37619, 1.75623])
-        elif profile_id == 'BB':
-            self.major = np.array([16.80, 0.86, 12.95, 1.41, 13.49, 11.93, 1.25, 20.28, 1.80, 8.04, 0.62, 10.57])
-            self.minor = np.array([18.16, 0.69, 12.99, 13.34, 1.07, 11.15, 1.38, 21.07, 7.49, 1.53, 0.92, 10.21])
-        else: #TKP
-            self.major = np.array([0.748, 0.060, 0.488, 0.082, 0.670, 0.460, 0.096, 0.715, 0.104, 0.366, 0.057, 0.400])
-            self.minor = np.array([0.712, 0.084, 0.474, 0.618, 0.049, 0.460, 0.105, 0.747, 0.404, 0.067, 0.133, 0.330])
-        if normalize:
-            self.major /= self.major.sum()
-            self.minor /= self.minor.sum()
-
-
-class ChordProfile(object):
-    _profile_ids = set(['bach_chorales', 'standard'])
-    def __init__(self, profile_id, normalize=False, boolean=False):
-        """
-        Create ChordProfile object. Contains the general chord profiles
-
-        :attributes:
-            - profile_id : str
-                String name of the profile to be used, options include:
-                'bach_chorales'  : dictionary
-                    Binary mask extracted from Bach's Chorales by D. Radicioni and R. Esposito
-                'standard' : dictionary
-                    Chord profiles created using heuristics
-            - normalize : boolean
-                Normalize the key profiles such that the sum equals to one
-        """
-        assert profile_id in ChordProfile._profile_ids, 'Profile id %s is not recognized' % profile_id
-        if profile_id == 'bach_chorales':
-            self.profiles = pkl.load(open('bach_chord_profiles.pkl', 'rb'))
-        elif profile_id == 'standard':
-            self.profiles = {'maj' : np.array([1,  0,  0,  0,  1, 0, 0,  1,  0, 0,  0,  0]),
-                             'min' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 0,  0,  0]),
-                             'aug' : np.array([1,  0,  0,  0,  1, 0, 0,  0,  1, 0,  0,  0]),
-                             'dim' : np.array([1,  0,  0,  1,  0, 0, 1,  0,  0, 0,  0,  0]),
-                            'maj7' : np.array([1,  0,  0,  0, .8, 0, 0, .8,  0, 0,  0, .8]),
-                            'min7' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 0,  1,  0]),
-                               '7' : np.array([1,  0,  0,  0, .7, 0,.1, .9,  0,.1, .7,  0]),
-                            'dim7' : np.array([1,  0,  0, .7,  0, 0,.7,  0,  0,.9,  0,  0]),
-                           'hdim7' : np.array([1,  0,  0, .7,  0, 0,.7,  0,  0, 0, .9,  0]),
-                         'minmaj7' : np.array([1,  0,  0, .7,  0, 0, 0, .7,  0, 0,  0, .7]),
-                            'maj6' : np.array([1,  0,  0,  0,  1, 0, 0,  1,  0, 1,  0,  0]),
-                            'min6' : np.array([1,  0,  0,  1,  0, 0, 0,  1,  0, 1,  0,  0]),
-                               '9' : np.array([1,  0,  1,  0,  1, 0, 0,  1,  0, 0,  0,  0]),
-                            'maj9' : np.array([1,  0,  1,  0,  1, 0, 0,  1,  0, 0,  0,  1]),
-                            'min9' : np.array([1,  0, .9, .9,  0, 0, 0, .9,  0, 0, .9,  0]),
-                            'sus4' : np.array([1,  0,  0,  0,  0,.9, 0, .9,  0, 0,  0,  0])}
-        else:
-            return None
-
-        if normalize:
-            for name, data in self.profiles.items():
-                self.profiles[name] = data / data.sum()
-
-        if boolean:
-            for name, data in self.profiles.items():
-                self.profiles[name] = data.astype(bool)
+        return key_number
 
 
 def note_number_to_hz(note_number):
