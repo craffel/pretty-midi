@@ -1489,9 +1489,10 @@ class KeySignature(object):
             exception of F#, G# and C# minor.
         """
 
-        assert isinstance(key_number, int), 'key_number is not int!'
-        assert ((key_number >= 0) and (key_number < 24)), 'key_number is'
-        'larger than 24'
+        assert isinstance(key_number, int), \
+            'key_number is not int!'
+        assert ((key_number >= 0) and (key_number < 24)), \
+            'key_number is larger than 24'
 
         # preference to keys with flats
         keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb',
@@ -1520,9 +1521,10 @@ class KeySignature(object):
                 Letter case is irrelevant for key and mode.
         """
 
-        assert isinstance(key_string, str), "KeyString is not String"
-        assert key_string[1] in ['#', 'b', ' '], "Second character"
-        " %s is not #, b nor blank_space" % key_string[1]
+        assert isinstance(key_string, str), \
+        'KeyString is not String'
+        assert key_string[1] in ['#', 'b', ' '], \
+        '2nd character %s is not #, b nor blank_space' % key_string[1]
 
         # split key and mode, ignore case
         key_str, mode_str = key_string.split()
