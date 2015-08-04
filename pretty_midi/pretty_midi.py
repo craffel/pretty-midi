@@ -1924,5 +1924,5 @@ def midi_key_to_key_name(key_signature_event):
     else:
         key += ' minor'
 
-    # use routine to convert from stringt notation to number notation
+    # use routine to convert from string notation to number notation
     return KeySignature.key_string_to_key_number(key)
