@@ -581,7 +581,7 @@ class PrettyMIDI(object):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
-    def get_key_changes(self):
+    def get_key_signatures(self):
         """Returns a list with KeySignature objects acquired directly
         from the midi file.
 
