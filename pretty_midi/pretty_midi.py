@@ -589,22 +589,22 @@ class PrettyMIDI(object):
 
 
     def get_key_changes(self):
-        """Returns a numpy array with KeySignature objects acquired directly from the midi file.
+        """Returns a list with KeySignature objects acquired directly from the midi file.
 
         Returns
         -------
-            self.__key_changes : np.ndarray, shape(#key changes, )
-                Numpy Array with KeySignature objects
+            self.__key_changes : list
+                List with KeySignature objects
         """
         return self.__key_changes
 
     def get_time_signatures(self):
-        """Returns a numpy array with TimeSignature objects acquired directly from the midi file.
+        """Returns a list with TimeSignature objects acquired directly from the midi file.
 
         Returns
         -------
-            self.__time_signatures : np.ndarray, shape(#time_signatures,)
-                Numpy array with TimeSignatures objects
+            self.__time_signatures : list,
+                List with TimeSignatures objects
         """
         return self.__time_signatures
 
