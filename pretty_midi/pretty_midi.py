@@ -173,7 +173,7 @@ class PrettyMIDI(object):
                 ts_obj = TimeSignature(numerator, denominator, time)
                 self.__time_signatures.append(ts_obj)
 
-    def _update_tick_to_time(self, max_tick, resolution=1):
+    def _update_tick_to_time(self, max_tick):
         '''
         Creates __tick_to_time, a class member array which maps ticks to time
         starting from tick 0 and ending at max_tick
