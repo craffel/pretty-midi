@@ -54,14 +54,16 @@ class PrettyMIDI(object):
         if midi_file is not None:
             # Load in the MIDI data using the midi module
             midi_data = midi.read_midifile(midi_file)
+
             # Convert tick values in midi_data to absolute, a useful thing.
             midi_data.make_ticks_abs()
 
             # Store the resolution for later use
             self.resolution = midi_data.resolution
 
-            # Populate the list of tempo changes (tick scales)
-            self._load_tempo_changes(midi_data)
+            # Populate the list of tempo (tick scales), key and time signatures changes
+            self._load_metadata(midi_data)
+
             # Update the array which maps ticks to time
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
@@ -70,6 +72,7 @@ class PrettyMIDI(object):
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
             self._update_tick_to_time(max_tick)
+
             # Check that there are only tempo change events on track 0
             if sum([sum([event.name == 'Set Tempo' for event in track])
                     for track in midi_data[1:]]):
@@ -77,9 +80,22 @@ class PrettyMIDI(object):
                                "  This is not a valid type 0 or type 1 MIDI "
                                "file.  Timing may be wrong."), RuntimeWarning)
 
-            # Populate the list of instruments, key and time signatures
-            self._load_events(midi_data)
+            # Check that there are only key signature change events on track 0
+            if sum([sum([isinstance(event, midi.events.KeySignatureEvent) for event in track])
+                    for track in midi_data[1:]]):
+                warnings.warn(("Key signature change events found on non-zero tracks."
+                               "  This is not a valid type 0 or type 1 MIDI "
+                               "file.  Key Signature may be wrong."), RuntimeWarning)
 
+            # Check that there are only time signature change events on track 0
+            if sum([sum([isinstance(event, midi.events.TimeSignatureEvent) for event in track])
+                    for track in midi_data[1:]]):
+                warnings.warn(("Time signature change events found on non-zero tracks."
+                               "  This is not a valid type 0 or type 1 MIDI "
+                               "file.  Time Signature may be wrong."), RuntimeWarning)
+
+            # Populate the list of instruments
+            self._load_instruments(midi_data)
 
         else:
             self.resolution = resolution
@@ -91,19 +107,21 @@ class PrettyMIDI(object):
             # Empty instruments list
             self.instruments = []
 
-    def _load_events(self, midi_data):
-      """Populates the list of instruments, key signatures and tempo changes.
+    def _load_metadata(self, midi_data):
+        """Populates the lists of tempo, key and time signature changes
 
-      Parameters
-      ----------
-      midi_data : midi.FileReader
-        MIDI object from which data will be read
+        Populates self.__tick_scales with tuples of (tick, tick_scale),
+        Populates self.__time_signatures with TimeSignature objects. It can be accessed by the get_time_signatures method.
+        Populates self.__key_changes with KeySignature objects. It can be accessed by the get_key_signatures method.
 
-      """
-      self._load_instruments(midi_data)
-      self._load_key_changes(midi_data)
-      self._load_time_signatures(midi_data)
+        Parameters
+        ----------
+            - midi_data : midi.FileReader
+                MIDI object from which data will be read
+        """
 
+        #list to store key signature changes
+        self.__key_changes = []
 
     def _load_tempo_changes(self, midi_data):
         """Populates self.__tick_scales with tuples of (tick, tick_scale)
@@ -114,6 +132,10 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
 
         """
+
+        #list to store time signatures changes
+        self.__time_signatures = []
+
         # MIDI data is given in "ticks".
         # We need to convert this to clock seconds.
         # The conversion factor involves the BPM, which may change over time.
@@ -126,7 +148,7 @@ class PrettyMIDI(object):
         # Everyone ignores type 2.
         # So, just look at events on track 0
         for event in midi_data[0]:
-            if event.name == 'Set Tempo':
+            if isinstance(event, midi.events.SetTempoEvent):
                 # Only allow one tempo change event at the beginning
                 if event.tick == 0:
                     bpm = event.get_bpm()
@@ -138,44 +160,15 @@ class PrettyMIDI(object):
                     # Ignore repetition of BPM, which happens often
                     if tick_scale != last_tick_scale:
                         self.__tick_scales.append((event.tick, tick_scale))
-
-    def _load_key_changes(self, midi_data):
-        """Populates self.__key_changes with KeySignature objects
-
-        Data can accessed through the get_key_changes method.
-
-        Parameters
-        ---------
-            midi_data : midi.FileReader
-                MIDI object from which data will be read
-        """
-
-        self.__key_changes = []
-        for event in midi_data[0]:
-            if isinstance(event, midi.events.KeySignatureEvent):
-                key_number = midi_key_to_pretty_key(event)
-                time = self.__tick_to_time[event.tick]
-                key_obj = KeySignature(key_number, time)
+            elif isinstance(event, midi.events.KeySignatureEvent):
+                key_obj = KeySignature(
+                    midi_key_to_key_name(event),
+                    self.__tick_to_time[event.tick])
                 self.__key_changes.append(key_obj)
-
-    def _load_time_signatures(self, midi_data):
-        """Populates self.__time_signatures with TimeSignature objects
-
-        Data can accessed through the get_time_signatures method.
-
-        Parameters
-        ----------
-            midi_data : midi.FileReader
-                MIDI object from which data will be read
-        """
-
-        self.__time_signatures = []
-        for event in midi_data[0]:
-            if isinstance(event, midi.events.TimeSignatureEvent):
-                numerator = event.get_numerator()
-                denominator = event.get_denominator()
-                time = self.__tick_to_time[event.tick]
-                ts_obj = TimeSignature(numerator, denominator, time)
+            elif isinstance(event, midi.events.TimeSignatureEvent):
+                ts_obj = TimeSignature(
+                    event.get_numerator(), event.get_denominator(),
+                    self.__tick_to_time[event.tick])
                 self.__time_signatures.append(ts_obj)
 
     def _update_tick_to_time(self, max_tick):
@@ -596,7 +589,7 @@ class PrettyMIDI(object):
 
 
     def get_key_changes(self):
-        """Returns an array with KeySignature objects acquired directly from the midi file.
+        """Returns a numpy array with KeySignature objects acquired directly from the midi file.
 
         Returns
         -------
@@ -606,7 +599,7 @@ class PrettyMIDI(object):
         return self.__key_changes
 
     def get_time_signatures(self):
-        """Returns an array with TimeSignature objects acquired directly from the midi file.
+        """Returns a numpy array with TimeSignature objects acquired directly from the midi file.
 
         Returns
         -------
@@ -1380,46 +1373,65 @@ class ControlChange(object):
 
 
 class TimeSignature(object):
+    """Containts the time signature numerator, denominator and the event time in seconds
+
+    Attributes
+    ----------
+        numerator : int
+            Numerator of time signature
+        denominator : int
+            Denominator of time signature
+        time : float
+            Time of event in seconds
+
+    Examples
+    --------
+    Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds
+    >>> ts = TimeSignature(6, 8, 3.14)
+    >>> print ts
+    (6/8)
+
+    """
+
     def __init__(self, numerator, denominator, time):
-        """
-        Create TimeSignature object. Containts the time signature and the event time in seconds
-        :attributes:
-            - numerator : int
-                numerator of time signature
-            - denominator : int
-                denominator of time signature
-            - time : float
-                time of event in seconds
-        """
-        assert isinstance(numerator, (int, np.int)), '%s is not a recognized Key Number type' % str(type(numerator))
-        assert isinstance(denominator, (int, np.int)), '%s is not a recognized Key Number type' % str(type(denominator))
-        assert isinstance(time, (float, np.float)), '%s is not a recognized Time type' % str(type(key_number))
+        assert isinstance(numerator, (int, np.int)), '%s is not a recognized `numerator` type' % str(type(numerator))
+        assert isinstance(denominator, (int, np.int)), '%s is not a recognized `denominator` type' % str(type(denominator))
+        assert isinstance(time, (float, np.float)), '%s is not a recognized `time` type' % str(type(key_number))
         self.numerator = numerator
         self.denominator = denominator
         self.time = time
 
     def __repr__(self):
-        return '%d / %d' % (self.numerator, self.denominator)
+        return '%d / %d at %.3f seconds' % (self.numerator, self.denominator, self.time)
 
 class KeySignature(object):
-    def __init__(self, key_number, time):
-        """
-        Create KeySignature object. Contains the key signature and the event time in seconds
+    """Contains the key signature and the event time in seconds
 
-        :attributes:
-            - key_number : int
-                key number accordingly to [0,11] Major, [12,23] minor
-                For example, 0 is C Major, 12 is C minor
-            - time : float
-                time of event in seconds
-        """
-        assert isinstance(key_number, (int, np.int)), '%s is not a recognized key_number type' % str(type(key_number))
-        assert isinstance(time, (float, np.float)), '%s is not a recognized time type' % str(type(key_number))
+    Only supports major and minor keys.
+
+    Attributes
+    ----------
+        key_number : int
+            key number accordingly to [0,11] Major, [12,23] minor
+            For example, 0 is C Major, 12 is C minor
+        time : float
+            time of event in seconds
+    Examples
+    --------
+    Instantiate a C# minor KeySignature object at 3.14 seconds.
+    >>> ks = KeySignature(13, 3.14)
+    >>> print ks
+    C# minor at 3.14 seconds
+    """
+
+    def __init__(self, key_number, time):
+        assert isinstance(key_number, (int, np.int)), '%s is not a recognized `key_number` type' % str(type(key_number))
+        assert isinstance(time, (float, np.float)), '%s is not a recognized `time` type' % str(type(key_number))
         self.key_number = key_number
         self.time = time
 
     def __repr__(self):
-        return KeySignature.key_number_to_key_string(self.key_number)
+        return '%s at %.3f seconds' % (KeySignature.key_number_to_key_string(self.key_number), self.time)
 
     @staticmethod
     def key_number_to_key_string(key_number):
@@ -2001,7 +2013,7 @@ def semitones_to_pitch_bend(semitones, semitone_range=2.):
     """
     return int(8192*(semitones/semitone_range))
 
-def midi_key_to_pretty_key(key_signature_event):
+def midi_key_to_key_name(key_signature_event):
     """
     Routine to convert midi package's midi.event.KeySignature to pretty_midi's key_number
 
