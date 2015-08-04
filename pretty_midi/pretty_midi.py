@@ -173,7 +173,7 @@ class PrettyMIDI(object):
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
                 key_obj = KeySignature(midi_key_to_key_name(event),
-                              self.__tick_to_time[event.tick])
+                                       self.__tick_to_time[event.tick])
                 self.__key_changes.append(key_obj)
 
             elif isinstance(event, midi.events.TimeSignatureEvent):
@@ -1419,11 +1419,11 @@ class TimeSignature(object):
 
     def __init__(self, numerator, denominator, time):
         assert isinstance(numerator, int), \
-        '%s is not a recognized `numerator` type' % str(type(numerator))
+            '%s is not a recognized `numerator`' % str(type(numerator))
         assert isinstance(denominator, int), \
-        '%s is not a recognized `denominator` type' % str(type(denominator))
+            '%s is not a recognized `denominator`' % str(type(denominator))
         assert isinstance(time, float), \
-        '%s is not a recognized `time` type' % str(type(key_number))
+            '%s is not a recognized `time`' % str(type(key_number))
 
         self.numerator = numerator
         self.denominator = denominator
@@ -1458,116 +1458,115 @@ class KeySignature(object):
 
     def __init__(self, key_number, time):
         assert isinstance(key_number, int), \
-        '%s is not a recognized `key_number` type' % str(type(key_number))
+            '%s is not a recognized `key_number` type' % str(type(key_number))
         assert isinstance(time, float), \
-        '%s is not a recognized `time` type' % str(type(key_number))
+            '%s is not a recognized `time` type' % str(type(key_number))
 
         self.key_number = key_number
         self.time = time
 
     def __repr__(self):
         return '%s at %.2f seconds' % (
-            KeySignature.key_number_to_key_string(self.key_number),
+            key_number_to_key_string(self.key_number),
             self.time)
 
-    @staticmethod
-    def key_number_to_key_string(key_number):
-        """Convert a key number to a key string
 
-        Parameters
-        ----------
-            key_number : int
-                Uses pitch classes to represent major and minor keys.
-                For minor keys, adds a 12 offset.
-                For example, C major is 0 and C minor is 12.
+def key_number_to_key_string(key_number):
+    """Convert a key number to a key string
 
-        Returns
-        -------
-        str
-            'Root mode', e.g. Gb minor.
-            Gives preference for keys with flats, with the
-            exception of F#, G# and C# minor.
-        """
+    Parameters
+    ----------
+        key_number : int
+            Uses pitch classes to represent major and minor keys.
+            For minor keys, adds a 12 offset.
+            For example, C major is 0 and C minor is 12.
 
-        assert isinstance(key_number, int), \
-            '`key_number` is not int!'
-        assert ((key_number >= 0) and (key_number < 24)), \
-            '`key_number` is larger than 24'
+    Returns
+    -------
+    str
+        'Root mode', e.g. Gb minor.
+        Gives preference for keys with flats, with the
+        exception of F#, G# and C# minor.
+    """
 
-        # preference to keys with flats
-        keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb',
-                'G', 'Ab', 'A', 'Bb', 'B']
+    assert isinstance(key_number, int), \
+        '`key_number` is not int!'
+    assert ((key_number >= 0) and (key_number < 24)), \
+        '`key_number` is larger than 24'
 
-        # circle around 12 pitch classes
-        key_idx = key_number % 12
-        mode = key_number / 12
+    # preference to keys with flats
+    keys = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb',
+            'G', 'Ab', 'A', 'Bb', 'B']
 
-        # check if mode is major or minor
-        if mode == 0:
-            return keys[key_idx] + ' Major'
-        elif mode == 1:
-            # preference to C#, F# and G# minor
-            if key_idx in [1, 6, 8]:
-                return keys[key_idx-1] + '# minor'
-            else:
-                return keys[key_idx] + ' minor'
+    # circle around 12 pitch classes
+    key_idx = key_number % 12
+    mode = key_number / 12
+
+    # check if mode is major or minor
+    if mode == 0:
+        return keys[key_idx] + ' Major'
+    elif mode == 1:
+        # preference to C#, F# and G# minor
+        if key_idx in [1, 6, 8]:
+            return keys[key_idx-1] + '# minor'
+        else:
+            return keys[key_idx] + ' minor'
 
 
-    @staticmethod
-    def key_string_to_key_number(key_string):
-        """Convert a correctly formated string key to key number
+def key_string_to_key_number(key_string):
+    """Convert a correctly formated string key to key number
 
-        Parameters
-        ----------
-            key_string : str
-                Format is 'key mode', where:
-                    key is notaded using ABCDEFG with # or b;
-                    mode is notated using 'major' or 'minor'.
-                Letter case is irrelevant for mode.
-        """
+    Parameters
+    ----------
+        key_string : str
+            Format is 'key mode', where:
+                key is notaded using ABCDEFG with # or b;
+                mode is notated using 'major' or 'minor'.
+            Letter case is irrelevant for mode.
+    """
 
-        assert isinstance(key_string, str), \
+    assert isinstance(key_string, str), \
         'KeyString is not String'
-        assert key_string[1] in ['#', 'b', ' '], \
+    assert key_string[1] in ['#', 'b', ' '], \
         '2nd character %s is not #, b nor blank_space' % key_string[1]
 
-        # split key and mode, ignore case
-        key_str, mode_str = key_string.split()
-        key_str = key_str.upper()
-        mode_str = mode_str.lower()
+    # split key and mode, ignore case
+    key_str, mode_str = key_string.split()
+    key_str = key_str.upper()
+    mode_str = mode_str.lower()
 
-        # instantiate default pitch classes and supported modes
-        note_names_pc = {'C': 0, 'D': 2, 'E': 4,
-                         'F': 5, 'G': 7, 'A': 9, 'B': 11}
-        modes = ['major', 'minor']
+    # instantiate default pitch classes and supported modes
+    note_names_pc = {'C': 0, 'D': 2, 'E': 4,
+                     'F': 5, 'G': 7, 'A': 9, 'B': 11}
+    modes = ['major', 'minor']
 
-        # check that both key and mode are valid
-        assert key_str[0] in note_names_pc, \
+    # check that both key and mode are valid
+    assert key_str[0] in note_names_pc, \
         'Key %s is not recognized' % key_str[0]
-        assert mode_str in modes, \
+    assert mode_str in modes, \
         'Mode is not recognized'
 
-        # lookup dictionary
-        key_number = note_names_pc[key_str[0]]
+    # lookup dictionary
+    key_number = note_names_pc[key_str[0]]
 
-        # offset key_index according to sharp or flat key
-        key_offset = 0
+    # offset key_index according to sharp or flat key
+    key_offset = 0
 
-        # if len is 2, has a sharp or flat
-        if len(key_str) == 2:
-            if key_str[1] == '#':
-                key_number += 1
-            else:
-                key_number -= 1
+    # if len is 2, has a sharp or flat
+    if len(key_str) == 2:
+        if key_str[1] == '#':
+            key_number += 1
+        else:
+            key_number -= 1
 
-        # circle around 12 pitch classes
-        key_number = key_number % 12
+    # circle around 12 pitch classes
+    key_number = key_number % 12
 
-        # offset if mode is minor
-        if mode_str == 'minor':
-            key_number += 12
+    # offset if mode is minor
+    if mode_str == 'minor':
+        key_number += 12
 
-        return key_number
+    return key_number
 
 
 def note_number_to_hz(note_number):
@@ -1998,4 +1997,4 @@ def midi_key_to_key_name(key_signature_event):
         key += ' minor'
 
     # use routine to convert from string notation to number notation
-    return KeySignature.key_string_to_key_number(key)
+    return key_string_to_key_number(key)
