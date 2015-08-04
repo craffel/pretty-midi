@@ -117,7 +117,7 @@ class PrettyMIDI(object):
             self.instruments = []
 
     def _load_tempo_changes(self, midi_data):
-        """Populates self.__tick_scales with tuples of (tick, tick_scale),
+        """Populates self.__tick_scales with tuples of (tick, tick_scale)
 
         Parameters
         ----------
