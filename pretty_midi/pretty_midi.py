@@ -1376,11 +1376,11 @@ class TimeSignature(object):
     """
 
     def __init__(self, numerator, denominator, time):
-        assert isinstance(numerator, (int, np.int)), \
+        assert isinstance(numerator, int), \
         '%s is not a recognized `numerator` type' % str(type(numerator))
-        assert isinstance(denominator, (int, np.int)), \
+        assert isinstance(denominator, int), \
         '%s is not a recognized `denominator` type' % str(type(denominator))
-        assert isinstance(time, (float, np.float)), \
+        assert isinstance(time, float), \
         '%s is not a recognized `time` type' % str(type(key_number))
 
         self.numerator = numerator
@@ -1415,9 +1415,9 @@ class KeySignature(object):
     """
 
     def __init__(self, key_number, time):
-        assert isinstance(key_number, (int, np.int)), \
+        assert isinstance(key_number, int), \
         '%s is not a recognized `key_number` type' % str(type(key_number))
-        assert isinstance(time, (float, np.float)), \
+        assert isinstance(time, float), \
         '%s is not a recognized `time` type' % str(type(key_number))
 
         self.key_number = key_number
@@ -1447,7 +1447,7 @@ class KeySignature(object):
             exception of F#, G# and C# minor.
         """
 
-        assert isinstance(key_number, (int, np.int)), 'key_number is not int!'
+        assert isinstance(key_number, int), 'key_number is not int!'
         assert ((key_number >= 0) and (key_number < 24)), 'key_number is'
         'larger than 24'
 
