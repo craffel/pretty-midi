@@ -77,6 +77,7 @@ class PrettyMIDI(object):
                                "  This is not a valid type 0 or type 1 MIDI "
                                "file.  Timing may be wrong."), RuntimeWarning)
 
+            # Populate the list of instruments, key and time signatures
             self._load_events(midi_data)
 
 
