@@ -23,6 +23,7 @@ DEFAULT_SF2 = 'TimGM6mb.sf2'
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
 
+
 class PrettyMIDI(object):
     '''
     A container for MIDI data in an easily-manipulable format.
@@ -187,9 +188,8 @@ class PrettyMIDI(object):
         # Cycle through intervals of different tempii
         for (start_tick, tick_scale), (end_tick, _) in \
                 zip(self.__tick_scales[:-1], self.__tick_scales[1:]):
-
             # Convert ticks in this interval to times
-            ticks = np.arange(0, end_tick - start_tick + 1, resolution)
+            ticks = np.arange(0, end_tick - start_tick + 1)
             self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
                                                             tick_scale*ticks)
             # Update the time of the last tick in this interval
@@ -197,7 +197,7 @@ class PrettyMIDI(object):
         # For the final interval, use the final tempo setting
         # and ticks from the final tempo setting until max_tick
         start_tick, tick_scale = self.__tick_scales[-1]
-        ticks = np.arange(0, max_tick + 1 - start_tick, resolution)
+        ticks = np.arange(0, max_tick + 1 - start_tick)
         self.__tick_to_time[start_tick:] = (last_end_time +
                                             tick_scale*ticks)
 
@@ -302,7 +302,7 @@ class PrettyMIDI(object):
         instrument = self.instruments[-1]
         return instrument
 
-    def get_tempo_changes(self, tick_resolution=1):
+    def get_tempo_changes(self):
         '''
         Return arrays of tempo changes and their times.
         This is direct from the MIDI file.
@@ -318,7 +318,7 @@ class PrettyMIDI(object):
         tempii = np.zeros(len(self.__tick_scales))
         for n, (tick, tick_scale) in enumerate(self.__tick_scales):
             # Convert tick of this tempo change to time in seconds
-            tempo_change_times[n] = self.__tick_to_time[tick_resolution * int(tick / tick_resolution)]
+            tempo_change_times[n] = self.__tick_to_time[tick]
             # Convert tick scale to a tempo
             tempii[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempii
