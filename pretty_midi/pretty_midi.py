@@ -206,7 +206,7 @@ class PrettyMIDI(object):
         self.__tick_to_time = np.zeros(max_tick + 1)
         # Keep track of the end time of the last tick in the previous interval
         last_end_time = 0
-        # Cycle through intervals of different tempii
+        # Cycle through intervals of different tempi
         for (start_tick, tick_scale), (end_tick, _) in \
                 zip(self.__tick_scales[:-1], self.__tick_scales[1:]):
             # Convert ticks in this interval to times
@@ -332,20 +332,20 @@ class PrettyMIDI(object):
         -------
         tempo_change_times : np.ndarray
             Times, in seconds, where the tempo changes.
-        tempii : np.ndarray
+        tempi : np.ndarray
             What the tempo is at each point in time in tempo_change_times
 
         """
 
         # Pre-allocate return arrays
         tempo_change_times = np.zeros(len(self.__tick_scales))
-        tempii = np.zeros(len(self.__tick_scales))
+        tempi = np.zeros(len(self.__tick_scales))
         for n, (tick, tick_scale) in enumerate(self.__tick_scales):
             # Convert tick of this tempo change to time in seconds
             tempo_change_times[n] = self.__tick_to_time[tick]
             # Convert tick scale to a tempo
-            tempii[n] = 60.0/(tick_scale*self.resolution)
-        return tempo_change_times, tempii
+            tempi[n] = 60.0/(tick_scale*self.resolution)
+        return tempo_change_times, tempi
 
     def get_end_time(self):
         """Returns the time of the end of this MIDI file (latest note-off event).
@@ -365,7 +365,7 @@ class PrettyMIDI(object):
         else:
             return max(events)
 
-    def estimate_tempii(self):
+    def estimate_tempi(self):
         """Return an empirical estimate of tempos in the piece and each tempo's
         probability.
         Based on "Automatic Extraction of Tempo and Beat from Expressive
@@ -417,7 +417,7 @@ class PrettyMIDI(object):
         return 60./clusters, cluster_counts
 
     def estimate_tempo(self):
-        """Returns the best tempo estimate from estimate_tempii(), for
+        """Returns the best tempo estimate from estimate_tempi(), for
         convenience
 
         Returns
@@ -426,7 +426,7 @@ class PrettyMIDI(object):
             Estimated tempo, in bpm
 
         """
-        return self.estimate_tempii()[0][0]
+        return self.estimate_tempi()[0][0]
 
     def get_beats(self):
         """Return a list of beat locations, estimated according to the MIDI
@@ -444,7 +444,7 @@ class PrettyMIDI(object):
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
         # Get tempo changes and tempos
-        tempo_change_times, tempii = self.get_tempo_changes()
+        tempo_change_times, tempi = self.get_tempo_changes()
 
         def beat_track_using_tempo(start_time):
             """Starting from start_time, place beats according to the MIDI
@@ -464,7 +464,7 @@ class PrettyMIDI(object):
             # Add beats in
             while beats[-1] < end_time:
                 # Compute expected beat location, one period later
-                next_beat = beats[-1] + 60.0/tempii[n]
+                next_beat = beats[-1] + 60.0/tempi[n]
                 # If the beat location passes a tempo change boundary...
                 if (n < tempo_change_times.shape[0] - 1 and
                         next_beat > tempo_change_times[n + 1]):
@@ -475,18 +475,18 @@ class PrettyMIDI(object):
                     # While a beat with the current tempo would pass a tempo
                     # change boundary...
                     while (n < tempo_change_times.shape[0] - 1 and
-                           next_beat + beat_remaining*60.0/tempii[n] >=
+                           next_beat + beat_remaining*60.0/tempi[n] >=
                            tempo_change_times[n + 1]):
                         # Compute the amount the beat location overshoots
                         overshot_ratio = (tempo_change_times[n + 1] -
-                                          next_beat)/(60.0/tempii[n])
+                                          next_beat)/(60.0/tempi[n])
                         # Add in the amount of the beat during this tempo
-                        next_beat += overshot_ratio*60.0/tempii[n]
+                        next_beat += overshot_ratio*60.0/tempi[n]
                         # Less of the beat remains now
                         beat_remaining -= overshot_ratio
                         # Increment the tempo index
                         n = n + 1
-                    next_beat += beat_remaining*60./tempii[n]
+                    next_beat += beat_remaining*60./tempi[n]
                 beats.append(next_beat)
             # The last beat will pass the end_time barrier, so don't return it
             return np.array(beats[:-1])
