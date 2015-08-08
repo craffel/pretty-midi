@@ -137,16 +137,16 @@ class Instrument(object):
                 else:
                     bent_roll = piano_roll[:, bend_range]
                 # Now, linear interpolate by the decimal place
-                bent_roll[1:] = ((1 - bend_decimal)*bent_roll[1:]
-                                 + bend_decimal*bent_roll[:-1])
+                bent_roll[1:] = ((1 - bend_decimal)*bent_roll[1:] +
+                                 bend_decimal*bent_roll[:-1])
             else:
                 # Same procedure as for positive bends
                 if bend_int is not 0:
                     bent_roll[:bend_int] = piano_roll[-bend_int:, bend_range]
                 else:
                     bent_roll = piano_roll[:, bend_range]
-                bent_roll[:-1] = ((1 - bend_decimal)*bent_roll[:-1]
-                                  + bend_decimal*bent_roll[1:])
+                bent_roll[:-1] = ((1 - bend_decimal)*bent_roll[:-1] +
+                                  bend_decimal*bent_roll[1:])
             # Store bent portion back in piano roll
             piano_roll[:, bend_range] = bent_roll
 

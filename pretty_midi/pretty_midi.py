@@ -257,8 +257,8 @@ class PrettyMIDI(object):
                         self.__tick_to_time[event.tick],
                         event.velocity))
                 # Note offs can also be note on events with 0 velocity
-                elif event.name == 'Note Off' or (event.name == 'Note On'
-                                                  and event.velocity == 0):
+                elif event.name == 'Note Off' or (event.name == 'Note On' and
+                                                  event.velocity == 0):
                     # Get the instrument's drum type
                     is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
@@ -315,8 +315,8 @@ class PrettyMIDI(object):
 
         """
         for instrument in self.instruments:
-            if (instrument.program == program
-                    and instrument.is_drum == is_drum):
+            if (instrument.program == program and
+                    instrument.is_drum == is_drum):
                 # Add this note event
                 return instrument
         # Create the instrument if none was found
@@ -400,8 +400,8 @@ class PrettyMIDI(object):
             if (np.abs(clusters - interval) < .025).any():
                 k = np.argmin(clusters - interval)
                 # Update cluster mean
-                clusters[k] = (cluster_counts[k]*clusters[k]
-                               + interval)/(cluster_counts[k] + 1)
+                clusters[k] = (cluster_counts[k]*clusters[k] +
+                               interval)/(cluster_counts[k] + 1)
                 # Update number of elements in cluster
                 cluster_counts[k] += 1
             # No cluster is close, make a new one
@@ -475,11 +475,11 @@ class PrettyMIDI(object):
                     # While a beat with the current tempo would pass a tempo
                     # change boundary...
                     while (n < tempo_change_times.shape[0] - 1 and
-                           next_beat + beat_remaining*60.0/tempii[n]
-                           >= tempo_change_times[n + 1]):
+                           next_beat + beat_remaining*60.0/tempii[n] >=
+                           tempo_change_times[n + 1]):
                         # Compute the amount the beat location overshoots
-                        overshot_ratio = (tempo_change_times[n + 1]
-                                          - next_beat)/(60.0/tempii[n])
+                        overshot_ratio = (tempo_change_times[n + 1] -
+                                          next_beat)/(60.0/tempii[n])
                         # Add in the amount of the beat during this tempo
                         next_beat += overshot_ratio*60.0/tempii[n]
                         # Less of the beat remains now
