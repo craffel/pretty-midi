@@ -61,6 +61,11 @@ def key_name_to_key_number(key_string):
             `key` is notaded using ABCDEFG with # or b;
             `mode` is notated using 'major' or 'minor'.
         Letter case is irrelevant for mode.
+
+    Returns
+    -------
+        int
+            Integer number representing the key and its mode
     """
 
     if not isinstance(key_string, str):
