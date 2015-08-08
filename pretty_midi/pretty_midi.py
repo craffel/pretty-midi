@@ -440,6 +440,137 @@ class PrettyMIDI(object):
         """
         return self.estimate_tempii()[0][0]
 
+    def get_beats_using_metadata(self):
+        """Uses Time Signature and Tempo metadata to estimate beat times
+
+        Returns
+        -------
+            np.ndarray of floats, shape(#beats,)
+                List of beat times in seconds
+        """
+
+        # Get tempo changes and tempi based on quarter note
+        tempo_change_times, tempi = self.get_tempo_changes()
+
+        # if there's only one tempo
+        if len(tempo_change_times) == 1:
+            # if there's only one time signature
+            if len(self.time_signature_changes) == 1:
+                # get tempo given time signature
+                tempo = qpm_to_bpm(tempi[0], self.time_signature_changes[0])
+                # interpolate through the end with given tempo
+                timestamps = np.arange(tempo_change_times[0], self.get_end_time(), 60.0/tempo)
+                return timestamps
+            # if there is more than one time signature, update tempo accordingly
+            else:
+                start_time = 0
+                timestamps = None
+                for i in xrange(1, len(self.time_signature_changes)):
+                    cur_ts = self.time_signature_changes[i-1]
+                    nxt_ts = self.time_signature_changes[i]
+                    # convert qpm to bpm
+                    tempo = qpm_to_bpm(tempi[0], self.time_signature_changes[i-1])
+                    if timestamps is None:
+                        timestamps = np.arange(cur_ts.time, nxt_ts.time, 60.0/tempo)
+                    else:
+                        timestamps = np.hstack(timestamps, np.arange(cur_ts.time, nxt_ts.time, 60.0/tempo))
+                # last time signature
+                tempo = qpm_to_bpm(tempi[0], self.time_signature_changes[-1])
+                timestamps = np.hstack(timestamps, np.arange(nxt_ts.time, self.get_end_time(), 60.0/tempo))
+                return timestamps
+        # if there are multiple tempi
+        else:
+            # if there's only one time signature
+            if len(self.time_signature_changes) == 1:
+                cur_beat = 0
+                time_data_matrix = []
+
+                #extract beat locations given tempi and their location in time
+                for i in xrange(1, len(tempo_change_times)):
+                    tempo = qpm_to_bpm(tempi[i-1], self.time_signature_changes[0])
+                    cur_tempo_change_time = tempo_change_times[i-1]
+                    nxt_tempo_change_time = tempo_change_times[i]
+
+                    # iterate through beats
+                    beat_len = 60.0 / tempo
+                    beat_dur = (nxt_tempo_change_time - cur_tempo_change_time) / beat_len
+                    time_data_matrix.append((cur_tempo_change_time, beat_len, cur_beat))
+                    cur_beat += Fraction(beat_dur).limit_denominator(16)
+
+                #convert to np.ndarray for convenience
+                time_data_matrix = np.array(time_data_matrix)
+
+                #given beat, find timestamp in seconds
+                timestamps = []
+                last_beat = time_data_matrix[:,2][-1]
+
+                beats = np.arange(1, last_beat, beat_resolution)
+
+                for beat in beats:
+                    cur_idx = np.argmax(time_data_matrix[:,2] > beat) - 1
+                    cur_time = time_data_matrix[cur_idx, 0]
+                    cur_beat_len = time_data_matrix[cur_idx, 1]
+                    cur_beat = time_data_matrix[cur_idx, 2]
+
+                    if cur_beat == beat:
+                        timestamps.append(cur_time)
+                    else:
+                        beat_dif = beat - cur_beat
+                        beat_time = cur_time + cur_beat_len * beat_dif
+                        timestamps.append(beat_time)
+                return np.array(timestamps)
+            # if there are multiple tempi and time signatures
+            else:
+                cur_beat = 0
+                time_data_matrix = []
+
+                # store TimeSignature objects
+                ts_idx = 1
+                cur_ts = self.time_signature_changes[ts_idx-1]
+                nxt_ts = self.time_signature_changes[ts_idx]
+
+                # extract beat locations given tempi and their location in time
+                for i in xrange(1, len(tempo_change_times)):
+                    cur_tempo_change_time = tempo_change_times[i-1]
+                    nxt_tempo_change_time = tempo_change_times[i]
+
+                    while nxt_ts < nxt_tempo_change_time:
+                        tempo = qpm_to_bpm(tempi[i-1], cur_ts)
+
+                        # iterate through beats
+                        beat_len = 60.0 / tempo
+                        beat_dur = (nxt_ts.time - cur_ts.time) / beat_len
+                        time_data_matrix.append((cur_ts.time, beat_len, cur_beat))
+                        cur_beat += Fraction(beat_dur).limit_denominator(16)
+
+                        # update TimeSignature
+                        ts_idx += 1
+                        cur_ts = self.time_signature_changes[ts_idx-1]
+                        nxt_ts = self.time_signature_changes[ts_idx]
+
+                # convert to np.ndarray for convenience
+                time_data_matrix = np.array(time_data_matrix)
+
+                # given beat, find timestamp in seconds
+                timestamps = []
+                last_beat = time_data_matrix[:,2][-1]
+
+                beats = np.arange(1, last_beat, beat_resolution)
+
+                for beat in beats:
+                    cur_idx = np.argmax(time_data_matrix[:,2] > beat) - 1
+                    cur_time = time_data_matrix[cur_idx, 0]
+                    cur_beat_len = time_data_matrix[cur_idx, 1]
+                    cur_beat = time_data_matrix[cur_idx, 2]
+
+                    if cur_beat == beat:
+                        timestamps.append(cur_time)
+                    else:
+                        beat_dif = beat - cur_beat
+                        beat_time = cur_time + cur_beat_len * beat_dif
+                        timestamps.append(beat_time)
+                return None
+
     def get_beats(self):
         """Return a list of beat locations, estimated according to the MIDI
         file tempo changes.
@@ -1584,6 +1715,41 @@ def key_name_to_key_number(key_string):
 
     return key_number
 
+def qpm_to_bpm(quarter_note_tempo, time_signature):
+    """ Converts from quarter per minute to beats per minute
+
+    Parameters
+    ----------
+        quarter_note_tempo : float
+            quarter note tempo.
+        time_signature : TimeSignature
+            TimeSignature object.
+
+    Returns
+    -------
+        float
+            Beats per minute
+    """
+
+    # denominator is half note
+    if time_signature.denominator == 2:
+        return quarter_note_tempo / 2.0
+    # denominator is quarter note
+    elif time_signature.denominator == 4:
+        return quarter_note_tempo
+    # denominator is eighth, sixteenth or 32nd
+    elif time_signature.denominator in [8,16,32]:
+        # simple triple
+        if time_signature.numerator == 3:
+            return 2 * quarter_note_tempo
+        # compound meter 6/8*n, 9/8*n, 12/8*n...
+        elif time_signature.numerator % 3 == 0:
+            return 2.0 * quarter_note_tempo / 3.0
+        # strongly assume it's binary
+        else:
+            return quarter_note_tempo
+    else:
+        return quarter_note_tempo
 
 def note_number_to_hz(note_number):
     """Convert a (fractional) MIDI note number to its frequency in Hz.
