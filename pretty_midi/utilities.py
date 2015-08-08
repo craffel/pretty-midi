@@ -106,6 +106,42 @@ def key_name_to_key_number(key_string):
     return key_number
 
 
+def qpm_to_bpm(quarter_note_tempo, time_signature):
+    """ Converts from quarter per minute to beats per minute
+
+    Parameters
+    ----------
+        quarter_note_tempo : float
+            quarter note tempo.
+        time_signature : TimeSignature
+            TimeSignature object.
+    Returns
+    -------
+        float
+            Beats per minute
+    """
+
+    # denominator is half note
+    if time_signature.denominator == 2:
+        return quarter_note_tempo / 2.0
+    # denominator is quarter note
+    elif time_signature.denominator == 4:
+        return quarter_note_tempo
+    # denominator is eighth, sixteenth or 32nd
+    elif time_signature.denominator in [8,16,32]:
+        # simple triple
+        if time_signature.numerator == 3:
+            return 2 * quarter_note_tempo
+        # compound meter 6/8*n, 9/8*n, 12/8*n...
+        elif time_signature.numerator % 3 == 0:
+            return 2.0 * quarter_note_tempo / 3.0
+        # strongly assume it's binary
+        else:
+            return quarter_note_tempo
+    else:
+        return quarter_note_tempo
+
+
 def note_number_to_hz(note_number):
     """Convert a (fractional) MIDI note number to its frequency in Hz.
 
