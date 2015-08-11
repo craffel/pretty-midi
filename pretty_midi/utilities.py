@@ -7,7 +7,6 @@ import numpy as np
 import re
 
 from .constants import DRUM_MAP, INSTRUMENT_MAP, INSTRUMENT_CLASSES
-#from .containers import TimeSignature
 
 def key_number_to_key_name(key_number):
     """Convert a key number to a key string
@@ -109,6 +108,7 @@ def key_name_to_key_number(key_string):
         key_number += 12
 
     return key_number
+
 
 def num_accidentals_mode_to_key_number(num_accidentals, mode):
     """Convert to pretty_midi's given number of accidentals and mode
@@ -213,7 +213,6 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
         '%s is not a valid numerator type or value' % str(numerator)
     assert all((isinstance(denominator, int), denominator > 0)), \
         '%s is not a valid denominator type or value' % str(denominator)
-
 
     # denominator is whole note
     if denominator == 1:
