@@ -12,7 +12,7 @@ import copy
 from .instrument import Instrument
 from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
-from .utilities import key_name_to_key_number, num_accidentals_mode_to_key_number, key_number_to_num_accidentals_mode
+from .utilities import key_name_to_key_number, mode_accidentals_to_key_number, key_number_to_num_accidentals_mode
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -153,7 +153,7 @@ class PrettyMIDI(object):
 
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
-                key_obj = KeySignature(num_accidentals_mode_to_key_number(event.data[0], event.data[1]),
+                key_obj = KeySignature(mode_accidentals_to_key_number(event.data[0], event.data[1]),
                                        self.__tick_to_time[event.tick])
                 self.key_signature_changes.append(key_obj)
 
