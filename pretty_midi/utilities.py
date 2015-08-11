@@ -63,7 +63,7 @@ def key_name_to_key_number(key_string):
 
     Returns
     -------
-        int
+        key_number : int
             Integer number representing the key and its mode
     """
 
@@ -168,6 +168,7 @@ def key_number_to_num_accidentals_mode(key_number):
     -------
         num_accidentals : int
             Number of accidentals according to python's midi package
+            Positive is for sharps and negative is for flats
         mode : int
             0 for major, 1 for minor
     """
