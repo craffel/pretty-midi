@@ -116,14 +116,15 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
 
     Parameters
     ----------
-        num_accidentals : int
-            Positive number is used for sharps, negative number is used for flats
-        mode : int
-            0 is major, 1 is minor
+    num_accidentals : int
+        Positive number is used for sharps, negative number is used for flats
+    mode : int
+        0 is major, 1 is minor
+
     Returns
     -------
-        key_number : int
-            Integer number representing the key and its mode
+    key_number : int
+        Integer number representing the key and its mode
     """
 
     assert all((isinstance(num_accidentals, int), num_accidentals > -8, num_accidentals < 8)), \
@@ -161,16 +162,16 @@ def key_number_to_num_accidentals_mode(key_number):
 
     Parameters
     ----------
-        key_number : int
-            Key number as used in pretty midi
+    key_number : int
+        Key number as used in pretty midi
 
     Returns
     -------
-        num_accidentals : int
-            Number of accidentals according to python's midi package
-            Positive is for sharps and negative is for flats
-        mode : int
-            0 for major, 1 for minor
+    num_accidentals : int
+        Number of accidentals according to python's midi package
+        Positive is for sharps and negative is for flats
+    mode : int
+        0 for major, 1 for minor
     """
 
     assert all((isinstance(key_number, int), key_number >= 0, key_number < 24)), \
@@ -195,17 +196,17 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
 
     Parameters
     ----------
-        quarter_note_tempo : float
-            quarter note tempo
-        numerator : int
-            numerator of time signature
-        denominator : int
-            denominator of time signature
+    quarter_note_tempo : float
+        quarter note tempo
+    numerator : int
+        numerator of time signature
+    denominator : int
+        denominator of time signature
 
     Returns
     -------
-        float
-            Tempo in beats per minute
+    float
+        Tempo in beats per minute
     """
 
     assert all((isinstance(quarter_note_tempo, (int, float)), quarter_note_tempo > 0)), \

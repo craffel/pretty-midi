@@ -103,12 +103,12 @@ class TimeSignature(object):
 
     Attributes
     ----------
-        numerator : int
-            Numerator of time signature
-        denominator : int
-            Denominator of time signature
-        time : float
-            Time of event in seconds
+    numerator : int
+        Numerator of time signature
+    denominator : int
+        Denominator of time signature
+    time : float
+        Time of event in seconds
 
     Examples
     --------
