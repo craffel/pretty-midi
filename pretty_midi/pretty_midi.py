@@ -428,81 +428,100 @@ class PrettyMIDI(object):
         """
         return self.estimate_tempi()[0][0]
 
-    def get_beats(self):
-        """Return a list of beat locations, estimated according to the MIDI
-        file tempo changes.
+    def get_beats(self, start_time=0.):
+        """Return a list of beat locations, according to MIDI tempo changes.
         Will not be correct if the MIDI data has been modified without changing
         tempo information.
+
+        Parameters
+        ----------
+        start_time : float
+            Location of the first beat, in seconds.
 
         Returns
         -------
         beats : np.ndarray
-            Beat locations, in seconds
+            Beat locations, in seconds.
 
+        """
+        # Get tempo changes and tempos
+        tempo_change_times, tempi = self.get_tempo_changes()
+        # Create beat list; first beat is at first onset
+        beats = [start_time]
+        # Index of the tempo we're using
+        n = 0
+        # Move past all the tempo changes up to the supplied start time
+        while (n < tempo_change_times.shape[0] - 1 and
+                beats[-1] > tempo_change_times[n]):
+            n += 1
+        # Get track end time
+        end_time = self.get_end_time()
+        # Add beats in
+        while beats[-1] < end_time:
+            # Compute expected beat location, one period later
+            next_beat = beats[-1] + 60.0/tempi[n]
+            # If the beat location passes a tempo change boundary...
+            if (n < tempo_change_times.shape[0] - 1 and
+                    next_beat > tempo_change_times[n + 1]):
+                # Start by setting the beat location to the current beat...
+                next_beat = beats[-1]
+                # with the entire beat remaining
+                beat_remaining = 1.0
+                # While a beat with the current tempo would pass a tempo
+                # change boundary...
+                while (n < tempo_change_times.shape[0] - 1 and
+                        next_beat + beat_remaining*60.0/tempi[n] >=
+                        tempo_change_times[n + 1]):
+                    # Compute the amount the beat location overshoots
+                    overshot_ratio = (tempo_change_times[n + 1] -
+                                      next_beat)/(60.0/tempi[n])
+                    # Add in the amount of the beat during this tempo
+                    next_beat += overshot_ratio*60.0/tempi[n]
+                    # Less of the beat remains now
+                    beat_remaining -= overshot_ratio
+                    # Increment the tempo index
+                    n = n + 1
+                next_beat += beat_remaining*60./tempi[n]
+            beats.append(next_beat)
+        # The last beat will pass the end_time barrier, so don't include it
+        beats = np.array(beats[:-1])
+        return beats
+
+    def estimate_beat_start(self, candidates=10, tolerance=.025):
+        """Estimate the location of the first beat based on which of the first
+        few onsets results in the best correlation with the onset spike train.
+
+        Parameters
+        ----------
+        candidates : int
+            Number of candidate onsets to try
+        tolerance : float
+            The tolerance in seconds around which onsets will be used to
+            treat a beat as correct
+
+        Returns
+        -------
+        beat_start : float
+            The offset which is chosen as the beat start location
         """
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
         note_list.sort(key=lambda note: note.start)
-        # Get tempo changes and tempos
-        tempo_change_times, tempi = self.get_tempo_changes()
-
-        def beat_track_using_tempo(start_time):
-            """Starting from start_time, place beats according to the MIDI
-            file's designated tempo changes.
-
-            """
-            # Create beat list; first beat is at first onset
-            beats = [start_time]
-            # Index of the tempo we're using
-            n = 0
-            # Move past all the tempo changes up to the supplied start time
-            while (n < tempo_change_times.shape[0] - 1 and
-                   beats[-1] > tempo_change_times[n]):
-                n += 1
-            # Get track end time
-            end_time = self.get_end_time()
-            # Add beats in
-            while beats[-1] < end_time:
-                # Compute expected beat location, one period later
-                next_beat = beats[-1] + 60.0/tempi[n]
-                # If the beat location passes a tempo change boundary...
-                if (n < tempo_change_times.shape[0] - 1 and
-                        next_beat > tempo_change_times[n + 1]):
-                    # Start by setting the beat location to the current beat...
-                    next_beat = beats[-1]
-                    # with the entire beat remaining
-                    beat_remaining = 1.0
-                    # While a beat with the current tempo would pass a tempo
-                    # change boundary...
-                    while (n < tempo_change_times.shape[0] - 1 and
-                           next_beat + beat_remaining*60.0/tempi[n] >=
-                           tempo_change_times[n + 1]):
-                        # Compute the amount the beat location overshoots
-                        overshot_ratio = (tempo_change_times[n + 1] -
-                                          next_beat)/(60.0/tempi[n])
-                        # Add in the amount of the beat during this tempo
-                        next_beat += overshot_ratio*60.0/tempi[n]
-                        # Less of the beat remains now
-                        beat_remaining -= overshot_ratio
-                        # Increment the tempo index
-                        n = n + 1
-                    next_beat += beat_remaining*60./tempi[n]
-                beats.append(next_beat)
-            # The last beat will pass the end_time barrier, so don't return it
-            return np.array(beats[:-1])
-
         # List of possible beat trackings
         beat_candidates = []
+        # List of start times for each beat candidate
+        start_times = []
         onset_index = 0
         # Try the first 10 (unique) onsets as beat tracking start locations
-        while (len(beat_candidates) <= 10 and
+        while (len(beat_candidates) <= candidates and
                len(beat_candidates) <= len(note_list) and
                onset_index < len(note_list)):
             # Make sure we are using a new start location
             if onset_index == 0 or np.abs(note_list[onset_index - 1].start -
                                           note_list[onset_index].start) > .001:
                 beat_candidates.append(
-                    beat_track_using_tempo(note_list[onset_index].start))
+                    self.get_beats(note_list[onset_index].start))
+                start_times.append(note_list[onset_index].start)
             onset_index += 1
         # Compute onset scores
         onset_scores = np.zeros(len(beat_candidates))
@@ -515,18 +534,19 @@ class PrettyMIDI(object):
             # Create a synthetic beat signal with 25ms windows
             beat_signal = np.zeros(int(fs*(self.get_end_time() + 1)))
             for beat in np.append(0, beats):
-                if beat - .025 < 0:
-                    beat_window = np.ones(int(fs*.05 + (beat - 0.025)*fs))
-                    beat_signal[:int((beat + .025)*fs)] = beat_window
+                if beat - tolerance < 0:
+                    beat_window = np.ones(
+                        int(fs*2*tolerance + (beat - tolerance)*fs))
+                    beat_signal[:int((beat + tolerance)*fs)] = beat_window
                 else:
-                    beat_start = int((beat - .025)*fs)
-                    beat_end = beat_start + int(fs*.05)
-                    beat_window = np.ones(int(fs*.05))
+                    beat_start = int((beat - tolerance)*fs)
+                    beat_end = beat_start + int(fs*tolerance*2)
+                    beat_window = np.ones(int(fs*tolerance*2))
                     beat_signal[beat_start:beat_end] = beat_window
             # Compute their dot product and normalize to get score
             onset_scores[n] = np.dot(beat_signal, onset_signal)/beats.shape[0]
-        # Return the best-scoring beat tracking
-        return beat_candidates[np.argmax(onset_scores)]
+        # Return the best-scoring beat start
+        return start_times[np.argmax(onset_scores)]
 
     def get_onsets(self):
         """Return a sorted list of the times of all onsets of all notes from
