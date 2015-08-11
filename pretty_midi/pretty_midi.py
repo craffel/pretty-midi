@@ -144,7 +144,6 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
         """
 
-        # _load_metadata routine proper starts here
         # list to store key signature changes
         self.key_signature_changes = []
 
