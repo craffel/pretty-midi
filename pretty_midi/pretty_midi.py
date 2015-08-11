@@ -105,8 +105,8 @@ class PrettyMIDI(object):
 
         Parameters
         ----------
-            - midi_data : midi.FileReader
-                MIDI object from which data will be read
+            midi_data : midi.FileReader
+              MIDI object from which data will be read
         """
 
         # MIDI data is given in "ticks".
