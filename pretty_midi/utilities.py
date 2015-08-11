@@ -110,7 +110,7 @@ def key_name_to_key_number(key_string):
     return key_number
 
 
-def num_accidentals_mode_to_key_number(num_accidentals, mode):
+def mode_accidentals_to_key_number(num_accidentals, mode):
     """Convert to pretty_midi's given number of accidentals and mode
     key_number
 
