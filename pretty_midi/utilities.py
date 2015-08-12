@@ -201,6 +201,62 @@ def key_number_to_mode_accidentals(key_number):
         return None
 
 
+def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
+    """Converts from quarter notes per minute to beats per minute
+
+    Parameters
+    ----------
+    quarter_note_tempo : float
+        quarter note tempo
+    numerator : int
+        numerator of time signature
+    denominator : int
+        denominator of time signature
+
+    Returns
+    -------
+    float
+        Tempo in beats per minute
+    """
+
+    if not (isinstance(quarter_note_tempo, (int, float)) and
+            quarter_note_tempo > 0):
+        raise ValueError(
+            'Quarter notes per minute must be an int or float '
+            'greater than 0, but {} was supplied'.format(quarter_note_tempo))
+    if not (isinstance(numerator, int) and numerator > 0):
+        raise ValueError(
+            'Time signature numerator must be an int greater than 0, but {} '
+            'was supplied.'.format(numerator))
+    if not (isinstance(denominator, int) and denominator > 0):
+        raise ValueError(
+            'Time signature denominator must be an int greater than 0, but {} '
+            'was supplied.'.format(denominator))
+
+    # denominator is whole note
+    if denominator == 1:
+        return quarter_note_tempo / 4.0
+    # denominator is half note
+    elif denominator == 2:
+        return quarter_note_tempo / 2.0
+    # denominator is quarter note
+    elif denominator == 4:
+        return quarter_note_tempo
+    # denominator is eighth, sixteenth or 32nd
+    elif denominator in [8, 16, 32]:
+        # simple triple
+        if numerator == 3:
+            return 2 * quarter_note_tempo
+        # compound meter 6/8*n, 9/8*n, 12/8*n...
+        elif numerator % 3 == 0:
+            return 2.0 * quarter_note_tempo / 3.0
+        # strongly assume two eighths equal a beat
+        else:
+            return quarter_note_tempo
+    else:
+        return quarter_note_tempo
+
+
 def note_number_to_hz(note_number):
     """Convert a (fractional) MIDI note number to its frequency in Hz.
 
