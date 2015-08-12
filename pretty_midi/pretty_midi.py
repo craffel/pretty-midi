@@ -600,6 +600,70 @@ class PrettyMIDI(object):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
+    def get_pitch_class_histogram(self, use_duration=True, normalize=True):
+        """Computes the frequency of pitch classes in the entire track optionally weighted by their durations.
+
+        Parameters
+        ----------
+            use_duration : boolean
+                Increase frequency by note duration
+            normalize : boolean
+                Normalizes the histogram such that the sum of bin values is 1.
+
+        Returns
+        -------
+            histogram : np.ndarray, shape=(12,)
+                Histogram of pitch classes optionally weighted by their durations
+        """
+
+        histogram = np.zeros(12)
+
+        for ins in self.instruments:
+            for note in ins.notes:
+                if use_duration:
+                    histogram[note.pitch % 12] += note.end - note.start
+                else:
+                    histogram[note.pitch % 12] += 1
+
+        if normalize:
+            histogram /= histogram.sum()
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, use_duration=False, normalize=True):
+        """Computes the pitch class transition matrix.
+
+        Parameters
+        ----------
+            use_duration : boolean
+                Increase frequency by transition duration (current and next note)
+            normalize : boolean
+                Normalize transition matrix such that matrix sum equals is 1.
+
+        :returns:
+            -  pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+        """
+
+        pitch_class_transition_matrix = np.zeros((12,12))
+
+        for ins in self.instruments:
+            for i in xrange(1, len(ins.notes)):
+                cur_pc = (ins.notes[i-1].pitch) % 12
+                nxt_pc = (ins.notes[i].pitch) % 12
+
+                cur_dur = ins.notes[i-1].end - ins.notes[i-1].start
+                nxt_dur = ins.notes[i].end - ins.notes[i].start
+
+                if use_duration:
+                    pitch_class_transition_matrix[cur_pc, nxt_pc] = cur_dur + nxt_dur
+                else:
+                    pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+
+        if normalize:
+            pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
+
+        return pitch_class_transition_matrix
+
     def synthesize(self, fs=44100, wave=np.sin):
         """Synthesize the pattern using some waveshape.  Ignores drum track.
 
