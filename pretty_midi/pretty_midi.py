@@ -12,10 +12,12 @@ import copy
 from .instrument import Instrument
 from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
-from .utilities import key_name_to_key_number, mode_accidentals_to_key_number, key_number_to_num_accidentals_mode
+from .utilities import mode_accidentals_to_key_number
+from .utilities import key_number_to_mode_accidentals
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
+
 
 class PrettyMIDI(object):
     """A container for MIDI data in an easily-manipulable format.
@@ -53,7 +55,7 @@ class PrettyMIDI(object):
             # Store the resolution for later use
             self.resolution = midi_data.resolution
 
-            # populate the list of tempo changes (tick scales)
+            # Populate the list of tempo changes (tick scales)
             self._load_tempo_changes(midi_data)
 
             # Update the array which maps ticks to time
@@ -152,8 +154,9 @@ class PrettyMIDI(object):
 
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
-                key_obj = KeySignature(mode_accidentals_to_key_number(event.data[1], event.data[0]),
-                                       self.__tick_to_time[event.tick])
+                key_obj = KeySignature(mode_accidentals_to_key_number(
+                    event.data[1], event.data[0]),
+                    self.__tick_to_time[event.tick])
                 self.key_signature_changes.append(key_obj)
 
             elif isinstance(event, midi.events.TimeSignatureEvent):
@@ -809,7 +812,8 @@ class PrettyMIDI(object):
         # Add in each key signature
         for ks in self.key_signature_changes:
             midi_ks = midi.events.KeySignatureEvent()
-            num_accidentals, mode = key_number_to_num_accidentals_mode(ks.key_number)
+            mode, num_accidentals = key_number_to_mode_accidentals(
+                ks.key_number)
             midi_ks.set_alternatives(num_accidentals)
             midi_ks.set_minor(mode)
             timing_track += [midi_ks]

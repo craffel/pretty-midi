@@ -8,6 +8,7 @@ import re
 
 from .constants import DRUM_MAP, INSTRUMENT_MAP, INSTRUMENT_CLASSES
 
+
 def key_number_to_key_name(key_number):
     """Convert a key number to a key string
 
@@ -116,10 +117,10 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
 
     Parameters
     ----------
-    num_accidentals : int
-        Positive number is used for sharps, negative number is used for flats
     mode : int
         0 is major, 1 is minor
+    num_accidentals : int
+        Positive number is used for sharps, negative number is used for flats
 
     Returns
     -------
@@ -127,9 +128,14 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
         Integer number representing the key and its mode
     """
 
-    assert all((isinstance(num_accidentals, int), num_accidentals > -8, num_accidentals < 8)), \
-        'Number of accidentals %s is not valid' % str(num_accidentals)
-    assert mode in (0,1), 'Mode %s is not recognizable' % str(mode)
+    if not (isinstance(num_accidentals, int) and
+            num_accidentals > -8 and
+            num_accidentals < 8):
+        raise ValueError('Number of accidentals {} is not valid'.format(
+            num_accidentals))
+    if mode not in (0, 1):
+        raise ValueError('Mode {} is not recognizable, must be 0 or 1'.format(
+            mode))
 
     sharp_keys = 'CGDAEBF'
     flat_keys = 'FBEADGC'
@@ -142,7 +148,7 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
         if num_accidentals == -1:
             key = 'F'
         else:
-            key = flat_keys[(-1 * num_accidentals -1) % 7] + 'b'
+            key = flat_keys[(-1 * num_accidentals - 1) % 7] + 'b'
 
     # find major key number
     key += ' Major'
@@ -157,7 +163,7 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
     return key_number
 
 
-def key_number_to_num_accidentals_mode(key_number):
+def key_number_to_mode_accidentals(key_number):
     """Converts a key number to number of accidentals and mode
 
     Parameters
@@ -167,32 +173,36 @@ def key_number_to_num_accidentals_mode(key_number):
 
     Returns
     -------
+    mode : int
+        0 for major, 1 for minor
     num_accidentals : int
         Number of accidentals according to python's midi package
         Positive is for sharps and negative is for flats
-    mode : int
-        0 for major, 1 for minor
     """
 
-    assert all((isinstance(key_number, int), key_number >= 0, key_number < 24)), \
-        '%s is not a valid type or value' % str(key_number)
+    if not ((isinstance(key_number, int) and
+             key_number >= 0 and
+             key_number < 24)):
+        raise ValueError('Key number {} is not a must be an int between 0 and '
+                         '24'.format(key_number))
 
-    pc_to_num_accidentals_major = {0:0, 1:-5, 2:2, 3:-3, 4:4, 5:-1, 6:6, 7:1, 8:-4, 9:3, 10:-2, 11:5}
+    pc_to_num_accidentals_major = {0: 0, 1: -5, 2: 2, 3: -3, 4: 4, 5: -1, 6: 6,
+                                   7: 1, 8: -4, 9: 3, 10: -2, 11: 5}
     mode = key_number / 12
 
     if mode == 0:
         num_accidentals = pc_to_num_accidentals_major[key_number]
-        return num_accidentals, mode
+        return mode, num_accidentals
     elif mode == 1:
         key_number = (key_number + 3) % 12
         num_accidentals = pc_to_num_accidentals_major[key_number]
-        return num_accidentals, mode
+        return mode, num_accidentals
     else:
         return None
 
 
 def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
-    """ Converts from quarter per minute to beats per minute
+    """Converts from quarter notes per minute to beats per minute
 
     Parameters
     ----------
@@ -209,12 +219,19 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
         Tempo in beats per minute
     """
 
-    assert all((isinstance(quarter_note_tempo, (int, float)), quarter_note_tempo > 0)), \
-        '%s is not a valid qpm type or value' % str(quarter_note_tempo)
-    assert all((isinstance(numerator, int), numerator > 0)), \
-        '%s is not a valid numerator type or value' % str(numerator)
-    assert all((isinstance(denominator, int), denominator > 0)), \
-        '%s is not a valid denominator type or value' % str(denominator)
+    if not (isinstance(quarter_note_tempo, (int, float)) and
+            quarter_note_tempo > 0):
+        raise ValueError(
+            'Quarter notes per minute must be an int or float '
+            'greater than 0, but {} was supplied'.format(quarter_note_tempo))
+    if not (isinstance(numerator, int) and numerator > 0):
+        raise ValueError(
+            'Time signature numerator must be an int greater than 0, but {} '
+            'was supplied.'.format(numerator))
+    if not (isinstance(denominator, int) and denominator > 0):
+        raise ValueError(
+            'Time signature denominator must be an int greater than 0, but {} '
+            'was supplied.'.format(denominator))
 
     # denominator is whole note
     if denominator == 1:
@@ -226,7 +243,7 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
     elif denominator == 4:
         return quarter_note_tempo
     # denominator is eighth, sixteenth or 32nd
-    elif denominator in [8,16,32]:
+    elif denominator in [8, 16, 32]:
         # simple triple
         if numerator == 3:
             return 2 * quarter_note_tempo
