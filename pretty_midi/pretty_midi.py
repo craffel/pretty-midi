@@ -574,6 +574,61 @@ class PrettyMIDI(object):
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
 
+    def get_pitch_class_histogram(self, use_duration=False,
+                                  use_velocity=False, normalize=True):
+        """Computes the histogram of pitch classes given all tracks
+
+        Parameters
+        ----------
+        use_duration : bool
+            Weight frequency by note duration
+        use_velocity : bool
+            Weight frequency by note velocity
+        normalize : bool
+            Normalizes the histogram such that the sum of bin values is 1.
+
+        Returns
+        -------
+        histogram : np.ndarray, shape=(12,)
+            Histogram of pitch classes given all tracks, optionally weighted
+            by their durations or velocities
+        """
+        # Sum up all histograms from all instruments defaulting to np.zeros(12)
+        histogram = sum([i.get_pitch_class_histogram()
+                         for i in self.instruments], np.zeros(12))
+
+        # Normalize accordingly
+        if normalize:
+            histogram /= (histogram.sum() + (histogram.sum() == 0))
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, normalize=False):
+        """Computes the transition matrix of pitch classes given all tracks
+
+        Parameters
+        ----------
+        use_duration : bool
+            Increase frequency by transition duration (current and
+            next note)
+        normalize : bool
+            Normalize transition matrix such that matrix sum equals is 1.
+
+        Returns
+        -------
+        pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+            Pitch class transition matrix given all tracks
+        """
+        # Sum up all matrices from all instruments defaulting zeros matrix
+        pc_trans_mat = sum([i.get_pitch_class_transition_matrix()
+                            for i in self.instruments], np.zeros((12, 12)))
+
+        # Normalize accordingly
+        if normalize:
+            pc_trans_mat /= (pc_trans_mat.sum() + (pc_trans_mat.sum() == 0))
+
+        return pc_trans_mat
+
     def get_chroma(self, fs=100, times=None):
         """Get the MIDI data as a sequence of chroma vectors.
 

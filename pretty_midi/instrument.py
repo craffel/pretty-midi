@@ -205,6 +205,87 @@ class Instrument(object):
         else:
             return max(events)
 
+    def get_pitch_class_histogram(self, use_duration=False, use_velocity=False,
+                                  normalize=False):
+        """Computes the frequency of pitch classes of the current instrument,
+        optionally weighted by their durations or velocities.
+
+        Parameters
+        ----------
+        use_duration : bool
+            Weight frequency by note duration
+        use_velocity : bool
+            Weight frequency by note velocity
+        normalize : bool
+            Normalizes the histogram such that the sum of bin values is 1.
+
+        Returns
+        -------
+        histogram : np.ndarray, shape=(12,)
+            Histogram of pitch classes given current instrument, optionally
+            weighted by their durations or velocities
+        """
+
+        # Return all zeros if track is drum
+        if self.is_drum:
+            return np.zeros(12)
+
+        weights = np.ones(len(self.notes))
+
+        # Assumes that duration and velocity have equal weight
+        if use_duration:
+            weights *= [note.end - note.start for note in self.notes]
+        if use_velocity:
+            weights *= [note.velocity for note in self.notes]
+
+        histogram, _ = np.histogram([n.pitch % 12 for n in self.notes],
+                                    bins=np.arange(13),
+                                    weights=weights,
+                                    density=normalize)
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, normalize=False):
+        """Computes the pitch class transition matrix of the current instrument
+
+        Transitions are added whenever the end of a note is within 50ms from
+        the start of any other note.
+
+        Parameters
+        ----------
+        normalize : bool
+            Normalize transition matrix such that matrix sum equals to 1.
+
+        Returns
+        -------
+        transition_matrix : np.ndarray, shape=(12,12)
+            Pitch class transition matrix
+        """
+
+        # instrument is drum or less than one note, return all zeros
+        if self.is_drum or len(self.notes) <= 1:
+            return np.zeros((12, 12))
+
+        # use 20hz(0.05s) as the maximum time threshold for transitions
+        time_thresh = 0.05
+
+        # retrieve note starts, ends and pitch classes(nodes) from self.notes
+        starts, ends, nodes = np.array(
+            [[x.start, x.end, x.pitch % 12] for x in self.notes]).T
+
+        # compute distance matrix for all start and end time pairs
+        dist_mat = np.subtract.outer(ends, starts)
+
+        # find indices of pairs of notes where the end time of one note is
+        # within time_thresh of the start time of the other
+        sources, targets = np.where(abs(dist_mat) < time_thresh)
+
+        transition_matrix, _, _ = np.histogram2d(nodes[sources],
+                                                 nodes[targets],
+                                                 bins=np.arange(13),
+                                                 normed=normalize)
+        return transition_matrix
+
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
 
