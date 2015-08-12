@@ -111,6 +111,96 @@ def key_name_to_key_number(key_string):
     return key_number
 
 
+def mode_accidentals_to_key_number(mode, num_accidentals):
+    """Convert to pretty_midi's given number of accidentals and mode
+    key_number
+
+    Parameters
+    ----------
+    mode : int
+        0 is major, 1 is minor
+    num_accidentals : int
+        Positive number is used for sharps, negative number is used for flats
+
+    Returns
+    -------
+    key_number : int
+        Integer number representing the key and its mode
+    """
+
+    if not (isinstance(num_accidentals, int) and
+            num_accidentals > -8 and
+            num_accidentals < 8):
+        raise ValueError('Number of accidentals {} is not valid'.format(
+            num_accidentals))
+    if mode not in (0, 1):
+        raise ValueError('Mode {} is not recognizable, must be 0 or 1'.format(
+            mode))
+
+    sharp_keys = 'CGDAEBF'
+    flat_keys = 'FBEADGC'
+
+    # check if key signature has sharps or flats
+    if num_accidentals >= 0:
+        num_sharps = num_accidentals / 6
+        key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
+    else:
+        if num_accidentals == -1:
+            key = 'F'
+        else:
+            key = flat_keys[(-1 * num_accidentals - 1) % 7] + 'b'
+
+    # find major key number
+    key += ' Major'
+
+    # use routine to convert from string notation to number notation
+    key_number = key_name_to_key_number(key)
+
+    # if minor, offset
+    if mode == 1:
+        key_number = 12 + ((key_number - 3) % 12)
+
+    return key_number
+
+
+def key_number_to_mode_accidentals(key_number):
+    """Converts a key number to number of accidentals and mode
+
+    Parameters
+    ----------
+    key_number : int
+        Key number as used in pretty midi
+
+    Returns
+    -------
+    mode : int
+        0 for major, 1 for minor
+    num_accidentals : int
+        Number of accidentals according to python's midi package
+        Positive is for sharps and negative is for flats
+    """
+
+    if not ((isinstance(key_number, int) and
+             key_number >= 0 and
+             key_number < 24)):
+        raise ValueError('Key number {} is not a must be an int between 0 and '
+                         '24'.format(key_number))
+
+    pc_to_num_accidentals_major = {0: 0, 1: -5, 2: 2, 3: -3, 4: 4, 5: -1, 6: 6,
+                                   7: 1, 8: -4, 9: 3, 10: -2, 11: 5}
+    mode = key_number / 12
+
+    if mode == 0:
+        num_accidentals = pc_to_num_accidentals_major[key_number]
+        return mode, num_accidentals
+    elif mode == 1:
+        key_number = (key_number + 3) % 12
+        num_accidentals = pc_to_num_accidentals_major[key_number]
+        return mode, num_accidentals
+    else:
+        return None
+
+
 def note_number_to_hz(note_number):
     """Convert a (fractional) MIDI note number to its frequency in Hz.
 
