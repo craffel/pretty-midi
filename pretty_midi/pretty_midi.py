@@ -231,6 +231,7 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
 
         """
+
         # Initialize empty list of instruments
         self.instruments = []
         for track in midi_data:
