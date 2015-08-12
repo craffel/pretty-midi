@@ -8,7 +8,6 @@ import re
 
 from .constants import DRUM_MAP, INSTRUMENT_MAP, INSTRUMENT_CLASSES
 
-
 def key_number_to_key_name(key_number):
     """Convert a key number to a key string
 
@@ -61,6 +60,11 @@ def key_name_to_key_number(key_string):
             `key` is notaded using ABCDEFG with # or b;
             `mode` is notated using 'major' or 'minor'.
         Letter case is irrelevant for mode.
+
+    Returns
+    -------
+        key_number : int
+            Integer number representing the key and its mode
     """
 
     if not isinstance(key_string, str):
@@ -104,6 +108,136 @@ def key_name_to_key_number(key_string):
         key_number += 12
 
     return key_number
+
+
+def mode_accidentals_to_key_number(mode, num_accidentals):
+    """Convert to pretty_midi's given number of accidentals and mode
+    key_number
+
+    Parameters
+    ----------
+    num_accidentals : int
+        Positive number is used for sharps, negative number is used for flats
+    mode : int
+        0 is major, 1 is minor
+
+    Returns
+    -------
+    key_number : int
+        Integer number representing the key and its mode
+    """
+
+    assert all((isinstance(num_accidentals, int), num_accidentals > -8, num_accidentals < 8)), \
+        'Number of accidentals %s is not valid' % str(num_accidentals)
+    assert mode in (0,1), 'Mode %s is not recognizable' % str(mode)
+
+    sharp_keys = 'CGDAEBF'
+    flat_keys = 'FBEADGC'
+
+    # check if key signature has sharps or flats
+    if num_accidentals >= 0:
+        num_sharps = num_accidentals / 6
+        key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
+    else:
+        if num_accidentals == -1:
+            key = 'F'
+        else:
+            key = flat_keys[(-1 * num_accidentals -1) % 7] + 'b'
+
+    # find major key number
+    key += ' Major'
+
+    # use routine to convert from string notation to number notation
+    key_number = key_name_to_key_number(key)
+
+    # if minor, offset
+    if mode == 1:
+        key_number = 12 + ((key_number - 3) % 12)
+
+    return key_number
+
+
+def key_number_to_num_accidentals_mode(key_number):
+    """Converts a key number to number of accidentals and mode
+
+    Parameters
+    ----------
+    key_number : int
+        Key number as used in pretty midi
+
+    Returns
+    -------
+    num_accidentals : int
+        Number of accidentals according to python's midi package
+        Positive is for sharps and negative is for flats
+    mode : int
+        0 for major, 1 for minor
+    """
+
+    assert all((isinstance(key_number, int), key_number >= 0, key_number < 24)), \
+        '%s is not a valid type or value' % str(key_number)
+
+    pc_to_num_accidentals_major = {0:0, 1:-5, 2:2, 3:-3, 4:4, 5:-1, 6:6, 7:1, 8:-4, 9:3, 10:-2, 11:5}
+    mode = key_number / 12
+
+    if mode == 0:
+        num_accidentals = pc_to_num_accidentals_major[key_number]
+        return num_accidentals, mode
+    elif mode == 1:
+        key_number = (key_number + 3) % 12
+        num_accidentals = pc_to_num_accidentals_major[key_number]
+        return num_accidentals, mode
+    else:
+        return None
+
+
+def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
+    """ Converts from quarter per minute to beats per minute
+
+    Parameters
+    ----------
+    quarter_note_tempo : float
+        quarter note tempo
+    numerator : int
+        numerator of time signature
+    denominator : int
+        denominator of time signature
+
+    Returns
+    -------
+    float
+        Tempo in beats per minute
+    """
+
+    assert all((isinstance(quarter_note_tempo, (int, float)), quarter_note_tempo > 0)), \
+        '%s is not a valid qpm type or value' % str(quarter_note_tempo)
+    assert all((isinstance(numerator, int), numerator > 0)), \
+        '%s is not a valid numerator type or value' % str(numerator)
+    assert all((isinstance(denominator, int), denominator > 0)), \
+        '%s is not a valid denominator type or value' % str(denominator)
+
+    # denominator is whole note
+    if denominator == 1:
+        return quarter_note_tempo / 4.0
+    # denominator is half note
+    elif denominator == 2:
+        return quarter_note_tempo / 2.0
+    # denominator is quarter note
+    elif denominator == 4:
+        return quarter_note_tempo
+    # denominator is eighth, sixteenth or 32nd
+    elif denominator in [8,16,32]:
+        # simple triple
+        if numerator == 3:
+            return 2 * quarter_note_tempo
+        # compound meter 6/8*n, 9/8*n, 12/8*n...
+        elif numerator % 3 == 0:
+            return 2.0 * quarter_note_tempo / 3.0
+        # strongly assume two eighths equal a beat
+        else:
+            return quarter_note_tempo
+    else:
+        return quarter_note_tempo
 
 
 def note_number_to_hz(note_number):
