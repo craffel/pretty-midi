@@ -12,11 +12,10 @@ import copy
 from .instrument import Instrument
 from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
-from .utilities import key_name_to_key_number
+from .utilities import key_name_to_key_number, mode_accidentals_to_key_number, key_number_to_num_accidentals_mode
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
-
 
 class PrettyMIDI(object):
     """A container for MIDI data in an easily-manipulable format.
@@ -47,14 +46,16 @@ class PrettyMIDI(object):
         if midi_file is not None:
             # Load in the MIDI data using the midi module
             midi_data = midi.read_midifile(midi_file)
+
             # Convert tick values in midi_data to absolute, a useful thing.
             midi_data.make_ticks_abs()
 
             # Store the resolution for later use
             self.resolution = midi_data.resolution
 
-            # Populate the list of tempo changes (tick scales)
+            # populate the list of tempo changes (tick scales)
             self._load_tempo_changes(midi_data)
+
             # Update the array which maps ticks to time
             max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
@@ -94,6 +95,10 @@ class PrettyMIDI(object):
             self.__tick_to_time = [0]
             # Empty instruments list
             self.instruments = []
+            # Empty key signature changes list
+            self.key_signature_changes = []
+            # Empty time signatures changes list
+            self.time_signature_changes = []
 
     def _load_tempo_changes(self, midi_data):
         """Populates self.__tick_scales with tuples of (tick, tick_scale)
@@ -102,8 +107,8 @@ class PrettyMIDI(object):
         ----------
         midi_data : midi.FileReader
             MIDI object from which data will be read
-
         """
+
         # MIDI data is given in "ticks".
         # We need to convert this to clock seconds.
         # The conversion factor involves the BPM, which may change over time.
@@ -131,7 +136,7 @@ class PrettyMIDI(object):
 
     def _load_metadata(self, midi_data):
         """Populates self.time_signature_changes with TimeSignature objects and
-        populates self.key_changes with KeySignature objects.
+        populates self.key_signature_changes with KeySignature objects.
 
         Parameters
         ----------
@@ -139,52 +144,17 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
         """
 
-        # helper function to get key number from midi key
-        def midi_key_to_key_number(key_signature_event):
-            """Convert midi package's midi.event.KeySignature to pretty_midi's
-            key_number
-
-            Parameters
-            ----------
-            key_signature_event : midi.event.KeySignature
-                Converts the midi.event.KeySignature to conform with
-                pretty_midi's key_number.
-            """
-
-            sharp_keys = 'CGDAEBF'
-            flat_keys = 'CFBEADG'
-            num_accidentals, mode = key_signature_event.data
-
-            # check if key signature has sharps or flats
-            if num_accidentals >= 0 and num_accidentals < 2**7:
-                num_sharps = num_accidentals / 6
-                key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
-            else:
-                num_accidentals = 256 - num_accidentals
-                num_flats = num_accidentals / 2
-                key = flat_keys[num_accidentals % 7] + 'b' * num_flats
-
-            # append mode to string
-            if mode == 0:
-                key += ' Major'
-            else:
-                key += ' minor'
-
-            # use routine to convert from string notation to number notation
-            return key_name_to_key_number(key)
-
-        # _load_metadata routine proper starts here
         # list to store key signature changes
-        self.key_changes = []
+        self.key_signature_changes = []
 
         # list to store time signatures changes
         self.time_signature_changes = []
 
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
-                key_obj = KeySignature(midi_key_to_key_number(event),
+                key_obj = KeySignature(mode_accidentals_to_key_number(event.data[1], event.data[0]),
                                        self.__tick_to_time[event.tick])
-                self.key_changes.append(key_obj)
+                self.key_signature_changes.append(key_obj)
 
             elif isinstance(event, midi.events.TimeSignatureEvent):
                 ts_obj = TimeSignature(event.get_numerator(),
@@ -231,6 +201,7 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
 
         """
+
         # Initialize empty list of instruments
         self.instruments = []
         for track in midi_data:
@@ -326,6 +297,7 @@ class PrettyMIDI(object):
 
     def get_tempo_changes(self):
         """Return arrays of tempo changes and their times.
+
         This is direct from the MIDI file.
 
         Returns
@@ -618,6 +590,7 @@ class PrettyMIDI(object):
             Chromagram of MIDI data, flattened across instruments
 
         """
+
         # First, get the piano roll
         piano_roll = self.get_piano_roll(fs=fs, times=times)
         # Fold into one octave
@@ -826,6 +799,20 @@ class PrettyMIDI(object):
             # Compute the BPM
             tempo_event.set_bpm(60.0/(tick_scale*self.resolution))
             timing_track += [tempo_event]
+        # Add in each time signature
+        for ts in self.time_signature_changes:
+            midi_ts = midi.events.TimeSignatureEvent()
+            midi_ts.set_numerator(ts.numerator)
+            midi_ts.set_denominator(ts.denominator)
+            midi_ts.tick = self.time_to_tick(ts.time)
+            timing_track += [midi_ts]
+        # Add in each key signature
+        for ks in self.key_signature_changes:
+            midi_ks = midi.events.KeySignatureEvent()
+            num_accidentals, mode = key_number_to_num_accidentals_mode(ks.key_number)
+            midi_ks.set_alternatives(num_accidentals)
+            midi_ks.set_minor(mode)
+            timing_track += [midi_ks]
         # Add in an end of track event
         timing_track += [midi.EndOfTrackEvent(tick=timing_track[-1].tick + 1)]
         tracks += [timing_track]
