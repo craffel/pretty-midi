@@ -155,7 +155,7 @@ class PrettyMIDI(object):
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
                 key_obj = KeySignature(mode_accidentals_to_key_number(
-                    event.data[1], event.data[0]),
+                    event.data[1], event.get_alternatives()),
                     self.__tick_to_time[event.tick])
                 self.key_signature_changes.append(key_obj)
 
