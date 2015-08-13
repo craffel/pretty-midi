@@ -205,6 +205,88 @@ class Instrument(object):
         else:
             return max(events)
 
+    def get_pitch_class_histogram(self, use_duration=True, use_velocity=False,
+                                  normalize=False):
+        """Computes the frequency of pitch classes of the current instrument,
+        optionally weighted by their durations or velocities.
+
+        Parameters
+        ----------
+        use_duration : bool
+            Weight frequency by note duration
+        use_velocity : bool
+            Weight frequency by note velocity
+        normalize : bool
+            Normalizes the histogram such that the sum of bin values is 1.
+
+        Returns
+        -------
+        histogram : np.ndarray, shape=(12,)
+            Histogram of pitch classes given current instrument, optionally
+            weighted by their durations or velocities
+        """
+
+        # Return all zeros if track is drum
+        if self.is_drum:
+            return np.zeros(12, dtype=int)
+
+        weights = np.ones(len(self.notes))
+
+        # Assumes that duration and velocity have equal weight
+        if use_duration:
+            weights *= [note.end - note.start for note in self.notes]
+        if use_velocity:
+            weights *= [note.velocity for note in self.notes]
+
+        histogram, _ = np.histogram([n.pitch % 12 for n in self.notes],
+                                    bins=np.arange(13),
+                                    weights=weights,
+                                    density=normalize)
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, use_duration=False,
+                                          normalize=False):
+        """Computes the pitch class transition matrix of the current instrument,
+        optionally weighted by their durations.
+
+        Parameters
+        ----------
+        use_duration : bool
+            Increase frequency by transition duration (current and
+            next note)
+        normalize : bool
+            Normalize transition matrix such that matrix sum equals is 1.
+
+        Returns
+        -------
+        pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+            Pitch class transition matrix
+        """
+
+        # If track is drum, return all zeros
+        if self.is_drum:
+            return np.zeros((12, 12), dtype=int)
+
+        pitch_class_transition_matrix = np.zeros((12, 12))
+
+        for i in xrange(1, len(self.notes)):
+            cur_pc = (self.notes[i-1].pitch) % 12
+            nxt_pc = (self.notes[i].pitch) % 12
+
+            cur_dur = self.notes[i-1].end - self.notes[i-1].start
+            nxt_dur = self.notes[i].end - self.notes[i].start
+
+            if use_duration:
+                pitch_class_transition_matrix[cur_pc, nxt_pc] = cur_dur+nxt_dur
+            else:
+                pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+
+        if normalize:
+            pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
+
+        return pitch_class_transition_matrix
+
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
 
