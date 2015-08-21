@@ -15,6 +15,11 @@ from .utilities import pitch_bend_to_semitones, note_number_to_hz
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
+def set_trace():
+    from IPython.core.debugger import Pdb
+    import sys
+    Pdb(color_scheme='Linux').set_trace(sys._getframe().f_back)
+
 
 class Instrument(object):
     """Object to hold event information for a single instrument
@@ -205,7 +210,7 @@ class Instrument(object):
         else:
             return max(events)
 
-    def get_pitch_class_histogram(self, use_duration=True, use_velocity=False,
+    def get_pitch_class_histogram(self, use_duration=False, use_velocity=False,
                                   normalize=False):
         """Computes the frequency of pitch classes of the current instrument,
         optionally weighted by their durations or velocities.
@@ -228,7 +233,7 @@ class Instrument(object):
 
         # Return all zeros if track is drum
         if self.is_drum:
-            return np.zeros(12, dtype=int)
+            return np.zeros(12)
 
         weights = np.ones(len(self.notes))
 
@@ -264,23 +269,98 @@ class Instrument(object):
             Pitch class transition matrix
         """
 
-        # If track is drum, return all zeros
-        if self.is_drum:
-            return np.zeros((12, 12), dtype=int)
+        # track is drum or just one note, return all zeros transition matrix
+        if self.is_drum or len(self.notes) == 1:
+            return np.zeros((12, 12))
 
+        # container for holding pitch class transitions
         pitch_class_transition_matrix = np.zeros((12, 12))
 
-        for i in xrange(1, len(self.notes)):
-            cur_pc = (self.notes[i-1].pitch) % 12
-            nxt_pc = (self.notes[i].pitch) % 12
+        # self.notes is not sorted, sort them
+        sorted_notes = sorted(self.notes, key=lambda x: x.start)
 
-            cur_dur = self.notes[i-1].end - self.notes[i-1].start
-            nxt_dur = self.notes[i].end - self.notes[i].start
+        # use 0.06s as the minimun time threshold for separate notes
+        time_thresh = 0.06
 
-            if use_duration:
-                pitch_class_transition_matrix[cur_pc, nxt_pc] = cur_dur+nxt_dur
+        # pool of event indices to compute transitions
+        origin = range(0, len(self.notes)-1)
+        target = range(1, len(self.notes))
+
+        while len(origin) > 0:
+            # add the first note event to list and remove from origin
+            cur_nts = []
+            cur_nts.append(sorted_notes[origin[0]])
+            origin.remove(origin[0])
+
+            # aggregate notes that end close to one another
+            idx = 0
+            while idx < len(origin):
+                cur_note = sorted_notes[origin[idx]]
+                if abs(cur_note.end - cur_nts[0].end) < time_thresh:
+                    cur_nts.append(cur_note)
+                    origin.remove(origin[idx])
+                else:
+                    idx += 1
+
+            idx = 0
+            nxt_nts = []
+            # aggregate notes that start close to the previous notes
+            while idx < len(target):
+                nxt_note = sorted_notes[target[idx]]
+                if abs(nxt_note.start - cur_nts[0].end) < time_thresh:
+                    nxt_nts.append(nxt_note)
+                idx += 1
+
+            # store sorted notes by pitch to avoid resorting by time
+            cur_nts_sorted = sorted(cur_nts, key=lambda x: x.pitch)
+            nxt_nts_sorted = sorted(nxt_nts, key=lambda x: x.pitch)
+
+            # if m x m mapping, follow sorted order
+            if len(cur_nts_sorted) == len(nxt_nts_sorted):
+                for i in xrange(len(cur_nts_sorted)):
+                    # get pitch classes and update transition matrix
+                    cur_pc = cur_nts_sorted[i].pitch % 12
+                    nxt_pc = nxt_nts_sorted[i].pitch % 12
+                    pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+            # if m x n mapping, use heuristics
+            elif len(nxt_nts_sorted) > 0:
+                # from bottom to top, from each note in nxt_nts find the
+                # closest cur_nt, without repeating cur_nts
+                cur_used = set()
+                for nxt_nt in nxt_nts_sorted:
+                    # compute distances
+                    distances = [abs(cur_nt.pitch - nxt_nt.pitch)
+                                 for cur_nt in cur_nts_sorted]
+
+                    # store indices sorted by distance
+                    indices = sorted(range(len(distances)),
+                                     key=lambda k: distances[k])
+
+                    # choose the best unused idx
+                    for idx in indices:
+                        if idx not in cur_used:
+                            # get pitch classes and update transition matrix
+                            cur_pc = cur_nts_sorted[idx].pitch % 12
+                            nxt_pc = nxt_nt.pitch % 12
+                            pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+                            # update set of cur_used indices
+                            cur_used.add(idx)
+                            break
+
+                # handle each unused cur_nt by choosing its smallest distance
+                # from nxt_nts, with repetition
+                for i in [x for x in xrange(len(cur_nts_sorted))
+                          if x not in cur_used]:
+                        distances = [abs(nxt.pitch - cur_nts_sorted[i].pitch)
+                                     for nxt in nxt_nts_sorted]
+
+                        idx = np.argmin(distances)
+                        # get pitch classes and update transition matrix
+                        cur_pc = cur_nts_sorted[i].pitch % 12
+                        nxt_pc = nxt_nts_sorted[idx].pitch % 12
+                        pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
             else:
-                pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
+                continue
 
         if normalize:
             pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
