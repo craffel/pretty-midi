@@ -574,7 +574,7 @@ class PrettyMIDI(object):
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
 
-    def get_pitch_class_histogram(self, use_duration=True,
+    def get_pitch_class_histogram(self, use_duration=False,
                                   use_velocity=False, normalize=True):
         """Computes the histogram of pitch classes given all tracks
 
@@ -596,11 +596,11 @@ class PrettyMIDI(object):
 
         # Return all zeros if no instrument exists
         if len(self.instruments) == 0:
-            return np.zeros((12, 0), dtype=int)
+            return np.zeros((12, 0))
 
         # Get histograms for each instrument
         histograms = [i.get_pitch_class_histogram(use_duration, use_velocity,
-                                                  False)
+                                                  normalize)
                       for i in self.instruments]
 
         # Container for final histogram
@@ -617,7 +617,7 @@ class PrettyMIDI(object):
         return histogram
 
     def get_pitch_class_transition_matrix(self, use_duration=False,
-                                          normalize=True):
+                                          normalize=False):
         """Computes the transition matrix of pitch classes given all tracks
 
         Parameters
@@ -640,7 +640,7 @@ class PrettyMIDI(object):
 
         # Get histograms for each instrument
         pc_trans_mats = [i.get_pitch_class_transition_matrix(
-                         use_duration, False) for i in self.instruments]
+                         use_duration, normalize) for i in self.instruments]
 
         # Container for final histogram
         pc_trans_mat = np.zeros((12, 12))
@@ -974,3 +974,4 @@ class PrettyMIDI(object):
         output_pattern.make_ticks_rel()
         # Write it out
         midi.write_midifile(filename, output_pattern)
+
