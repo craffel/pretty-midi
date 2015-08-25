@@ -15,11 +15,6 @@ from .utilities import pitch_bend_to_semitones, note_number_to_hz
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
 
-def set_trace():
-    from IPython.core.debugger import Pdb
-    import sys
-    Pdb(color_scheme='Linux').set_trace(sys._getframe().f_back)
-
 
 class Instrument(object):
     """Object to hold event information for a single instrument
@@ -250,16 +245,14 @@ class Instrument(object):
 
         return histogram
 
-    def get_pitch_class_transition_matrix(self, use_duration=False,
-                                          normalize=False):
-        """Computes the pitch class transition matrix of the current instrument,
-        optionally weighted by their durations.
+    def get_pitch_class_transition_matrix(self, normalize=False):
+        """Computes the pitch class transition matrix of the current instrument
+
+        Transitions are added whenever the end of a note is within 50ms from the
+        start of any other note.
 
         Parameters
         ----------
-        use_duration : bool
-            Increase frequency by transition duration (current and
-            next note)
         normalize : bool
             Normalize transition matrix such that matrix sum equals is 1.
 
@@ -269,98 +262,30 @@ class Instrument(object):
             Pitch class transition matrix
         """
 
-        # track is drum or just one note, return all zeros transition matrix
-        if self.is_drum or len(self.notes) == 1:
+        # instrument is drum or less than one note, return all zeros
+        if self.is_drum or len(self.notes) <= 1:
             return np.zeros((12, 12))
 
         # container for holding pitch class transitions
         pitch_class_transition_matrix = np.zeros((12, 12))
 
-        # self.notes is not sorted, sort them
-        sorted_notes = sorted(self.notes, key=lambda x: x.start)
+        # use 20hz(0.05s) as the minimun time threshold for separate notes
+        time_thresh = 0.05
 
-        # use 0.06s as the minimun time threshold for separate notes
-        time_thresh = 0.06
+        # data matrix
+        data_mat = np.array([[x.start, x.end, x.pitch % 12]
+                             for x in self.notes])
 
-        # pool of event indices to compute transitions
-        origin = range(0, len(self.notes)-1)
-        target = range(1, len(self.notes))
+        # compute distance matrix for all end and start time pairs
+        dist_mat = np.subtract.outer(data_mat[:, 1], data_mat[:, 0])
 
-        while len(origin) > 0:
-            # add the first note event to list and remove from origin
-            cur_nts = []
-            cur_nts.append(sorted_notes[origin[0]])
-            origin.remove(origin[0])
+        # compute boolean matrix of indices within threshold
+        trans_idx= abs(dist_mat) < time_thresh
 
-            # aggregate notes that end close to one another
-            idx = 0
-            while idx < len(origin):
-                cur_note = sorted_notes[origin[idx]]
-                if abs(cur_note.end - cur_nts[0].end) < time_thresh:
-                    cur_nts.append(cur_note)
-                    origin.remove(origin[idx])
-                else:
-                    idx += 1
-
-            idx = 0
-            nxt_nts = []
-            # aggregate notes that start close to the previous notes
-            while idx < len(target):
-                nxt_note = sorted_notes[target[idx]]
-                if abs(nxt_note.start - cur_nts[0].end) < time_thresh:
-                    nxt_nts.append(nxt_note)
-                idx += 1
-
-            # store sorted notes by pitch to avoid resorting by time
-            cur_nts_sorted = sorted(cur_nts, key=lambda x: x.pitch)
-            nxt_nts_sorted = sorted(nxt_nts, key=lambda x: x.pitch)
-
-            # if m x m mapping, follow sorted order
-            if len(cur_nts_sorted) == len(nxt_nts_sorted):
-                for i in xrange(len(cur_nts_sorted)):
-                    # get pitch classes and update transition matrix
-                    cur_pc = cur_nts_sorted[i].pitch % 12
-                    nxt_pc = nxt_nts_sorted[i].pitch % 12
-                    pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
-            # if m x n mapping, use heuristics
-            elif len(nxt_nts_sorted) > 0:
-                # from bottom to top, from each note in nxt_nts find the
-                # closest cur_nt, without repeating cur_nts
-                cur_used = set()
-                for nxt_nt in nxt_nts_sorted:
-                    # compute distances
-                    distances = [abs(cur_nt.pitch - nxt_nt.pitch)
-                                 for cur_nt in cur_nts_sorted]
-
-                    # store indices sorted by distance
-                    indices = sorted(range(len(distances)),
-                                     key=lambda k: distances[k])
-
-                    # choose the best unused idx
-                    for idx in indices:
-                        if idx not in cur_used:
-                            # get pitch classes and update transition matrix
-                            cur_pc = cur_nts_sorted[idx].pitch % 12
-                            nxt_pc = nxt_nt.pitch % 12
-                            pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
-                            # update set of cur_used indices
-                            cur_used.add(idx)
-                            break
-
-                # handle each unused cur_nt by choosing its smallest distance
-                # from nxt_nts, with repetition
-                for i in [x for x in xrange(len(cur_nts_sorted))
-                          if x not in cur_used]:
-                        distances = [abs(nxt.pitch - cur_nts_sorted[i].pitch)
-                                     for nxt in nxt_nts_sorted]
-
-                        idx = np.argmin(distances)
-                        # get pitch classes and update transition matrix
-                        cur_pc = cur_nts_sorted[i].pitch % 12
-                        nxt_pc = nxt_nts_sorted[idx].pitch % 12
-                        pitch_class_transition_matrix[cur_pc, nxt_pc] += 1
-            else:
-                continue
+        # update transition matrix
+        for i in xrange(len(data_mat)):
+            pitch_class_transition_matrix[
+                data_mat[i, 2], data_mat[trans_idx[i], 2].astype(int)] += 1
 
         if normalize:
             pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
