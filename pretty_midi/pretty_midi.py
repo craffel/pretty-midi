@@ -616,8 +616,7 @@ class PrettyMIDI(object):
 
         return histogram
 
-    def get_pitch_class_transition_matrix(self, use_duration=False,
-                                          normalize=False):
+    def get_pitch_class_transition_matrix(self, normalize=False):
         """Computes the transition matrix of pitch classes given all tracks
 
         Parameters
@@ -639,8 +638,8 @@ class PrettyMIDI(object):
             return np.zeros((12, 12))
 
         # Get histograms for each instrument
-        pc_trans_mats = [i.get_pitch_class_transition_matrix(
-                         use_duration, normalize) for i in self.instruments]
+        pc_trans_mats = [i.get_pitch_class_transition_matrix(normalize)
+                         for i in self.instruments]
 
         # Container for final histogram
         pc_trans_mat = np.zeros((12, 12))
