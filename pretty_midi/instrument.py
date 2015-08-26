@@ -254,11 +254,11 @@ class Instrument(object):
         Parameters
         ----------
         normalize : bool
-            Normalize transition matrix such that matrix sum equals is 1.
+            Normalize transition matrix such that matrix sum equals to 1.
 
         Returns
         -------
-        pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+        transition_matrix : np.ndarray, shape=(12,12)
             Pitch class transition matrix
         """
 
@@ -266,31 +266,25 @@ class Instrument(object):
         if self.is_drum or len(self.notes) <= 1:
             return np.zeros((12, 12))
 
-        # container for holding pitch class transitions
-        pitch_class_transition_matrix = np.zeros((12, 12))
-
-        # use 20hz(0.05s) as the minimun time threshold for separate notes
+        # use 20hz(0.05s) as the maximum time threshold for transitions
         time_thresh = 0.05
 
-        # data matrix
-        data_mat = np.array([[x.start, x.end, x.pitch % 12]
-                             for x in self.notes])
+        # retrieve note starts, ends and pitch classes(nodes) from self.notes
+        starts, ends, nodes = np.array(
+            [[x.start, x.end, x.pitch % 12] for x in self.notes]).T
 
-        # compute distance matrix for all end and start time pairs
-        dist_mat = np.subtract.outer(data_mat[:, 1], data_mat[:, 0])
+        # compute distance matrix for all start and end time pairs
+        dist_mat = np.subtract.outer(starts, ends)
 
-        # compute boolean matrix of indices within threshold
-        trans_idx= abs(dist_mat) < time_thresh
+        # find indices of pairs of notes where the end time of one note is
+        # within time_thresh of the start time of the other
+        sources, targets = np.where(abs(dist_mat) < time_thresh)
 
-        # update transition matrix
-        for i in xrange(len(data_mat)):
-            pitch_class_transition_matrix[
-                data_mat[i, 2], data_mat[trans_idx[i], 2].astype(int)] += 1
-
-        if normalize:
-            pitch_class_transition_matrix /= pitch_class_transition_matrix.sum()
-
-        return pitch_class_transition_matrix
+        transition_matrix, _, _ = np.histogram2d(nodes[sources],
+                                                 nodes[targets],
+                                                 bins=np.arange(13),
+                                                 normed=normalize)
+        return transition_matrix
 
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
