@@ -155,7 +155,7 @@ class PrettyMIDI(object):
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
                 key_obj = KeySignature(mode_accidentals_to_key_number(
-                    event.data[1], event.data[0]),
+                    event.data[1], event.get_alternatives()),
                     self.__tick_to_time[event.tick])
                 self.key_signature_changes.append(key_obj)
 
@@ -574,6 +574,86 @@ class PrettyMIDI(object):
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
 
+    def get_pitch_class_histogram(self, use_duration=False,
+                                  use_velocity=False, normalize=True):
+        """Computes the histogram of pitch classes given all tracks
+
+        Parameters
+        ----------
+        use_duration : bool
+            Weight frequency by note duration
+        use_velocity : bool
+            Weight frequency by note velocity
+        normalize : bool
+            Normalizes the histogram such that the sum of bin values is 1.
+
+        Returns
+        -------
+        histogram : np.ndarray, shape=(12,)
+            Histogram of pitch classes given all tracks, optionally weighted
+            by their durations or velocities
+        """
+
+        # Return all zeros if no instrument exists
+        if len(self.instruments) == 0:
+            return np.zeros((12, 0))
+
+        # Get histograms for each instrument
+        histograms = [i.get_pitch_class_histogram(use_duration, use_velocity,
+                                                  normalize)
+                      for i in self.instruments]
+
+        # Container for final histogram
+        histogram = np.zeros(12)
+
+        # Sum each histogram into aggregate histogram
+        for hist in histograms:
+            histogram += hist
+
+        # Normalize accordingly
+        if normalize:
+            histogram /= histogram.sum()
+
+        return histogram
+
+    def get_pitch_class_transition_matrix(self, normalize=False):
+        """Computes the transition matrix of pitch classes given all tracks
+
+        Parameters
+        ----------
+        use_duration : bool
+            Increase frequency by transition duration (current and
+            next note)
+        normalize : bool
+            Normalize transition matrix such that matrix sum equals is 1.
+
+        Returns
+        -------
+        pitch_class_transition_matrix : np.ndarray, shape=(12,12)
+            Pitch class transition matrix given all tracks
+        """
+
+        # Return all zeros if no instrument exists
+        if len(self.instruments) == 0:
+            return np.zeros((12, 12))
+
+        # Get histograms for each instrument
+        pc_trans_mats = [i.get_pitch_class_transition_matrix(normalize)
+                         for i in self.instruments]
+
+        # Container for final histogram
+        pc_trans_mat = np.zeros((12, 12))
+
+        # Sum each histogram into aggregate histogram
+        for trans_mat in pc_trans_mats:
+            pc_trans_mat += trans_mat
+
+        # Normalize accordingly
+        if normalize:
+            pc_trans_mat /= pc_trans_mat.sum()
+
+        return pc_trans_mat
+
     def get_chroma(self, fs=100, times=None):
         """Get the MIDI data as a sequence of chroma vectors.
 
@@ -893,3 +973,4 @@ class PrettyMIDI(object):
         output_pattern.make_ticks_rel()
         # Write it out
         midi.write_midifile(filename, output_pattern)
+
