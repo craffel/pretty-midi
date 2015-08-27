@@ -14,6 +14,7 @@ from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
 from .utilities import mode_accidentals_to_key_number
 from .utilities import key_number_to_mode_accidentals
+from .utilities import qpm_to_bpm
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -401,6 +402,181 @@ class PrettyMIDI(object):
 
         """
         return self.estimate_tempi()[0][0]
+
+    def get_beats_using_metadata(self):
+        """Uses Time Signature and Tempo metadata to estimate beat times
+
+        Returns
+        -------
+        beat_times : np.ndarray
+            List of beat times in seconds
+        """
+
+        # get qpms (quarter per minute) tempi and their change time
+        tempo_change_times, qpms = self.get_tempo_changes()
+
+        # one tempo and one time signature
+        if len(qpms) == 1 and len(self.time_signature_changes) == 1:
+            # convert qpm to bmp given time signature
+            tempo = qpm_to_bpm(qpms[0],
+                               self.time_signature_changes[0].numerator,
+                               self.time_signature_changes[0].denominator)
+
+            # interpolate to the end with given tempo in bpm
+            beat_times = np.arange(tempo_change_times[0],
+                                   self.get_end_time(),
+                                   60.0/tempo)
+
+            return beat_times
+        # one tempo and multiple time signatures
+        elif len(qpms) == 1 and len(self.time_signature_changes) > 1:
+            beat_times = []
+
+            # compute beat locations given tempo and different time signatures
+            for i in xrange(1, len(self.time_signature_changes)):
+                cur_ts = self.time_signature_changes[i-1]
+                nxt_ts = self.time_signature_changes[i]
+
+                # convert qpm to bpm given time signature
+                bpm = qpm_to_bpm(qpms[0],
+                                 cur_ts.numerator,
+                                 cur_ts.denominator)
+
+                # interpolate from cur to nxt time signature given tempo in bpm
+                beat_times = np.hstack((beat_times, np.arange(cur_ts.time,
+                                                              nxt_ts.time,
+                                                              60.0/bpm)))
+
+            # convert qpm to bpm using last time signature
+            bpm = qpm_to_bpm(qpms[0],
+                             self.time_signature_changes[-1].numerator,
+                             self.time_signature_changes[-1].denominator)
+
+            # from last time signature to end of track using tempo in bpm
+            beat_times = np.hstack(
+                (beat_times, np.arange(self.time_signature_changes[-1].time,
+                                       self.get_end_time(),
+                                       60.0/bpm)))
+            return beat_times
+        # many qpms and one time signature
+        elif len(qpms) > 1 and len(self.time_signature_changes) == 1:
+            beat_times = []
+
+            # extract beat locations given qpms and their location in time
+            for i in xrange(1, len(qpms)):
+                # convert qpm to bpm using the time signature
+                bpm = qpm_to_bpm(qpms[i-1],
+                                 self.time_signature_changes[0].numerator,
+                                 self.time_signature_changes[0].denominator)
+
+                # interpolate from current to next tempo change time
+                beat_times = np.hstack((beat_times,
+                                        np.arange(tempo_change_times[i-1],
+                                                  tempo_change_times[i],
+                                                  60.0/bpm)))
+
+            # compute bpm given last qpm
+            bpm = qpm_to_bpm(qpms[-1],
+                             self.time_signature_changes[0].numerator,
+                             self.time_signature_changes[0].denominator)
+
+            # from last time signature to end of track
+            beat_times = np.hstack((beat_times,
+                                    np.arange(tempo_change_times[-1],
+                                              self.get_end_time(),
+                                              60.0/bpm)))
+            return beat_times
+        # many qpms and time signature
+        elif len(qpms) > 1 and len(self.time_signature_changes) > 1:
+            beat_times = []
+
+            # store time signature objects
+            ts_idx = 1
+            cur_ts = self.time_signature_changes[ts_idx-1]
+            nxt_ts = self.time_signature_changes[ts_idx]
+
+            # go over tempo change times
+            for i in xrange(1, len(tempo_change_times)):
+                # update cur and nxt tempo change times
+                cur_tempo_change_time = tempo_change_times[i-1]
+                nxt_tempo_change_time = tempo_change_times[i]
+
+                cur_time = cur_tempo_change_time
+
+                # create beat times by going over time signatures while the next
+                # time signature happens before the next tempo change
+                while nxt_ts.time < nxt_tempo_change_time:
+                    # update bpm given current time signature and qpm
+                    bpm = qpm_to_bpm(qpms[i-1],
+                                     cur_ts.numerator,
+                                     cur_ts.denominator)
+
+                    # interpolate from cur to nxt time signature change time
+                    beat_times = np.hstack((beat_times, np.arange(cur_time,
+                                                                  nxt_ts.time,
+                                                                  60.0/bpm)))
+
+                    # update cur_time to nxt_time signature time
+                    cur_time = nxt_ts.time
+
+                    # break if nxt_ts is last time signature
+                    if ts_idx == len(self.time_signature_changes) - 1:
+                        break
+                    else:
+                        # update time signature index and time signature objects
+                        ts_idx += 1
+                        cur_ts = self.time_signature_changes[ts_idx-1]
+                        nxt_ts = self.time_signature_changes[ts_idx]
+
+                # update bpm given current time signature and qpm
+                bpm = qpm_to_bpm(qpms[i-1],
+                                 cur_ts.numerator,
+                                 cur_ts.denominator)
+
+                # interpolate beat time locations from current tempo change time
+                # to next tempo change time
+                beat_times = np.hstack((beat_times,
+                                        np.arange(cur_time,
+                                                  nxt_tempo_change_time,
+                                                  60.0/bpm)))
+            # there are no tempo changes left, update current time
+            cur_time = nxt_tempo_change_time
+
+            # interpolate from lst tempo change time to lst time signature time
+            for ts_idx in xrange(ts_idx, len(self.time_signature_changes)):
+                # update time signature objects
+                cur_ts = self.time_signature_changes[ts_idx-1]
+                nxt_ts = self.time_signature_changes[ts_idx]
+
+                # update bpm
+                bpm = qpm_to_bpm(qpms[-1],
+                                 cur_ts.numerator,
+                                 cur_ts.denominator)
+
+                # interpolate until nxt time signature given tempo
+                beat_times = np.hstack((beat_times, np.arange(cur_time,
+                                                              nxt_ts.time,
+                                                              60.0/bpm)))
+                # update current time
+                cur_time = nxt_ts.time
+
+            # update bpm given last time signature
+            bpm = qpm_to_bpm(qpms[-1],
+                             self.time_signature_changes[-1].numerator,
+                             self.time_signature_changes[-1].denominator)
+
+            # interpolate from last time signature time until end of piece
+            cur_time = self.time_signature_changes[-1].time
+            bpm = qpm_to_bpm(qpms[-1],
+                             self.time_signature_changes[-1].numerator,
+                             self.time_signature_changes[-1].denominator)
+            beat_times = np.hstack((beat_times, np.arange(cur_time,
+                                                          self.get_end_time(),
+                                                          60.0/bpm)))
+
+            return np.unique(np.around(beat_times, 2))
+        else:
+            return None
 
     def get_beats(self, start_time=0.):
         """Return a list of beat locations, according to MIDI tempo changes.
