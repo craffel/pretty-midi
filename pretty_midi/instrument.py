@@ -280,8 +280,8 @@ class Instrument(object):
         # within time_thresh of the start time of the other
         sources, targets = np.where(abs(dist_mat) < time_thresh)
 
-        transition_matrix, _, _ = np.histogram2d(nodes[sources],
-                                                 nodes[targets],
+        transition_matrix, _, _ = np.histogram2d(nodes[targets],
+                                                 nodes[sources],
                                                  bins=np.arange(13),
                                                  normed=normalize)
         return transition_matrix
