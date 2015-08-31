@@ -669,16 +669,18 @@ class PrettyMIDI(object):
                                                           60.0/bpm)))
         else:
             beat_times = None
+
+        # post-process to remove beat times within epsilon from one another and
+        # possibly get_end_time included as a beat time
         if beat_times is not None:
-            # ignore last beat_time if it is an epsilon distant from
-            # end time
+            # ignore last beat_time if it is an epsilon distant from end time
             if abs(self.get_end_time() - beat_times[-1]) < epsilon:
                 beat_times = beat_times[:-1]
 
             # remove adjacent beat times that are within epsilon distance
             diffs = np.diff(beat_times)
-            good_indices = np.hstack((diffs > epsilon, [True]))
-            beat_times = beat_times[good_indices]
+            valid_indices = np.hstack((diffs > epsilon, [True]))
+            beat_times = beat_times[valid_indices]
 
         return beat_times
 
