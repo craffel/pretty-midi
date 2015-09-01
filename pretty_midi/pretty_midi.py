@@ -554,9 +554,6 @@ class PrettyMIDI(object):
         beat_times = np.append(beat_times, np.linspace(beat_start,
                                                        beat_end,
                                                        num_beats))
-
-        # post-process to remove beat times within epsilon from one another and
-        # possibly get_end_time included as a beat time
         return beat_times
 
     def estimate_beat_start(self, candidates=10, tolerance=.025):
