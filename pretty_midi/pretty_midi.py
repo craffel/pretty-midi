@@ -403,7 +403,7 @@ class PrettyMIDI(object):
         """
         return self.estimate_tempi()[0][0]
 
-    def get_beats_using_metadata(self):
+    def get_beats(self):
         """Uses Time Signature and Tempo metadata to estimate beat times
 
         Returns
@@ -432,22 +432,25 @@ class PrettyMIDI(object):
 
         # go over tempo change times and time signatures assuming that the first
         # tempo change time is the start time of the first beat
-        i = 1
+        qpm_idx = 1
         beat_start = tempo_change_times[0]
-        while i < len(tempo_change_times):
+        while qpm_idx < len(tempo_change_times):
             # create beat times by going over time signatures while the next
             # time signature happens before the next tempo change. note that
             # time signatures always begin on the start of a beat
-            while nxt_ts is not None and nxt_ts.time < tempo_change_times[i]:
+            while nxt_ts is not None and \
+                    nxt_ts.time < tempo_change_times[qpm_idx]:
                 # update bpm given current time signature and qpm
-                bpm = qpm_to_bpm(qpms[i-1],
+                bpm = qpm_to_bpm(qpms[qpm_idx-1],
                                  cur_ts.numerator,
                                  cur_ts.denominator)
 
                 # interpolate from cur to nxt time signature change time
-                beat_times = np.hstack((beat_times, np.arange(beat_start,
-                                                              nxt_ts.time,
-                                                              60.0/bpm)))
+                beat_len = 60.0 / bpm
+                beat_end = nxt_ts.time - beat_len
+                num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+                beat_times = np.append(beat_times, np.linspace(
+                    beat_start, beat_end, num_beats))
 
                 # update beat start to next time signature time
                 beat_start = nxt_ts.time
@@ -462,24 +465,25 @@ class PrettyMIDI(object):
                     break
 
             # update bpm given current time signature and qpm
-            bpm = qpm_to_bpm(qpms[i-1],
+            bpm = qpm_to_bpm(qpms[qpm_idx-1],
                              cur_ts.numerator,
                              cur_ts.denominator)
 
             # interpolate beat time locations from current tempo change time to
             # next tempo change time, which might not be a beat start
-            beat_times = np.hstack((beat_times,
-                                    np.arange(beat_start,
-                                              tempo_change_times[i],
-                                              60.0/bpm)))
+            beat_len = 60.0 / bpm
+            new_beat_times = [beat_start]
+            while new_beat_times[-1] + beat_len < tempo_change_times[qpm_idx]:
+                new_beat_times += [new_beat_times[-1] + beat_len]
+            beat_times = np.append(beat_times, new_beat_times)
 
             # check if next tempo change and current last beat time are beyond
             # epsilon distance, suggesting that the next tempo change happens
             # within the beat
-            distance = tempo_change_times[i] - beat_times[-1]
+            distance = tempo_change_times[qpm_idx] - beat_times[-1]
             pot_nxt_beat = 2 * beat_times[-1] - beat_times[-2]
             if distance > epsilon and \
-                    abs(tempo_change_times[i] - pot_nxt_beat) > epsilon:
+                    abs(tempo_change_times[qpm_idx] - pot_nxt_beat) > epsilon:
                 # compute how much beat time remains
                 beat_remainder = 1 - distance / (60.0/bpm)
 
@@ -487,33 +491,33 @@ class PrettyMIDI(object):
                 while beat_remainder > epsilon:
                     # compute new bpm tempo within the beat
                     bpm = qpm_to_bpm(
-                        qpms[i],
+                        qpms[qpm_idx],
                         cur_ts.numerator,
                         cur_ts.denominator)
 
                     # compute beat length in seconds and potential start of the
                     # next beat
-                    cur_beat_len = 60.0/bpm
-                    pot_beat_start = tempo_change_times[i] + \
+                    cur_beat_len = 60.0 / bpm
+                    pot_beat_start = tempo_change_times[qpm_idx] + \
                         beat_remainder * cur_beat_len
 
                     # check if there is a new tempo left and if it starts before
                     # the potential start of the next beat. if it does,
                     # decrement the beat remainder
-                    if i+1 < len(qpms) \
-                            and tempo_change_times[i+1] < pot_beat_start:
+                    if qpm_idx+1 < len(qpms) \
+                            and tempo_change_times[qpm_idx+1] < pot_beat_start:
                         beat_remainder -= cur_beat_len * \
-                            (tempo_change_times[i+1]-tempo_change_times[i])
+                            (tempo_change_times[qpm_idx+1] -
+                             tempo_change_times[qpm_idx])
                     # if it does not, we can complete this beat and set a new
                     # beat start
                     else:
                         beat_remainder = 0
                         beat_start = pot_beat_start
-                    i += 1
+                    qpm_idx += 1
             else:
-                beat_start = tempo_change_times[i]
-                i += 1
-
+                beat_start = tempo_change_times[qpm_idx]
+                qpm_idx += 1
         # if there are time signatures left to be visited, interpolate from last
         # tempo change time to last time signature time
         if ts_idx < len(self.time_signature_changes):
@@ -528,9 +532,12 @@ class PrettyMIDI(object):
                                  cur_ts.denominator)
 
                 # interpolate until nxt time signature given tempo
-                beat_times = np.hstack((beat_times, np.arange(beat_start,
-                                                              nxt_ts.time,
-                                                              60.0/bpm)))
+                beat_len = 60.0 / bpm
+                beat_end = nxt_ts.time - beat_len
+                num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+                beat_times = np.append(beat_times, np.linspace(beat_start,
+                                                               beat_end,
+                                                               num_beats))
                 # update current time
                 beat_start = nxt_ts.time
 
@@ -540,82 +547,17 @@ class PrettyMIDI(object):
         bpm = qpm_to_bpm(qpms[-1],
                          self.time_signature_changes[-1].numerator,
                          self.time_signature_changes[-1].denominator)
-        beat_times = np.hstack((beat_times, np.arange(beat_start,
-                                                      self.get_end_time(),
-                                                      60.0/bpm)))
+
+        beat_len = 60.0 / bpm
+        beat_end = self.get_end_time() - beat_len
+        num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+        beat_times = np.append(beat_times, np.linspace(beat_start,
+                                                       beat_end,
+                                                       num_beats))
 
         # post-process to remove beat times within epsilon from one another and
         # possibly get_end_time included as a beat time
-        if len(beat_times) > 1:
-            # ignore last beat_time if it is an epsilon distant from end time
-            if abs(self.get_end_time() - beat_times[-1]) < epsilon:
-                beat_times = beat_times[:-1]
-
-            # remove adjacent beat times that are within epsilon distance
-            diffs = np.diff(beat_times)
-            valid_indices = np.hstack((diffs > epsilon, [True]))
-            beat_times = beat_times[valid_indices]
-
         return beat_times
-
-    def get_beats(self, start_time=0.):
-        """Return a list of beat locations, according to MIDI tempo changes.
-        Will not be correct if the MIDI data has been modified without changing
-        tempo information.
-
-        Parameters
-        ----------
-        start_time : float
-            Location of the first beat, in seconds.
-
-        Returns
-        -------
-        beats : np.ndarray
-            Beat locations, in seconds.
-
-        """
-        # Get tempo changes and tempos
-        tempo_change_times, tempi = self.get_tempo_changes()
-        # Create beat list; first beat is at first onset
-        beats = [start_time]
-        # Index of the tempo we're using
-        n = 0
-        # Move past all the tempo changes up to the supplied start time
-        while (n < tempo_change_times.shape[0] - 1 and
-                beats[-1] > tempo_change_times[n]):
-            n += 1
-        # Get track end time
-        end_time = self.get_end_time()
-        # Add beats in
-        while beats[-1] < end_time:
-            # Compute expected beat location, one period later
-            next_beat = beats[-1] + 60.0/tempi[n]
-            # If the beat location passes a tempo change boundary...
-            if (n < tempo_change_times.shape[0] - 1 and
-                    next_beat > tempo_change_times[n + 1]):
-                # Start by setting the beat location to the current beat...
-                next_beat = beats[-1]
-                # with the entire beat remaining
-                beat_remainder = 1.0
-                # While a beat with the current tempo would pass a tempo
-                # change boundary...
-                while (n < tempo_change_times.shape[0] - 1 and
-                        next_beat + beat_remainder*60.0/tempi[n] >=
-                        tempo_change_times[n + 1]):
-                    # Compute the amount the beat location overshoots
-                    overshot_ratio = (tempo_change_times[n + 1] -
-                                      next_beat)/(60.0/tempi[n])
-                    # Add in the amount of the beat during this tempo
-                    next_beat += overshot_ratio*60.0/tempi[n]
-                    # Less of the beat remains now
-                    beat_remainder -= overshot_ratio
-                    # Increment the tempo index
-                    n = n + 1
-                next_beat += beat_remainder*60./tempi[n]
-            beats.append(next_beat)
-        # The last beat will pass the end_time barrier, so don't include it
-        beats = np.array(beats[:-1])
-        return beats
 
     def estimate_beat_start(self, candidates=10, tolerance=.025):
         """Estimate the location of the first beat based on which of the first
