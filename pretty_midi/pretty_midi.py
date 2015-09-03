@@ -457,7 +457,7 @@ class PrettyMIDI(object):
 
                 # if there are time signatures left, update the time signature
                 # index and time signatures; else break
-                if ts_idx < len(self.time_signature_changes):
+                if ts_idx + 1 < len(self.time_signature_changes):
                     ts_idx += 1
                     cur_ts = self.time_signature_changes[ts_idx-1]
                     nxt_ts = self.time_signature_changes[ts_idx]
@@ -472,10 +472,11 @@ class PrettyMIDI(object):
             # interpolate beat time locations from current tempo change time to
             # next tempo change time, which might not be a beat start
             beat_len = 60.0 / bpm
-            new_beat_times = [beat_start]
-            while new_beat_times[-1] + beat_len < tempo_change_times[qpm_idx]:
-                new_beat_times += [new_beat_times[-1] + beat_len]
-            beat_times = np.append(beat_times, new_beat_times)
+            new_beats = [beat_start]
+            while (new_beats[-1] < tempo_change_times[qpm_idx] and
+                   not np.allclose(new_beats[-1], tempo_change_times[qpm_idx])):
+                    new_beats.append(new_beats[-1] + beat_len)
+            beat_times = np.append(beat_times, new_beats)
 
             # check if next tempo change and current last beat time are beyond
             # epsilon distance, suggesting that the next tempo change happens
