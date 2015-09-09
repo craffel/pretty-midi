@@ -413,7 +413,7 @@ class PrettyMIDI(object):
         """
 
         # threshold in seconds for merging beat locations
-        epsilon = 0.05
+        epsilon = 0.01
 
         # get qpms (quarter per minute) tempi and their change time
         tempo_change_times, qpms = self.get_tempo_changes()
@@ -462,6 +462,7 @@ class PrettyMIDI(object):
                     cur_ts = self.time_signature_changes[ts_idx-1]
                     nxt_ts = self.time_signature_changes[ts_idx]
                 else:
+                    nxt_ts = None
                     break
 
             # update bpm given current time signature and qpm
@@ -470,58 +471,61 @@ class PrettyMIDI(object):
                              cur_ts.denominator)
 
             # interpolate beat time locations from current tempo change time to
-            # next tempo change time, which might not be a beat start
-            beat_len = 60.0 / bpm
+            # next tempo change time
+            beat_len = 60. / bpm
             new_beats = [beat_start]
-            while (new_beats[-1] < tempo_change_times[qpm_idx] and
-                   not np.allclose(new_beats[-1], tempo_change_times[qpm_idx])):
+            while (new_beats[-1] + beat_len < tempo_change_times[qpm_idx]):
                     new_beats.append(new_beats[-1] + beat_len)
+
             beat_times = np.append(beat_times, new_beats)
 
-            # check if next tempo change and current last beat time are beyond
-            # epsilon distance, suggesting that the next tempo change happens
-            # within the beat
-            distance = tempo_change_times[qpm_idx] - beat_times[-1]
-            pot_nxt_beat = 2 * beat_times[-1] - beat_times[-2]
-            if distance > epsilon and \
-                    abs(tempo_change_times[qpm_idx] - pot_nxt_beat) > epsilon:
+            # check if next tempo change and potential next beat are close.
+            # if not, next tempo change happens within the beat
+            pot_beat_start = beat_times[-1] + (beat_times[-1] - beat_times[-2])
+            if pot_beat_start - tempo_change_times[qpm_idx] < epsilon:
+                beat_start = tempo_change_times[qpm_idx]
+                qpm_idx += 1
+            else:
                 # compute how much beat time remains
-                beat_remainder = 1 - distance / (60.0/bpm)
+                distance = tempo_change_times[qpm_idx] - beat_times[-1]
+                beat_remainder = 1 - distance / beat_len
 
                 # update time pointer until no beat time remains
-                while beat_remainder > epsilon:
+                while beat_remainder > 0:
                     # compute new bpm tempo within the beat
-                    bpm = qpm_to_bpm(
-                        qpms[qpm_idx],
-                        cur_ts.numerator,
-                        cur_ts.denominator)
+                    bpm = qpm_to_bpm(qpms[qpm_idx],
+                                     cur_ts.numerator,
+                                     cur_ts.denominator)
 
-                    # compute beat length in seconds and potential start of the
-                    # next beat
-                    cur_beat_len = 60.0 / bpm
-                    pot_beat_start = tempo_change_times[qpm_idx] + \
-                        beat_remainder * cur_beat_len
-
-                    # check if there is a new tempo left and if it starts before
-                    # the potential start of the next beat. if it does,
-                    # decrement the beat remainder
-                    if qpm_idx+1 < len(qpms) \
-                            and tempo_change_times[qpm_idx+1] < pot_beat_start:
-                        beat_remainder -= cur_beat_len * \
-                            (tempo_change_times[qpm_idx+1] -
-                             tempo_change_times[qpm_idx])
-                    # if it does not, we can complete this beat and set a new
-                    # beat start
+                    # compute beat length in secs and potential next beat start
+                    beat_len = 60. / bpm
+                    pot_beat_start = beat_remainder * beat_len + \
+                        tempo_change_times[qpm_idx]
+                    # check if there is a new tempo change left
+                    if qpm_idx + 1 < len(qpms):
+                        qpm_idx += 1
+                        # next tempo change is close to potential beat start
+                        if np.allclose(tempo_change_times[qpm_idx],
+                                       pot_beat_start):
+                            beat_start = tempo_change_times[qpm_idx]
+                            beat_remainder = 0
+                        # next tempo change surpasses potential beat start
+                        elif tempo_change_times[qpm_idx] > pot_beat_start:
+                            beat_remainder = 0
+                            beat_start = pot_beat_start
+                        # next tempo change happens within current beat
+                        else:
+                            distance = tempo_change_times[qpm_idx] - \
+                                tempo_change_times[qpm_idx-1]
+                            beat_remainder -= distance / beat_len
                     else:
                         beat_remainder = 0
                         beat_start = pot_beat_start
-                    qpm_idx += 1
-            else:
-                beat_start = tempo_change_times[qpm_idx]
                 qpm_idx += 1
+
         # if there are time signatures left to be visited, interpolate from last
         # tempo change time to last time signature time
-        if ts_idx < len(self.time_signature_changes):
+        if nxt_ts and ts_idx < len(self.time_signature_changes):
             for ts_idx in xrange(ts_idx, len(self.time_signature_changes)):
                 # update time signature objects
                 cur_ts = self.time_signature_changes[ts_idx-1]
