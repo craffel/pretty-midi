@@ -481,7 +481,7 @@ class PrettyMIDI(object):
 
             # check if next tempo change and potential next beat are close.
             # if not, next tempo change happens within the beat
-            pot_beat_start = beat_times[-1] + (beat_times[-1] - beat_times[-2])
+            pot_beat_start = beat_times[-1] + beat_len
             if pot_beat_start - tempo_change_times[qpm_idx] < epsilon:
                 beat_start = tempo_change_times[qpm_idx]
                 qpm_idx += 1
