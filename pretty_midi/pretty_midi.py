@@ -470,8 +470,8 @@ class PrettyMIDI(object):
                              cur_ts.numerator,
                              cur_ts.denominator)
 
-            # interpolate beat time locations from current tempo change time to
-            # next tempo change time
+            # interpolate beat time locations from current beat start to next
+            # tempo change time
             beat_len = 60. / bpm
             new_beats = [beat_start]
             while (new_beats[-1] + beat_len < tempo_change_times[qpm_idx]):
@@ -479,12 +479,12 @@ class PrettyMIDI(object):
 
             beat_times = np.append(beat_times, new_beats)
 
-            # check if next tempo change and potential next beat are close.
-            # if not, next tempo change happens within the beat
+            # check if next tempo change and potential next beat are close
             pot_beat_start = beat_times[-1] + beat_len
             if pot_beat_start - tempo_change_times[qpm_idx] < epsilon:
                 beat_start = tempo_change_times[qpm_idx]
                 qpm_idx += 1
+            # next tempo change happens within the beat
             else:
                 # compute how much beat time remains
                 distance = tempo_change_times[qpm_idx] - beat_times[-1]
@@ -501,6 +501,7 @@ class PrettyMIDI(object):
                     beat_len = 60. / bpm
                     pot_beat_start = beat_remainder * beat_len + \
                         tempo_change_times[qpm_idx]
+
                     # check if there is a new tempo change left
                     if qpm_idx + 1 < len(qpms):
                         qpm_idx += 1
@@ -509,6 +510,7 @@ class PrettyMIDI(object):
                                        pot_beat_start):
                             beat_start = tempo_change_times[qpm_idx]
                             beat_remainder = 0
+                            qpm_idx += 1
                         # next tempo change surpasses potential beat start
                         elif tempo_change_times[qpm_idx] > pot_beat_start:
                             beat_remainder = 0
@@ -520,9 +522,10 @@ class PrettyMIDI(object):
                             beat_remainder -= distance / beat_len
                     else:
                         beat_remainder = 0
+                        pot_beat_start = beat_remainder * beat_len + \
+                            tempo_change_times[qpm_idx]
                         beat_start = pot_beat_start
-                qpm_idx += 1
-
+                        qpm_idx += 1
         # if there are time signatures left to be visited, interpolate from last
         # tempo change time to last time signature time
         if nxt_ts and ts_idx < len(self.time_signature_changes):
