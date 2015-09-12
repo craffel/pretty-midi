@@ -417,6 +417,10 @@ class Instrument(object):
             raise ValueError("No soundfont file found at the supplied path "
                              "{}".format(sf2_path))
 
+        # If the instrument has no notes, return an empty array
+        if len(self.notes) == 0:
+            return np.array([])
+
         # Create fluidsynth instance
         fl = fluidsynth.Synth(samplerate=fs)
         # Load in the soundfont
