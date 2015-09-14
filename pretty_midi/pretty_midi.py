@@ -704,9 +704,11 @@ class PrettyMIDI(object):
             Waveform of the MIDI data, synthesized at fs
 
         """
-        # If there are no instruments, return an empty array
-        if len(self.instruments) == 0:
-            return np.zeros((128, 0))
+        # If there are no instruments, or all instruments have no notes, return
+        # an empty array
+        if len(self.instruments) == 0 or all(len(i.notes) == 0
+                                             for i in self.instruments):
+            return np.array([])
         # Get synthesized waveform for each instrument
         waveforms = [i.fluidsynth(fs=fs,
                                   sf2_path=sf2_path) for i in self.instruments]
