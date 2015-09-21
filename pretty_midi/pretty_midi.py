@@ -14,6 +14,7 @@ from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
 from .utilities import mode_accidentals_to_key_number
 from .utilities import key_number_to_mode_accidentals
+from .utilities import qpm_to_bpm
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -402,64 +403,166 @@ class PrettyMIDI(object):
         """
         return self.estimate_tempi()[0][0]
 
-    def get_beats(self, start_time=0.):
-        """Return a list of beat locations, according to MIDI tempo changes.
-        Will not be correct if the MIDI data has been modified without changing
-        tempo information.
-
-        Parameters
-        ----------
-        start_time : float
-            Location of the first beat, in seconds.
+    def get_beats(self):
+        """Uses Time Signature and Tempo metadata to estimate beat times
 
         Returns
         -------
-        beats : np.ndarray
-            Beat locations, in seconds.
-
+        beat_times : np.ndarray
+            List of beat times in seconds
         """
-        # Get tempo changes and tempos
-        tempo_change_times, tempi = self.get_tempo_changes()
-        # Create beat list; first beat is at first onset
-        beats = [start_time]
-        # Index of the tempo we're using
-        n = 0
-        # Move past all the tempo changes up to the supplied start time
-        while (n < tempo_change_times.shape[0] - 1 and
-                beats[-1] > tempo_change_times[n]):
-            n += 1
-        # Get track end time
-        end_time = self.get_end_time()
-        # Add beats in
-        while beats[-1] < end_time:
-            # Compute expected beat location, one period later
-            next_beat = beats[-1] + 60.0/tempi[n]
-            # If the beat location passes a tempo change boundary...
-            if (n < tempo_change_times.shape[0] - 1 and
-                    next_beat > tempo_change_times[n + 1]):
-                # Start by setting the beat location to the current beat...
-                next_beat = beats[-1]
-                # with the entire beat remaining
-                beat_remaining = 1.0
-                # While a beat with the current tempo would pass a tempo
-                # change boundary...
-                while (n < tempo_change_times.shape[0] - 1 and
-                        next_beat + beat_remaining*60.0/tempi[n] >=
-                        tempo_change_times[n + 1]):
-                    # Compute the amount the beat location overshoots
-                    overshot_ratio = (tempo_change_times[n + 1] -
-                                      next_beat)/(60.0/tempi[n])
-                    # Add in the amount of the beat during this tempo
-                    next_beat += overshot_ratio*60.0/tempi[n]
-                    # Less of the beat remains now
-                    beat_remaining -= overshot_ratio
-                    # Increment the tempo index
-                    n = n + 1
-                next_beat += beat_remaining*60./tempi[n]
-            beats.append(next_beat)
-        # The last beat will pass the end_time barrier, so don't include it
-        beats = np.array(beats[:-1])
-        return beats
+
+        # threshold in seconds for merging beat locations
+        epsilon = 0.01
+
+        # get qpms (quarter per minute) tempi and their change time
+        tempo_change_times, qpms = self.get_tempo_changes()
+
+        # container for storing beat times
+        beat_times = []
+
+        # store time signature objects
+        ts_idx = 1
+        if len(self.time_signature_changes) > 1:
+            cur_ts = self.time_signature_changes[0]
+            nxt_ts = self.time_signature_changes[1]
+        else:
+            cur_ts = self.time_signature_changes[0]
+            nxt_ts = None
+
+        # go over tempo change times and time signatures assuming that the first
+        # tempo change time is the start time of the first beat
+        qpm_idx = 1
+        beat_start = tempo_change_times[0]
+        while qpm_idx < len(tempo_change_times):
+            # create beat times by going over time signatures while the next
+            # time signature happens before the next tempo change. note that
+            # time signatures always begin on the start of a beat
+            while nxt_ts is not None and \
+                    nxt_ts.time < tempo_change_times[qpm_idx]:
+                # update bpm given current time signature and qpm
+                bpm = qpm_to_bpm(qpms[qpm_idx-1],
+                                 cur_ts.numerator,
+                                 cur_ts.denominator)
+
+                # interpolate from cur to nxt time signature change time
+                beat_len = 60.0 / bpm
+                beat_end = nxt_ts.time - beat_len
+                num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+                beat_times = np.append(beat_times, np.linspace(
+                    beat_start, beat_end, num_beats))
+
+                # update beat start to next time signature time
+                beat_start = nxt_ts.time
+
+                # if there are time signatures left, update the time signature
+                # index and time signatures; else break
+                if ts_idx + 1 < len(self.time_signature_changes):
+                    ts_idx += 1
+                    cur_ts = self.time_signature_changes[ts_idx-1]
+                    nxt_ts = self.time_signature_changes[ts_idx]
+                else:
+                    nxt_ts = None
+                    break
+
+            # update bpm given current time signature and qpm
+            bpm = qpm_to_bpm(qpms[qpm_idx-1],
+                             cur_ts.numerator,
+                             cur_ts.denominator)
+
+            # interpolate beat time locations from current beat start to next
+            # tempo change time
+            beat_len = 60. / bpm
+            new_beats = [beat_start]
+            while (new_beats[-1] + beat_len < tempo_change_times[qpm_idx]):
+                    new_beats.append(new_beats[-1] + beat_len)
+
+            beat_times = np.append(beat_times, new_beats)
+
+            # check if next tempo change and potential next beat are close
+            pot_beat_start = beat_times[-1] + beat_len
+            if pot_beat_start - tempo_change_times[qpm_idx] < epsilon:
+                beat_start = tempo_change_times[qpm_idx]
+                qpm_idx += 1
+            # next tempo change happens within the beat
+            else:
+                # compute how much beat time remains
+                distance = tempo_change_times[qpm_idx] - beat_times[-1]
+                beat_remainder = 1 - distance / beat_len
+
+                # update time pointer until no beat time remains
+                while beat_remainder > 0:
+                    # compute new bpm tempo within the beat
+                    bpm = qpm_to_bpm(qpms[qpm_idx],
+                                     cur_ts.numerator,
+                                     cur_ts.denominator)
+
+                    # compute beat length in secs and potential next beat start
+                    beat_len = 60. / bpm
+                    pot_beat_start = beat_remainder * beat_len + \
+                        tempo_change_times[qpm_idx]
+
+                    # check if there is a new tempo change left
+                    if qpm_idx + 1 < len(qpms):
+                        qpm_idx += 1
+                        # next tempo change is close to potential beat start
+                        if np.allclose(tempo_change_times[qpm_idx],
+                                       pot_beat_start):
+                            beat_start = tempo_change_times[qpm_idx]
+                            beat_remainder = 0
+                            qpm_idx += 1
+                        # next tempo change surpasses potential beat start
+                        elif tempo_change_times[qpm_idx] > pot_beat_start:
+                            beat_remainder = 0
+                            beat_start = pot_beat_start
+                        # next tempo change happens within current beat
+                        else:
+                            distance = tempo_change_times[qpm_idx] - \
+                                tempo_change_times[qpm_idx-1]
+                            beat_remainder -= distance / beat_len
+                    else:
+                        beat_remainder = 0
+                        pot_beat_start = beat_remainder * beat_len + \
+                            tempo_change_times[qpm_idx]
+                        beat_start = pot_beat_start
+                        qpm_idx += 1
+        # if there are time signatures left to be visited, interpolate from last
+        # tempo change time to last time signature time
+        if nxt_ts and ts_idx < len(self.time_signature_changes):
+            for ts_idx in xrange(ts_idx, len(self.time_signature_changes)):
+                # update time signature objects
+                cur_ts = self.time_signature_changes[ts_idx-1]
+                nxt_ts = self.time_signature_changes[ts_idx]
+
+                # update bpm
+                bpm = qpm_to_bpm(qpms[-1],
+                                 cur_ts.numerator,
+                                 cur_ts.denominator)
+
+                # interpolate until nxt time signature given tempo
+                beat_len = 60.0 / bpm
+                beat_end = nxt_ts.time - beat_len
+                num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+                beat_times = np.append(beat_times, np.linspace(beat_start,
+                                                               beat_end,
+                                                               num_beats))
+                # update current time
+                beat_start = nxt_ts.time
+
+            # interpolate from last time signature time until end of piece
+            beat_start = self.time_signature_changes[-1].time
+
+        bpm = qpm_to_bpm(qpms[-1],
+                         self.time_signature_changes[-1].numerator,
+                         self.time_signature_changes[-1].denominator)
+
+        beat_len = 60.0 / bpm
+        beat_end = self.get_end_time() - beat_len
+        num_beats = np.round((beat_end - beat_start) / beat_len) + 1
+        beat_times = np.append(beat_times, np.linspace(beat_start,
+                                                       beat_end,
+                                                       num_beats))
+        return beat_times
 
     def estimate_beat_start(self, candidates=10, tolerance=.025):
         """Estimate the location of the first beat based on which of the first
