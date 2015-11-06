@@ -14,6 +14,7 @@ from .containers import KeySignature, TimeSignature
 from .containers import Note, PitchBend, ControlChange
 from .utilities import mode_accidentals_to_key_number
 from .utilities import key_number_to_mode_accidentals
+from .utilities import qpm_to_bpm
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -423,39 +424,72 @@ class PrettyMIDI(object):
         # Create beat list; first beat is at first onset
         beats = [start_time]
         # Index of the tempo we're using
-        n = 0
+        tempo_idx = 0
         # Move past all the tempo changes up to the supplied start time
-        while (n < tempo_change_times.shape[0] - 1 and
-                beats[-1] > tempo_change_times[n]):
-            n += 1
+        while (tempo_idx < tempo_change_times.shape[0] - 1 and
+                beats[-1] > tempo_change_times[tempo_idx]):
+            tempo_idx += 1
+        # Index of the time signature change we're using
+        ts_idx = 0
+        # Move past all time signature changes up to the supplied start time
+        while (ts_idx < len(self.time_signature_changes) - 1 and
+                beats[-1] > self.time_signature_changes[ts_idx]):
+            ts_idx += 1
         # Get track end time
         end_time = self.get_end_time()
         # Add beats in
         while beats[-1] < end_time:
             # Compute expected beat location, one period later
-            next_beat = beats[-1] + 60.0/tempi[n]
+            bpm = qpm_to_bpm(tempi[tempo_idx],
+                             self.time_signature_changes[ts_idx].numerator,
+                             self.time_signature_changes[ts_idx].denominator)
+            next_beat = beats[-1] + 60.0/bpm
+            # If the next beat location passes a time signature change boundary
+            if ts_idx < len(self.time_signature_changes) - 1:
+                # Time of the next time signature change
+                next_ts_time = self.time_signature_changes[ts_idx + 1].time
+                if (next_beat > next_ts_time or
+                        np.isclose(next_beat, next_ts_time)):
+                    # Set the next beat to the time signature change time
+                    next_beat = self.time_signature_changes[ts_idx + 1].time
+                    # Update the time signature index
+                    ts_idx += 1
+                    bpm = qpm_to_bpm(
+                        tempi[tempo_idx],
+                        self.time_signature_changes[ts_idx].numerator,
+                        self.time_signature_changes[ts_idx].denominator)
             # If the beat location passes a tempo change boundary...
-            if (n < tempo_change_times.shape[0] - 1 and
-                    next_beat > tempo_change_times[n + 1]):
+            if (tempo_idx < tempo_change_times.shape[0] - 1 and
+                    next_beat > tempo_change_times[tempo_idx + 1]):
                 # Start by setting the beat location to the current beat...
                 next_beat = beats[-1]
                 # with the entire beat remaining
                 beat_remaining = 1.0
                 # While a beat with the current tempo would pass a tempo
                 # change boundary...
-                while (n < tempo_change_times.shape[0] - 1 and
-                        next_beat + beat_remaining*60.0/tempi[n] >=
-                        tempo_change_times[n + 1]):
+                while (tempo_idx < tempo_change_times.shape[0] - 1 and
+                        next_beat + beat_remaining*60.0/bpm >=
+                        tempo_change_times[tempo_idx + 1]):
+                    # Compute bpm adjusted for time signature
+                    bpm = qpm_to_bpm(
+                        tempi[tempo_idx],
+                        self.time_signature_changes[ts_idx].numerator,
+                        self.time_signature_changes[ts_idx].denominator)
                     # Compute the amount the beat location overshoots
-                    overshot_ratio = (tempo_change_times[n + 1] -
-                                      next_beat)/(60.0/tempi[n])
+                    overshot_ratio = (tempo_change_times[tempo_idx + 1] -
+                                      next_beat)/(60.0/bpm)
                     # Add in the amount of the beat during this tempo
-                    next_beat += overshot_ratio*60.0/tempi[n]
+                    next_beat += overshot_ratio*60.0/bpm
                     # Less of the beat remains now
                     beat_remaining -= overshot_ratio
                     # Increment the tempo index
-                    n = n + 1
-                next_beat += beat_remaining*60./tempi[n]
+                    tempo_idx = tempo_idx + 1
+                # Compute bpm adjusted for time signature
+                bpm = qpm_to_bpm(
+                    tempi[tempo_idx],
+                    self.time_signature_changes[ts_idx].numerator,
+                    self.time_signature_changes[ts_idx].denominator)
+                next_beat += beat_remaining*60./bpm
             beats.append(next_beat)
         # The last beat will pass the end_time barrier, so don't include it
         beats = np.array(beats[:-1])
