@@ -23,7 +23,7 @@ Example usage for analyzing, manipulating and synthesizing a MIDI file:
 ```python
 import pretty_midi
 # Load MIDI file into PrettyMIDI object
-midi_data = pretty_midi.PrettyMIDI('Bohemian Rhapsody.mid')
+midi_data = pretty_midi.PrettyMIDI('example.mid')
 # Print an empirical estimate of its global tempo
 print midi_data.estimate_tempo()
 # Compute the relative amount of each semitone across the entire song, a proxy for key
