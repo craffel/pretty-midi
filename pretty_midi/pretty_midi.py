@@ -906,6 +906,10 @@ class PrettyMIDI(object):
             midi_ks.set_alternatives(num_accidentals)
             midi_ks.set_minor(mode)
             timing_track += [midi_ks]
+
+        # Sort the (absolute-tick-timed) events.
+        timing_track.sort(key=lambda event: event.tick)
+
         # Add in an end of track event
         timing_track += [midi.EndOfTrackEvent(tick=timing_track[-1].tick + 1)]
         tracks += [timing_track]
