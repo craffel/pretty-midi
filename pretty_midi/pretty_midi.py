@@ -628,8 +628,9 @@ class PrettyMIDI(object):
             by their durations or velocities
         """
         # Sum up all histograms from all instruments defaulting to np.zeros(12)
-        histogram = sum([i.get_pitch_class_histogram()
-                         for i in self.instruments], np.zeros(12))
+        histogram = sum([
+            i.get_pitch_class_histogram(use_duration, use_velocity)
+            for i in self.instruments], np.zeros(12))
 
         # Normalize accordingly
         if normalize:
