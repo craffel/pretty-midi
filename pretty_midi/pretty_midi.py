@@ -638,8 +638,12 @@ class PrettyMIDI(object):
 
         return histogram
 
-    def get_pitch_class_transition_matrix(self, normalize=False):
-        """Computes the transition matrix of pitch classes given all tracks
+    def get_pitch_class_transition_matrix(self, normalize=False,
+                                          time_thresh=0.05):
+        """Computes the total pitch class transition matrix of all instruments
+
+        Transitions are added whenever the end of a note is within time_tresh
+        from the start of any other note.
 
         Parameters
         ----------
@@ -648,6 +652,9 @@ class PrettyMIDI(object):
             next note)
         normalize : bool
             Normalize transition matrix such that matrix sum equals is 1.
+        time_thresh : float
+            Maximum temporal threshold, in seconds, between the start of a note
+            and end time of any other note for a transition to be added.
 
         Returns
         -------
@@ -655,8 +662,9 @@ class PrettyMIDI(object):
             Pitch class transition matrix given all tracks
         """
         # Sum up all matrices from all instruments defaulting zeros matrix
-        pc_trans_mat = sum([i.get_pitch_class_transition_matrix()
-                            for i in self.instruments], np.zeros((12, 12)))
+        pc_trans_mat = sum(
+            [i.get_pitch_class_transition_matrix(normalize, time_thresh)
+             for i in self.instruments], np.zeros((12, 12)))
 
         # Normalize accordingly
         if normalize:
