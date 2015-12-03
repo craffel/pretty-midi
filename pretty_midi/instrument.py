@@ -245,16 +245,20 @@ class Instrument(object):
 
         return histogram
 
-    def get_pitch_class_transition_matrix(self, normalize=False):
+    def get_pitch_class_transition_matrix(self, normalize=False,
+                                          time_thresh=0.05):
         """Computes the pitch class transition matrix of the current instrument
 
-        Transitions are added whenever the end of a note is within 50ms from
-        the start of any other note.
+        Transitions are added whenever the end of a note is within time_tresh
+        from the start of any other note.
 
         Parameters
         ----------
         normalize : bool
             Normalize transition matrix such that matrix sum equals to 1.
+        time_thresh : float
+            Maximum temporal threshold, in seconds, between the start of a note
+            and end time of any other note for a transition to be added.
 
         Returns
         -------
@@ -265,9 +269,6 @@ class Instrument(object):
         # instrument is drum or less than one note, return all zeros
         if self.is_drum or len(self.notes) <= 1:
             return np.zeros((12, 12))
-
-        # use 20hz(0.05s) as the maximum time threshold for transitions
-        time_thresh = 0.05
 
         # retrieve note starts, ends and pitch classes(nodes) from self.notes
         starts, ends, nodes = np.array(
