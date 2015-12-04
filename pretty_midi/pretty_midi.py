@@ -647,9 +647,6 @@ class PrettyMIDI(object):
 
         Parameters
         ----------
-        use_duration : bool
-            Increase frequency by transition duration (current and
-            next note)
         normalize : bool
             Normalize transition matrix such that matrix sum equals is 1.
         time_thresh : float
