@@ -435,14 +435,26 @@ class PrettyMIDI(object):
         while (ts_idx < len(self.time_signature_changes) - 1 and
                 beats[-1] > self.time_signature_changes[ts_idx]):
             ts_idx += 1
+
+        def get_current_bpm():
+            ''' Convenience function which computs the current BPM based on the
+            current tempo change and time signature events '''
+            # When there are time signature changes, use them to compute BPM
+            if len(self.time_signature_changes) > 0:
+                return qpm_to_bpm(
+                    tempi[tempo_idx],
+                    self.time_signature_changes[ts_idx].numerator,
+                    self.time_signature_changes[ts_idx].denominator)
+            # Otherwise, just use the raw tempo change event tempo
+            else:
+                return tempi[tempo_idx]
         # Get track end time
         end_time = self.get_end_time()
         # Add beats in
         while beats[-1] < end_time:
+            # Update the current bpm
+            bpm = get_current_bpm()
             # Compute expected beat location, one period later
-            bpm = qpm_to_bpm(tempi[tempo_idx],
-                             self.time_signature_changes[ts_idx].numerator,
-                             self.time_signature_changes[ts_idx].denominator)
             next_beat = beats[-1] + 60.0/bpm
             # If the next beat location passes a time signature change boundary
             if ts_idx < len(self.time_signature_changes) - 1:
@@ -454,10 +466,8 @@ class PrettyMIDI(object):
                     next_beat = self.time_signature_changes[ts_idx + 1].time
                     # Update the time signature index
                     ts_idx += 1
-                    bpm = qpm_to_bpm(
-                        tempi[tempo_idx],
-                        self.time_signature_changes[ts_idx].numerator,
-                        self.time_signature_changes[ts_idx].denominator)
+                    # Update the current bpm
+                    bpm = get_current_bpm()
             # If the beat location passes a tempo change boundary...
             if (tempo_idx < tempo_change_times.shape[0] - 1 and
                     next_beat > tempo_change_times[tempo_idx + 1]):
@@ -470,11 +480,8 @@ class PrettyMIDI(object):
                 while (tempo_idx < tempo_change_times.shape[0] - 1 and
                         next_beat + beat_remaining*60.0/bpm >=
                         tempo_change_times[tempo_idx + 1]):
-                    # Compute bpm adjusted for time signature
-                    bpm = qpm_to_bpm(
-                        tempi[tempo_idx],
-                        self.time_signature_changes[ts_idx].numerator,
-                        self.time_signature_changes[ts_idx].denominator)
+                    # Update the current bpm
+                    bpm = get_current_bpm()
                     # Compute the amount the beat location overshoots
                     overshot_ratio = (tempo_change_times[tempo_idx + 1] -
                                       next_beat)/(60.0/bpm)
@@ -484,11 +491,8 @@ class PrettyMIDI(object):
                     beat_remaining -= overshot_ratio
                     # Increment the tempo index
                     tempo_idx = tempo_idx + 1
-                # Compute bpm adjusted for time signature
-                bpm = qpm_to_bpm(
-                    tempi[tempo_idx],
-                    self.time_signature_changes[ts_idx].numerator,
-                    self.time_signature_changes[ts_idx].denominator)
+                # Update the current bpm
+                bpm = get_current_bpm()
                 next_beat += beat_remaining*60./bpm
             beats.append(next_beat)
         # The last beat will pass the end_time barrier, so don't include it
