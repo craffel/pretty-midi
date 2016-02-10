@@ -98,13 +98,13 @@ class Instrument(object):
         if times is not None and times[-1] > end_time:
             end_time = times[-1]
         # Allocate a matrix of zeros - we will add in as we go
-        piano_roll = np.zeros((128, int(fs*end_time)), dtype=np.int16)
+        piano_roll = np.zeros((128, int(fs*end_time)))
         # Drum tracks don't have pitch, so return a matrix of zeros
         if self.is_drum:
             if times is None:
                 return piano_roll
             else:
-                return np.zeros((128, times.shape[0]), dtype=np.int16)
+                return np.zeros((128, times.shape[0]))
         # Add up piano roll matrix, note-by-note
         for note in self.notes:
             # Should interpolate
@@ -152,7 +152,7 @@ class Instrument(object):
 
         if times is None:
             return piano_roll
-        piano_roll_integrated = np.zeros((128, times.shape[0]), dtype=np.int16)
+        piano_roll_integrated = np.zeros((128, times.shape[0]))
         # Convert to column indices
         times = np.array(times*fs, dtype=np.int)
         for n, (start, end) in enumerate(zip(times[:-1], times[1:])):

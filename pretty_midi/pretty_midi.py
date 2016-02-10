@@ -605,8 +605,7 @@ class PrettyMIDI(object):
                        for i in self.instruments]
         # Allocate piano roll,
         # number of columns is max of # of columns in all piano rolls
-        piano_roll = np.zeros((128, np.max([p.shape[1] for p in piano_rolls])),
-                              dtype=np.int16)
+        piano_roll = np.zeros((128, np.max([p.shape[1] for p in piano_rolls])))
         # Sum each piano roll into the aggregate piano roll
         for roll in piano_rolls:
             piano_roll[:, :roll.shape[1]] += roll
