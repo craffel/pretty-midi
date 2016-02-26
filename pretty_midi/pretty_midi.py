@@ -205,9 +205,36 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
 
         """
+        # MIDI files can contain a collection of tracks; each track can have
+        # events occuring on one of sixteen channels, and events can correspond
+        # to different instruments according to the most recently occurring
+        # program number.  So, we need a way to keep track of which instrument
+        # is playing on each track on each channel.  This dict will map from
+        # program number, drum/not drum, channel, and track index to instrument
+        # indices, which we will retrieve/populate using the __get_instrument
+        # function below.
+        instrument_map = {}
+
+        def __get_instrument(program, is_drum, channel, track):
+            """Gets the Instrument corresponding to the given program number,
+            drum/non-drum type, channel, and track index.  If no such
+            instrument exists, one is created.
+
+            """
+            # If we have already created an instrument for this program
+            # number/track/channel, return it
+            if (program, is_drum, channel, track) in instrument_map:
+                return instrument_map[(program, is_drum, channel, track)]
+            # Create the instrument if none was found
+            self.instruments.append(Instrument(program, is_drum))
+            instrument = self.instruments[-1]
+            # Add the instrument to the instrument map
+            instrument_map[(program, is_drum, channel, track)] = instrument
+            return instrument
+
         # Initialize empty list of instruments
         self.instruments = []
-        for track in midi_data:
+        for track_idx, track in enumerate(midi_data):
             # Keep track of last note on location:
             # key = (instrument, is_drum, note),
             # value = (note on time, velocity)
@@ -251,8 +278,8 @@ class PrettyMIDI(object):
                             program = current_instrument[event.channel]
                             # Retrieve the Instrument instance for the current
                             # instrument
-                            instrument = self.__get_instrument(program,
-                                                               is_drum)
+                            instrument = __get_instrument(
+                                program, is_drum, event.channel, track_idx)
                             # Add the note event
                             instrument.notes.append(note)
                         # Remove the last note on for this instrument
@@ -267,7 +294,8 @@ class PrettyMIDI(object):
                     program = current_instrument[event.channel]
                     is_drum = (event.channel == 9)
                     # Retrieve the Instrument instance for the current inst
-                    instrument = self.__get_instrument(program, is_drum)
+                    instrument = __get_instrument(
+                        program, is_drum, event.channel, track_idx)
                     # Add the pitch bend event
                     instrument.pitch_bends.append(bend)
                 # Store control changes
@@ -279,24 +307,10 @@ class PrettyMIDI(object):
                     program = current_instrument[event.channel]
                     is_drum = (event.channel == 9)
                     # Retrieve the Instrument instance for the current inst
-                    instrument = self.__get_instrument(program, is_drum)
+                    instrument = __get_instrument(
+                        program, is_drum, event.channel, track_idx)
                     # Add the control change event
                     instrument.control_changes.append(control_change)
-
-    def __get_instrument(self, program, is_drum):
-        """Gets the Instrument corresponding to the given program number and
-        drum/non-drum type.  If no such instrument exists, one is created.
-
-        """
-        for instrument in self.instruments:
-            if (instrument.program == program and
-                    instrument.is_drum == is_drum):
-                # Add this note event
-                return instrument
-        # Create the instrument if none was found
-        self.instruments.append(Instrument(program, is_drum))
-        instrument = self.instruments[-1]
-        return instrument
 
     def get_tempo_changes(self):
         """Return arrays of tempo changes and their times.
