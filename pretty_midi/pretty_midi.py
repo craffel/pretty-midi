@@ -893,6 +893,44 @@ class PrettyMIDI(object):
         for instrument in self.instruments:
             instrument.remove_invalid_notes()
 
+   def transpose(self, new_key_number):
+        """Transposes all instruments to new key based on new_key_number.
+        Adds a new key signature event if no event is present.
+
+        Parameters
+        ----------
+        new_key_number: int
+        key number accordingly to [0,11] Major, [12,23] minor
+        For example, 0 is C Major, 12 is C minorTimes to map from
+        """
+        # Add default key signature of C major if none is present.
+        if not self.key_signature_changes:
+          default_key_signature = pretty_midi.KeySignature(0, 0)
+          self.key_signature_changes.append(default_key_signature)
+
+        for i in range(len(self.key_signature_changes)):
+          key_sig = midi_data.key_signature_changes[i]
+          if key_sig.key_number != new_key_number:
+            start_time = key_sig.time
+            # Look ahead to next key signature event, if any, to get end time.
+            if i < len(midi_data.key_signature_changes) - 1:
+              end_time = midi_data.key_signature_changes[i + 1].time
+            else:
+              end_time = float('inf')
+            key_offset = new_key_number - key_sig.key_number
+            # Move up or down based on which yields a smaller delta.
+            if key_offset < -6:
+              key_offset += 12
+            if key_offset > 6:
+              key_offset -= 1
+            for instrument in self.instruments:
+              if not instrument.is_drum:
+                for note in instrument.notes:
+                  if note.start >= start_time and note.start < end_time:
+                    note.pitch += key_offset
+            # Update the key signature number.
+            key_sig.key_number = new_key_number
+
     def write(self, filename):
         """Write the PrettyMIDI object out to a .mid file
 
