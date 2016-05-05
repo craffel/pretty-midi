@@ -902,6 +902,50 @@ class PrettyMIDI(object):
             Path to write .mid file to
 
         """
+
+        def event_compare(event1, event2):
+            """Compares two events for sorting.
+
+            Parameters
+            ----------
+            event1, event2 : midi.Event
+              Two events to be compared.
+
+            Events are sorted by tick time ascending. Events with the same tick
+            time ares sorted by event type. Some events are sorted by
+            additional values. For example, Note On events are sorted by pitch
+            then velocity, ensuring that a Note Off (Note On with velocity 0)
+            will never follow a Note On with the same pitch.
+            """
+            # Construct a dictionary which will map event names to numeric
+            # values which produce the correct sorting.  Each dictionary value
+            # is a function which accepts an event and returns a score.
+            # The spacing for these scores is 256, which is larger than the
+            # largest value a MIDI value can take.
+            secondary_sort = {
+                'Set Tempo': lambda(e): (1 * 256 * 256),
+                'Time Signature': lambda(e): (2 * 256 * 256),
+                'Key Signature': lambda(e): (3 * 256 * 256),
+                'Program Change': lambda(e): (4 * 256 * 256),
+                'Pitch Wheel': lambda(e): ((5 * 256 * 256) + e.pitch),
+                'Control Change': lambda(e): (
+                    (6 * 256 * 256) + (e.control * 256) + e.value),
+                'Note Off': lambda(e): ((7 * 256 * 256) + (e.pitch * 256)),
+                'Note On': lambda(e): (
+                    (8 * 256 * 256) + (e.pitch * 256) + e.velocity),
+                'End of Track': lambda(e): (9 * 256 * 256)
+            }
+            # If the events have the same tick, and both events have types
+            # which appear in the secondary_sort dictionary, use the dictionary
+            # to determine their ordering.
+            if (event1.tick == event2.tick and
+                    event1.name in secondary_sort and
+                    event2.name in secondary_sort):
+                return (secondary_sort[event1.name](event1) -
+                        secondary_sort[event2.name](event2))
+            # Otherwise, just return the difference of their ticks.
+            return event1.tick - event2.tick
+
         # Initialize list of tracks to output
         tracks = []
         # Create track 0 with timing information
@@ -993,10 +1037,10 @@ class PrettyMIDI(object):
                 control_event.set_value(control_change.value)
                 control_event.channel = channel
                 track += [control_event]
-            # Sort all the events by tick time before converting to relative
-            tick_sort = np.argsort([event.tick for event in track])
-            track = midi.Track([track[n] for n in tick_sort],
-                               tick_relative=False)
+            # Sort all the events using the event_compare comparator.
+            sorted_track = sorted(track, cmp=event_compare)
+            track = midi.Track(sorted_track, tick_relative=False)
+
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
             for n, (event1, event2) in enumerate(zip(track[:-1], track[1:])):
