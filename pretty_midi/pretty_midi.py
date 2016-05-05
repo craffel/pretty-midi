@@ -902,6 +902,21 @@ class PrettyMIDI(object):
             Path to write .mid file to
 
         """
+
+        def event_compare(event1, event2):
+          """Compares two events, yielding predictable sorting."""
+          secondary_sort = {
+              'Note On': lambda(e): (e.pitch * 256 + e.velocity),
+              'Pitch Wheel': lambda(e): (e.pitch),
+              'Control Change': lambda(e): (e.control * 256 + e.value)
+          }
+          if (event1.tick == event2.tick and
+              event1.name in secondary_sort and
+              event2.name in secondary_sort):
+            return (secondary_sort[event1.name](event1) -
+                    secondary_sort[event2.name](event2))
+          return event1.tick - event2.tick
+
         # Initialize list of tracks to output
         tracks = []
         # Create track 0 with timing information
@@ -983,10 +998,10 @@ class PrettyMIDI(object):
                 control_event.set_value(control_change.value)
                 control_event.channel = channel
                 track += [control_event]
-            # Sort all the events by tick time before converting to relative
-            tick_sort = np.argsort([event.tick for event in track])
-            track = midi.Track([track[n] for n in tick_sort],
-                               tick_relative=False)
+            # Sort all the events using the event_compare comparator.
+            sorted_track = sorted(track, cmp=event_compare)
+            track = midi.Track(sorted_track, tick_relative=False)
+
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
             for n, (event1, event2) in enumerate(zip(track[:-1], track[1:])):
