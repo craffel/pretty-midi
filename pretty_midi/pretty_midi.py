@@ -940,6 +940,10 @@ class PrettyMIDI(object):
             midi_ts = midi.events.TimeSignatureEvent()
             midi_ts.set_numerator(ts.numerator)
             midi_ts.set_denominator(ts.denominator)
+            # Set notated 32nd notes per quarter-note to a reasonable default.
+            midi_ts.set_thirtyseconds(8)
+            # Set midi clocks per metronome clicks to a reasonable default.
+            midi_ts.set_metronome(24)
             midi_ts.tick = self.time_to_tick(ts.time)
             timing_track += [midi_ts]
         # Add in each key signature
