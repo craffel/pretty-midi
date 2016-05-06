@@ -828,7 +828,7 @@ class PrettyMIDI(object):
             if time > change_time:
                 tick += (time - change_time)/tick_scale
                 time = change_time
-        return int(tick)
+        return int(round(tick))
 
     def adjust_times(self, original_times, new_times):
         """Adjusts the timing of the events in the MIDI object.
