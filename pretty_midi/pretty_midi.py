@@ -906,8 +906,14 @@ class PrettyMIDI(object):
         tracks = []
         # Create track 0 with timing information
         timing_track = midi.Track(tick_relative=False)
-        # Not sure if time signature is actually necessary
-        timing_track += [midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
+        # Add a default time signature only if there is not one at time 0.
+        add_ts = True
+        if self.time_signature_changes:
+            add_ts = min([ts.time for ts in self.time_signature_changes]) > 0.0
+        if add_ts:
+            timing_track += [
+                midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
+
         # Add in each tempo change event
         for (tick, tick_scale) in self.__tick_scales:
             tempo_event = midi.SetTempoEvent(tick=tick)
