@@ -914,19 +914,25 @@ class PrettyMIDI(object):
               The second event to be sorted.
 
           Events are sorted by tick time ascending. Events with the same tick
-          time ares sorted by event type: Pitch Wheel then Control Change then
-          Note On. Note On events are sorted by pitch then velocity, ensuring
-          that a Note Off (Note On with velocity 0) will never follow a Note On
-          of the same pitch.
+          time ares sorted by event type. Some events are sorted by additional
+          values. For example, Note On events are sorted by pitch then velocity,
+          ensuring that a Note Off (Note On with velocity 0) will never follow
+          a Note On with the same pitch.
           """
 
           secondary_sort = {
-              'Pitch Wheel': lambda(e): (
-                  (1 * 256 * 256) + e.pitch),
+              'Set Tempo': lambda(e): (1 * 256 * 256),
+              'Time Signature': lambda(e): (2 * 256 * 256),
+              'Key Signature': lambda(e): (3 * 256 * 256),
+              'Program Change': lambda(e): (4 * 256 * 256),
+              'Pitch Wheel': lambda(e): ((5 * 256 * 256) + e.pitch),
               'Control Change': lambda(e): (
-                  (2 * 256 * 256) + (e.control * 256) + e.value),
+                  (6 * 256 * 256) + (e.control * 256) + e.value),
+              'Note Off': lambda(e): (
+                  (7 * 256 * 256) + (e.pitch * 256),
               'Note On': lambda(e): (
-                  (3 * 256 * 256) + (e.pitch * 256) + e.velocity),
+                  (8 * 256 * 256) + (e.pitch * 256) + e.velocity),
+              'End of Track': lambda(e): (9 * 256 * 256)
           }
           if (event1.tick == event2.tick and
               event1.name in secondary_sort and
