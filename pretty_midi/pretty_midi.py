@@ -904,11 +904,29 @@ class PrettyMIDI(object):
         """
 
         def event_compare(event1, event2):
-          """Compares two events, yielding predictable sorting."""
+          """Compares two events for sorting.
+
+          Parameters
+          ----------
+          event1 : midi.Event
+              The first event to be sorted.
+          event2 : midi.Event
+              The second event to be sorted.
+
+          Events are sorted by tick time ascending. Events with the same tick
+          time ares sorted by event type: Pitch Wheel then Control Change then
+          Note On. Note On events are sorted by pitch then velocity, ensuring
+          that a Note Off (Note On with velocity 0) will never follow a Note On
+          of the same pitch.
+          """
+
           secondary_sort = {
-              'Note On': lambda(e): (e.pitch * 256 + e.velocity),
-              'Pitch Wheel': lambda(e): (e.pitch),
-              'Control Change': lambda(e): (e.control * 256 + e.value)
+              'Pitch Wheel': lambda(e): (
+                  (1 * 256 * 256) + e.pitch),
+              'Control Change': lambda(e): (
+                  (2 * 256 * 256) + (e.control * 256) + e.value),
+              'Note On': lambda(e): (
+                  (3 * 256 * 256) + (e.pitch * 256) + e.velocity),
           }
           if (event1.tick == event2.tick and
               event1.name in secondary_sort and
