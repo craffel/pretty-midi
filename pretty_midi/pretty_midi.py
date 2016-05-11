@@ -470,18 +470,6 @@ class PrettyMIDI(object):
             bpm = get_current_bpm()
             # Compute expected beat location, one period later
             next_beat = beats[-1] + 60.0/bpm
-            # If the next beat location passes a time signature change boundary
-            if ts_idx < len(self.time_signature_changes) - 1:
-                # Time of the next time signature change
-                next_ts_time = self.time_signature_changes[ts_idx + 1].time
-                if (next_beat > next_ts_time or
-                        np.isclose(next_beat, next_ts_time)):
-                    # Set the next beat to the time signature change time
-                    next_beat = self.time_signature_changes[ts_idx + 1].time
-                    # Update the time signature index
-                    ts_idx += 1
-                    # Update the current bpm
-                    bpm = get_current_bpm()
             # If the beat location passes a tempo change boundary...
             if (tempo_idx < tempo_change_times.shape[0] - 1 and
                     next_beat > tempo_change_times[tempo_idx + 1]):
@@ -508,6 +496,18 @@ class PrettyMIDI(object):
                 # Update the current bpm
                 bpm = get_current_bpm()
                 next_beat += beat_remaining*60./bpm
+            # If the next beat location passes a time signature change boundary
+            if ts_idx < len(self.time_signature_changes) - 1:
+                # Time of the next time signature change
+                next_ts_time = self.time_signature_changes[ts_idx + 1].time
+                if (next_beat > next_ts_time or
+                        np.isclose(next_beat, next_ts_time)):
+                    # Set the next beat to the time signature change time
+                    next_beat = self.time_signature_changes[ts_idx + 1].time
+                    # Update the time signature index
+                    ts_idx += 1
+                    # Update the current bpm
+                    bpm = get_current_bpm()
             beats.append(next_beat)
         # The last beat will pass the end_time barrier, so don't include it
         beats = np.array(beats[:-1])
