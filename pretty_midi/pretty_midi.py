@@ -454,7 +454,7 @@ class PrettyMIDI(object):
             ''' Convenience function which computs the current BPM based on the
             current tempo change and time signature events '''
             # When there are time signature changes, use them to compute BPM
-            if len(self.time_signature_changes) > 0:
+            if self.time_signature_changes:
                 return qpm_to_bpm(
                     tempi[tempo_idx],
                     self.time_signature_changes[ts_idx].numerator,
@@ -462,6 +462,11 @@ class PrettyMIDI(object):
             # Otherwise, just use the raw tempo change event tempo
             else:
                 return tempi[tempo_idx]
+
+        def gt_or_close(a, b):
+            ''' Returns True if a > b or a is close to b '''
+            return a > b or np.isclose(a, b)
+
         # Get track end time
         end_time = self.get_end_time()
         # Add beats in
@@ -496,14 +501,21 @@ class PrettyMIDI(object):
                 # Update the current bpm
                 bpm = get_current_bpm()
                 next_beat += beat_remaining*60./bpm
-            # If the next beat location passes a time signature change boundary
+            # Check if we have just passed the first time signature change
+            if self.time_signature_changes and ts_idx == 0:
+                current_ts_time = self.time_signature_changes[ts_idx].time
+                if (current_ts_time > beats[-1] and
+                        gt_or_close(next_beat, current_ts_time)):
+                    # Set the next beat to the time signature change time
+                    next_beat = current_ts_time
+            # If the next beat location passes the next time signature change
+            # boundary
             if ts_idx < len(self.time_signature_changes) - 1:
                 # Time of the next time signature change
                 next_ts_time = self.time_signature_changes[ts_idx + 1].time
-                if (next_beat > next_ts_time or
-                        np.isclose(next_beat, next_ts_time)):
+                if gt_or_close(next_beat, next_ts_time):
                     # Set the next beat to the time signature change time
-                    next_beat = self.time_signature_changes[ts_idx + 1].time
+                    next_beat = next_ts_time
                     # Update the time signature index
                     ts_idx += 1
                     # Update the current bpm
