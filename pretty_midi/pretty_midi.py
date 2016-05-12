@@ -441,13 +441,13 @@ class PrettyMIDI(object):
         tempo_idx = 0
         # Move past all the tempo changes up to the supplied start time
         while (tempo_idx < tempo_change_times.shape[0] - 1 and
-                beats[-1] > tempo_change_times[tempo_idx]):
+                beats[-1] > tempo_change_times[tempo_idx + 1]):
             tempo_idx += 1
         # Index of the time signature change we're using
         ts_idx = 0
         # Move past all time signature changes up to the supplied start time
         while (ts_idx < len(self.time_signature_changes) - 1 and
-                beats[-1] > self.time_signature_changes[ts_idx]):
+                beats[-1] > self.time_signature_changes[ts_idx + 1]):
             ts_idx += 1
 
         def get_current_bpm():
