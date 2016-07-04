@@ -935,17 +935,17 @@ class PrettyMIDI(object):
             # The spacing for these scores is 256, which is larger than the
             # largest value a MIDI value can take.
             secondary_sort = {
-                'Set Tempo': lambda(e): (1 * 256 * 256),
-                'Time Signature': lambda(e): (2 * 256 * 256),
-                'Key Signature': lambda(e): (3 * 256 * 256),
-                'Program Change': lambda(e): (4 * 256 * 256),
-                'Pitch Wheel': lambda(e): ((5 * 256 * 256) + e.pitch),
-                'Control Change': lambda(e): (
+                'Set Tempo': lambda e: (1 * 256 * 256),
+                'Time Signature': lambda e: (2 * 256 * 256),
+                'Key Signature': lambda e: (3 * 256 * 256),
+                'Program Change': lambda e: (4 * 256 * 256),
+                'Pitch Wheel': lambda e: ((5 * 256 * 256) + e.pitch),
+                'Control Change': lambda e: (
                     (6 * 256 * 256) + (e.control * 256) + e.value),
-                'Note Off': lambda(e): ((7 * 256 * 256) + (e.pitch * 256)),
-                'Note On': lambda(e): (
+                'Note Off': lambda e: ((7 * 256 * 256) + (e.pitch * 256)),
+                'Note On': lambda e: (
                     (8 * 256 * 256) + (e.pitch * 256) + e.velocity),
-                'End of Track': lambda(e): (9 * 256 * 256)
+                'End of Track': lambda e: (9 * 256 * 256)
             }
             # If the events have the same tick, and both events have types
             # which appear in the secondary_sort dictionary, use the dictionary
