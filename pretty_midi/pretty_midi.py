@@ -912,14 +912,6 @@ class PrettyMIDI(object):
         note_offs = np.array([note.end for instrument in self.instruments
                               for note in instrument.notes])
         adjusted_note_offs = np.interp(note_offs, original_times, new_times)
-        # Same for pitch bends
-        pitch_bends = np.array([bend.time for instrument in self.instruments
-                                for bend in instrument.pitch_bends])
-        adjusted_pitch_bends = np.interp(
-            pitch_bends, original_times, new_times)
-        ccs = np.array([cc.time for instrument in self.instruments
-                        for cc in instrument.control_changes])
-        adjusted_ccs = np.interp(ccs, original_times, new_times)
         # Correct notes
         for n, note in enumerate([note for instrument in self.instruments
                                   for note in instrument.notes]):
@@ -928,13 +920,39 @@ class PrettyMIDI(object):
         # After performing alignment, some notes may have an end time which is
         # on or before the start time.  Remove these!
         self.remove_invalid_notes()
-        # Correct pitch changes
-        for n, bend in enumerate([bend for instrument in self.instruments
-                                  for bend in instrument.pitch_bends]):
-            bend.time = (adjusted_pitch_bends[n] > 0)*adjusted_pitch_bends[n]
-        for n, cc in enumerate([cc for instrument in self.instruments
-                                for cc in instrument.control_changes]):
-            cc.time = (adjusted_ccs[n] > 0)*adjusted_ccs[n]
+
+        def adjust_events(event_getter):
+            """ This function calls event_getter with each instrument as the
+            sole argument and adjusts the events which are returned."""
+            # Sort the events by time
+            for instrument in self.instruments:
+                event_getter(instrument).sort(key=lambda e: e.time)
+            # Correct the events by interpolating
+            event_times = np.array(
+                [event.time for instrument in self.instruments
+                 for event in event_getter(instrument)])
+            adjusted_event_times = np.interp(
+                event_times, original_times, new_times)
+            for n, event in enumerate([event for instrument in self.instruments
+                                       for event in event_getter(instrument)]):
+                event.time = adjusted_event_times[n]
+            for instrument in self.instruments:
+                # We want to keep only the final event which has time ==
+                # new_times[0]
+                valid_events = [event for event in event_getter(instrument)
+                                if event.time == new_times[0]]
+                if valid_events:
+                    valid_events = valid_events[-1:]
+                # Otherwise only keep events within the new set of times
+                valid_events.extend(
+                    event for event in event_getter(instrument)
+                    if event.time > new_times[0] and
+                    event.time < new_times[-1])
+                event_getter(instrument)[:] = valid_events
+
+        # Correct pitch bends and control changes
+        adjust_events(lambda i: i.pitch_bends)
+        adjust_events(lambda i: i.control_changes)
 
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
