@@ -900,12 +900,10 @@ class PrettyMIDI(object):
         """
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
-            valid_notes = []
-            for note in instrument.notes:
-                if note.start >= original_times[0] and \
-                        note.end <= original_times[-1]:
-                    valid_notes.append(copy.deepcopy(note))
-            instrument.notes = valid_notes
+            instrument.notes = [copy.deepcopy(note)
+                                for note in instrument.notes
+                                if note.start >= original_times[0] and
+                                note.end <= original_times[-1]]
         # Get array of note-on locations and correct them
         note_ons = np.array([note.start for instrument in self.instruments
                              for note in instrument.notes])
