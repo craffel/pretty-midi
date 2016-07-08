@@ -907,33 +907,34 @@ class PrettyMIDI(object):
         # Get array of note-on locations and correct them
         note_ons = np.array([note.start for instrument in self.instruments
                              for note in instrument.notes])
-        aligned_note_ons = np.interp(note_ons, original_times, new_times)
+        adjusted_note_ons = np.interp(note_ons, original_times, new_times)
         # Same for note-offs
         note_offs = np.array([note.end for instrument in self.instruments
                               for note in instrument.notes])
-        aligned_note_offs = np.interp(note_offs, original_times, new_times)
+        adjusted_note_offs = np.interp(note_offs, original_times, new_times)
         # Same for pitch bends
         pitch_bends = np.array([bend.time for instrument in self.instruments
                                 for bend in instrument.pitch_bends])
-        aligned_pitch_bends = np.interp(pitch_bends, original_times, new_times)
+        adjusted_pitch_bends = np.interp(
+            pitch_bends, original_times, new_times)
         ccs = np.array([cc.time for instrument in self.instruments
                         for cc in instrument.control_changes])
-        aligned_ccs = np.interp(ccs, original_times, new_times)
+        adjusted_ccs = np.interp(ccs, original_times, new_times)
         # Correct notes
         for n, note in enumerate([note for instrument in self.instruments
                                   for note in instrument.notes]):
-            note.start = (aligned_note_ons[n] > 0)*aligned_note_ons[n]
-            note.end = (aligned_note_offs[n] > 0)*aligned_note_offs[n]
+            note.start = (adjusted_note_ons[n] > 0)*adjusted_note_ons[n]
+            note.end = (adjusted_note_offs[n] > 0)*adjusted_note_offs[n]
         # After performing alignment, some notes may have an end time which is
         # on or before the start time.  Remove these!
         self.remove_invalid_notes()
         # Correct pitch changes
         for n, bend in enumerate([bend for instrument in self.instruments
                                   for bend in instrument.pitch_bends]):
-            bend.time = (aligned_pitch_bends[n] > 0)*aligned_pitch_bends[n]
+            bend.time = (adjusted_pitch_bends[n] > 0)*adjusted_pitch_bends[n]
         for n, cc in enumerate([cc for instrument in self.instruments
                                 for cc in instrument.control_changes]):
-            cc.time = (aligned_ccs[n] > 0)*aligned_ccs[n]
+            cc.time = (adjusted_ccs[n] > 0)*adjusted_ccs[n]
 
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
