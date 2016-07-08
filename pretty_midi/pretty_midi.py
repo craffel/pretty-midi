@@ -586,6 +586,46 @@ class PrettyMIDI(object):
         # Return the best-scoring beat start
         return start_times[np.argmax(onset_scores)]
 
+    def get_downbeats(self, start_time=0.):
+        # Get beat locations
+        beats = self.get_beats(start_time)
+        # Make a copy of time signatures as we will be manipulating it
+        time_signatures = copy.deepcopy(self.time_signature_changes)
+
+        # If there are no time signatures or they start after 0s, add a 4/4
+        # signature at time 0
+        if not time_signatures or time_signatures[0].time > 0:
+            time_signatures.insert(0, TimeSignature(4, 4, 0.))
+
+        def index(array, value, default):
+            """ Returns the first index of a value in an array, or `default` if
+            the value doesn't appear in the array."""
+            idx = np.flatnonzero(np.isclose(array, value))
+            if idx.size > 0:
+                return idx[0]
+            else:
+                return default
+
+        downbeats = []
+        # Iterate over spans of time signatures
+        for start_ts, end_ts in zip(time_signatures[:-1], time_signatures[1:]):
+            # Get index of first beat at start_ts.time, or else use first beat
+            start_beat_idx = index(beats, start_ts.time, 0)
+            # Get index of first beat at end_ts.time, or else use last beat
+            end_beat_idx = index(beats, end_ts.time, beats.shape[0])
+            # Add beats within this time signature range, skipping beats
+            # according to the current time signature
+            downbeats.append(
+                beats[start_beat_idx:end_beat_idx:start_ts.numerator])
+        # Add in beats from the second-to-last to last time signature
+        final_ts = time_signatures[-1]
+        start_beat_idx = index(beats, final_ts.time, beats.shape[0])
+        downbeats.append(beats[start_beat_idx::final_ts.numerator])
+        # Convert from list to array
+        downbeats = np.concatenate(downbeats)
+        # Return all downbeats after start_time
+        return downbeats[downbeats >= start_time]
+
     def get_onsets(self):
         """Return a sorted list of the times of all onsets of all notes from
         all instruments.  May have duplicate entries.
