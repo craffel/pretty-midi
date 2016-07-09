@@ -954,6 +954,62 @@ class PrettyMIDI(object):
         adjust_events(lambda i: i.pitch_bends)
         adjust_events(lambda i: i.control_changes)
 
+        def adjust_meta(events):
+            """ This function adjusts the timing of the track-level meta-events
+            in the provided list"""
+            # Sort the events by time
+            events.sort(key=lambda e: e.time)
+            # Correct the events by interpolating
+            event_times = np.array([event.time for event in events])
+            adjusted_event_times = np.interp(
+                event_times, original_times, new_times)
+            for event, adjusted_event_time in zip(events,
+                                                  adjusted_event_times):
+                event.time = adjusted_event_time
+            # We want to keep only the final event with time == new_times[0]
+            valid_events = [event for event in events
+                            if event.time == new_times[0]]
+            if valid_events:
+                valid_events = valid_events[-1:]
+            # Otherwise only keep event within the new set of times
+            valid_events.extend(
+                event for event in events
+                if event.time > new_times[0] and event.time < new_times[-1])
+            events[:] = valid_events
+
+        # Adjust key signature change event times
+        adjust_meta(self.key_signature_changes)
+
+        # Get original downbeat locations (we will use them to determine where
+        # to put the first time signature change)
+        original_downbeats = self.get_downbeats()
+        # Remove all downbeats which appear before the start of original_times
+        original_downbeats = original_downbeats[
+            original_downbeats >= original_times[0]]
+        # Adjust downbeat timing
+        adjusted_downbeats = np.interp(
+            original_downbeats, original_times, new_times)
+        # Adjust time signature change event times
+        adjust_meta(self.time_signature_changes)
+        # In some cases there are no remaining downbeats
+        if adjusted_downbeats.size > 0:
+            # Move the final time signature change which appears before the
+            # first adjusted downbeat to appear at the first adjusted downbeat
+            ts_changes_before_downbeat = [
+                t for t in self.time_signature_changes
+                if t.time <= adjusted_downbeats[0]]
+            if ts_changes_before_downbeat:
+                ts_changes_before_downbeat[-1].time = adjusted_downbeats[0]
+                # Remove all other time signature changes which appeared before
+                # the first adjusted downbeat
+                self.time_signature_changes = [
+                    t for t in self.time_signature_changes
+                    if t.time >= adjusted_downbeats[0]]
+            else:
+                # Otherwise, just add a 4/4 signature at the first downbeat
+                self.time_signature_changes.insert(
+                    0, TimeSignature(4, 4, adjusted_downbeats[0]))
+
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
 
