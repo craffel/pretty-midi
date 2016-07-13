@@ -1010,6 +1010,81 @@ class PrettyMIDI(object):
                 self.time_signature_changes.insert(
                     0, TimeSignature(4, 4, adjusted_downbeats[0]))
 
+        # Finally, we will adjust and add tempo changes so that the
+        # tick-to-time mapping remains valid
+        # The first thing we need is to map original_times onto the existing
+        # quantized tick grid, because otherwise when we are re-creating tick
+        # scales below the rounding errors accumulate and result in a bad,
+        # wandering mapping.  This may not be the optimal way of doing this,
+        # but it does the right thing.
+        original_times = [self.__tick_to_time[self.time_to_tick(time)]
+                          for time in original_times]
+        # Use spacing between timing to change tempo changes
+        tempo_change_times, tempo_changes = self.get_tempo_changes()
+        # Since we will be using spacing between times, we must remove all
+        # times where there is no difference (or else the scale would be 0 or
+        # infinite)
+        non_repeats = [0] + [n for n in range(1, len(new_times))
+                             if new_times[n - 1] != new_times[n] and
+                             original_times[n - 1] != original_times[n]]
+        new_times = [new_times[n] for n in non_repeats]
+        original_times = [original_times[n] for n in non_repeats]
+        # Compute the time scaling between the original and new timebase
+        # This indicates how much we should scale tempi within that range
+        speed_scales = np.diff(original_times)/np.diff(new_times)
+        # Find the index of the first tempo change time within new_times
+        tempo_idx = 0
+        while (tempo_idx < len(tempo_changes) and
+               new_times[0] > tempo_change_times[tempo_idx]):
+            tempo_idx += 1
+        # Create new lists of tempo change time and scaled tempi
+        new_tempo_change_times, new_tempo_changes = [], []
+        for start_time, end_time, speed_scale in zip(
+                original_times[:-1], original_times[1:], speed_scales):
+            # Add the tempo change time and scaled tempo
+            new_tempo_change_times.append(start_time)
+            new_tempo_changes.append(tempo_changes[tempo_idx]*speed_scale)
+            # Also add and scale all tempi within the range of this scaled zone
+            while (tempo_idx + 1 < len(tempo_changes) and
+                   start_time <= tempo_change_times[tempo_idx + 1] and
+                   end_time > tempo_change_times[tempo_idx + 1]):
+                tempo_idx += 1
+                new_tempo_change_times.append(tempo_change_times[tempo_idx])
+                new_tempo_changes.append(tempo_changes[tempo_idx]*speed_scale)
+        # Interpolate the new tempo change times
+        new_tempo_change_times = np.interp(
+            new_tempo_change_times, original_times, new_times)
+
+        # Now, convert tempo changes to ticks and tick scales
+        # Start from the first tempo change time if its time 0, otherwise use
+        # 120 bpm by default at time 0.
+        if new_tempo_change_times[0] == 0:
+            last_tick = 0
+            new_tempo_change_times = new_tempo_change_times[1:]
+            last_tick_scale = 60.0/(new_tempo_changes[0]*self.resolution)
+            new_tempo_changes = new_tempo_changes[1:]
+        else:
+            last_tick, last_tick_scale = 0, 60.0/(120.0*self.resolution)
+        self._tick_scales = [(last_tick, last_tick_scale)]
+        # Keep track of the previous tick scale time for computing the tick
+        # for each tick scale
+        previous_time = 0.
+        for time, tempo in zip(new_tempo_change_times, new_tempo_changes):
+            # Compute new tick location as the last tick plus the time between
+            # the last and next tempo change, scaled by the tick scaling
+            tick = last_tick + (time - previous_time)/last_tick_scale
+            # Update the tick scale
+            tick_scale = 60.0/(tempo*self.resolution)
+            # Don't add tick scales if they are repeats
+            if tick_scale != last_tick_scale:
+                # Add in the new tick scale
+                self._tick_scales.append((int(round(tick)), tick_scale))
+                # Update the time and values of the previous tick scale
+                previous_time = time
+                last_tick, last_tick_scale = tick, tick_scale
+        # Update the tick-to-time mapping
+        self._update_tick_to_time(self._tick_scales[-1][0] + 1)
+
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
 
