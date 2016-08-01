@@ -443,11 +443,13 @@ class PrettyMIDI(object):
         while (tempo_idx < tempo_change_times.shape[0] - 1 and
                 beats[-1] > tempo_change_times[tempo_idx + 1]):
             tempo_idx += 1
+        # Logic requires that time signature changes are sorted by time
+        self.time_signature_changes.sort(key=lambda ts: ts.time)
         # Index of the time signature change we're using
         ts_idx = 0
         # Move past all time signature changes up to the supplied start time
         while (ts_idx < len(self.time_signature_changes) - 1 and
-                beats[-1] > self.time_signature_changes[ts_idx + 1]):
+                beats[-1] > self.time_signature_changes[ts_idx + 1].time):
             ts_idx += 1
 
         def get_current_bpm():
@@ -594,8 +596,8 @@ class PrettyMIDI(object):
 
         # If there are no time signatures or they start after 0s, add a 4/4
         # signature at time 0
-        if not time_signatures or time_signatures[0].time > 0:
-            time_signatures.insert(0, TimeSignature(4, 4, 0.))
+        if not time_signatures or time_signatures[0].time > start_time:
+            time_signatures.insert(0, TimeSignature(4, 4, start_time))
 
         def index(array, value, default):
             """ Returns the first index of a value in an array, or `default` if
@@ -607,19 +609,20 @@ class PrettyMIDI(object):
                 return default
 
         downbeats = []
+        end_beat_idx = 0
         # Iterate over spans of time signatures
         for start_ts, end_ts in zip(time_signatures[:-1], time_signatures[1:]):
             # Get index of first beat at start_ts.time, or else use first beat
             start_beat_idx = index(beats, start_ts.time, 0)
             # Get index of first beat at end_ts.time, or else use last beat
-            end_beat_idx = index(beats, end_ts.time, beats.shape[0])
+            end_beat_idx = index(beats, end_ts.time, start_beat_idx)
             # Add beats within this time signature range, skipping beats
             # according to the current time signature
             downbeats.append(
                 beats[start_beat_idx:end_beat_idx:start_ts.numerator])
         # Add in beats from the second-to-last to last time signature
         final_ts = time_signatures[-1]
-        start_beat_idx = index(beats, final_ts.time, beats.shape[0])
+        start_beat_idx = index(beats, final_ts.time, end_beat_idx)
         downbeats.append(beats[start_beat_idx::final_ts.numerator])
         # Convert from list to array
         downbeats = np.concatenate(downbeats)
@@ -1017,6 +1020,7 @@ class PrettyMIDI(object):
         # scales below the rounding errors accumulate and result in a bad,
         # wandering mapping.  This may not be the optimal way of doing this,
         # but it does the right thing.
+        self._update_tick_to_time(self.time_to_tick(original_times[-1]))
         original_times = [self.__tick_to_time[self.time_to_tick(time)]
                           for time in original_times]
         # Use spacing between timing to change tempo changes
@@ -1032,10 +1036,10 @@ class PrettyMIDI(object):
         # Compute the time scaling between the original and new timebase
         # This indicates how much we should scale tempi within that range
         speed_scales = np.diff(original_times)/np.diff(new_times)
-        # Find the index of the first tempo change time within new_times
+        # Find the index of the first tempo change time within original_times
         tempo_idx = 0
-        while (tempo_idx < len(tempo_changes) and
-               new_times[0] > tempo_change_times[tempo_idx]):
+        while (tempo_idx + 1 < len(tempo_changes) and
+               original_times[0] >= tempo_change_times[tempo_idx + 1]):
             tempo_idx += 1
         # Create new lists of tempo change time and scaled tempi
         new_tempo_change_times, new_tempo_changes = [], []
