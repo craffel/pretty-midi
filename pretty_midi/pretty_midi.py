@@ -443,11 +443,13 @@ class PrettyMIDI(object):
         while (tempo_idx < tempo_change_times.shape[0] - 1 and
                 beats[-1] > tempo_change_times[tempo_idx + 1]):
             tempo_idx += 1
+        # Logic requires that time signature changes are sorted by time
+        self.time_signature_changes.sort(key=lambda ts: ts.time)
         # Index of the time signature change we're using
         ts_idx = 0
         # Move past all time signature changes up to the supplied start time
         while (ts_idx < len(self.time_signature_changes) - 1 and
-                beats[-1] > self.time_signature_changes[ts_idx + 1]):
+                beats[-1] > self.time_signature_changes[ts_idx + 1].time):
             ts_idx += 1
 
         def get_current_bpm():
@@ -585,6 +587,47 @@ class PrettyMIDI(object):
             onset_scores[n] = np.dot(beat_signal, onset_signal)/beats.shape[0]
         # Return the best-scoring beat start
         return start_times[np.argmax(onset_scores)]
+
+    def get_downbeats(self, start_time=0.):
+        # Get beat locations
+        beats = self.get_beats(start_time)
+        # Make a copy of time signatures as we will be manipulating it
+        time_signatures = copy.deepcopy(self.time_signature_changes)
+
+        # If there are no time signatures or they start after 0s, add a 4/4
+        # signature at time 0
+        if not time_signatures or time_signatures[0].time > start_time:
+            time_signatures.insert(0, TimeSignature(4, 4, start_time))
+
+        def index(array, value, default):
+            """ Returns the first index of a value in an array, or `default` if
+            the value doesn't appear in the array."""
+            idx = np.flatnonzero(np.isclose(array, value))
+            if idx.size > 0:
+                return idx[0]
+            else:
+                return default
+
+        downbeats = []
+        end_beat_idx = 0
+        # Iterate over spans of time signatures
+        for start_ts, end_ts in zip(time_signatures[:-1], time_signatures[1:]):
+            # Get index of first beat at start_ts.time, or else use first beat
+            start_beat_idx = index(beats, start_ts.time, 0)
+            # Get index of first beat at end_ts.time, or else use last beat
+            end_beat_idx = index(beats, end_ts.time, start_beat_idx)
+            # Add beats within this time signature range, skipping beats
+            # according to the current time signature
+            downbeats.append(
+                beats[start_beat_idx:end_beat_idx:start_ts.numerator])
+        # Add in beats from the second-to-last to last time signature
+        final_ts = time_signatures[-1]
+        start_beat_idx = index(beats, final_ts.time, end_beat_idx)
+        downbeats.append(beats[start_beat_idx::final_ts.numerator])
+        # Convert from list to array
+        downbeats = np.concatenate(downbeats)
+        # Return all downbeats after start_time
+        return downbeats[downbeats >= start_time]
 
     def get_onsets(self):
         """Return a sorted list of the times of all onsets of all notes from
@@ -860,42 +903,191 @@ class PrettyMIDI(object):
         """
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
-            valid_notes = []
-            for note in instrument.notes:
-                if note.start >= original_times[0] and \
-                        note.end <= original_times[-1]:
-                    valid_notes.append(copy.deepcopy(note))
-            instrument.notes = valid_notes
+            instrument.notes = [copy.deepcopy(note)
+                                for note in instrument.notes
+                                if note.start >= original_times[0] and
+                                note.end <= original_times[-1]]
         # Get array of note-on locations and correct them
         note_ons = np.array([note.start for instrument in self.instruments
                              for note in instrument.notes])
-        aligned_note_ons = np.interp(note_ons, original_times, new_times)
+        adjusted_note_ons = np.interp(note_ons, original_times, new_times)
         # Same for note-offs
         note_offs = np.array([note.end for instrument in self.instruments
                               for note in instrument.notes])
-        aligned_note_offs = np.interp(note_offs, original_times, new_times)
-        # Same for pitch bends
-        pitch_bends = np.array([bend.time for instrument in self.instruments
-                                for bend in instrument.pitch_bends])
-        aligned_pitch_bends = np.interp(pitch_bends, original_times, new_times)
-        ccs = np.array([cc.time for instrument in self.instruments
-                        for cc in instrument.control_changes])
-        aligned_ccs = np.interp(ccs, original_times, new_times)
+        adjusted_note_offs = np.interp(note_offs, original_times, new_times)
         # Correct notes
         for n, note in enumerate([note for instrument in self.instruments
                                   for note in instrument.notes]):
-            note.start = (aligned_note_ons[n] > 0)*aligned_note_ons[n]
-            note.end = (aligned_note_offs[n] > 0)*aligned_note_offs[n]
+            note.start = (adjusted_note_ons[n] > 0)*adjusted_note_ons[n]
+            note.end = (adjusted_note_offs[n] > 0)*adjusted_note_offs[n]
         # After performing alignment, some notes may have an end time which is
         # on or before the start time.  Remove these!
         self.remove_invalid_notes()
-        # Correct pitch changes
-        for n, bend in enumerate([bend for instrument in self.instruments
-                                  for bend in instrument.pitch_bends]):
-            bend.time = (aligned_pitch_bends[n] > 0)*aligned_pitch_bends[n]
-        for n, cc in enumerate([cc for instrument in self.instruments
-                                for cc in instrument.control_changes]):
-            cc.time = (aligned_ccs[n] > 0)*aligned_ccs[n]
+
+        def adjust_events(event_getter):
+            """ This function calls event_getter with each instrument as the
+            sole argument and adjusts the events which are returned."""
+            # Sort the events by time
+            for instrument in self.instruments:
+                event_getter(instrument).sort(key=lambda e: e.time)
+            # Correct the events by interpolating
+            event_times = np.array(
+                [event.time for instrument in self.instruments
+                 for event in event_getter(instrument)])
+            adjusted_event_times = np.interp(
+                event_times, original_times, new_times)
+            for n, event in enumerate([event for instrument in self.instruments
+                                       for event in event_getter(instrument)]):
+                event.time = adjusted_event_times[n]
+            for instrument in self.instruments:
+                # We want to keep only the final event which has time ==
+                # new_times[0]
+                valid_events = [event for event in event_getter(instrument)
+                                if event.time == new_times[0]]
+                if valid_events:
+                    valid_events = valid_events[-1:]
+                # Otherwise only keep events within the new set of times
+                valid_events.extend(
+                    event for event in event_getter(instrument)
+                    if event.time > new_times[0] and
+                    event.time < new_times[-1])
+                event_getter(instrument)[:] = valid_events
+
+        # Correct pitch bends and control changes
+        adjust_events(lambda i: i.pitch_bends)
+        adjust_events(lambda i: i.control_changes)
+
+        def adjust_meta(events):
+            """ This function adjusts the timing of the track-level meta-events
+            in the provided list"""
+            # Sort the events by time
+            events.sort(key=lambda e: e.time)
+            # Correct the events by interpolating
+            event_times = np.array([event.time for event in events])
+            adjusted_event_times = np.interp(
+                event_times, original_times, new_times)
+            for event, adjusted_event_time in zip(events,
+                                                  adjusted_event_times):
+                event.time = adjusted_event_time
+            # We want to keep only the final event with time == new_times[0]
+            valid_events = [event for event in events
+                            if event.time == new_times[0]]
+            if valid_events:
+                valid_events = valid_events[-1:]
+            # Otherwise only keep event within the new set of times
+            valid_events.extend(
+                event for event in events
+                if event.time > new_times[0] and event.time < new_times[-1])
+            events[:] = valid_events
+
+        # Adjust key signature change event times
+        adjust_meta(self.key_signature_changes)
+
+        # Get original downbeat locations (we will use them to determine where
+        # to put the first time signature change)
+        original_downbeats = self.get_downbeats()
+        # Remove all downbeats which appear before the start of original_times
+        original_downbeats = original_downbeats[
+            original_downbeats >= original_times[0]]
+        # Adjust downbeat timing
+        adjusted_downbeats = np.interp(
+            original_downbeats, original_times, new_times)
+        # Adjust time signature change event times
+        adjust_meta(self.time_signature_changes)
+        # In some cases there are no remaining downbeats
+        if adjusted_downbeats.size > 0:
+            # Move the final time signature change which appears before the
+            # first adjusted downbeat to appear at the first adjusted downbeat
+            ts_changes_before_downbeat = [
+                t for t in self.time_signature_changes
+                if t.time <= adjusted_downbeats[0]]
+            if ts_changes_before_downbeat:
+                ts_changes_before_downbeat[-1].time = adjusted_downbeats[0]
+                # Remove all other time signature changes which appeared before
+                # the first adjusted downbeat
+                self.time_signature_changes = [
+                    t for t in self.time_signature_changes
+                    if t.time >= adjusted_downbeats[0]]
+            else:
+                # Otherwise, just add a 4/4 signature at the first downbeat
+                self.time_signature_changes.insert(
+                    0, TimeSignature(4, 4, adjusted_downbeats[0]))
+
+        # Finally, we will adjust and add tempo changes so that the
+        # tick-to-time mapping remains valid
+        # The first thing we need is to map original_times onto the existing
+        # quantized tick grid, because otherwise when we are re-creating tick
+        # scales below the rounding errors accumulate and result in a bad,
+        # wandering mapping.  This may not be the optimal way of doing this,
+        # but it does the right thing.
+        self._update_tick_to_time(self.time_to_tick(original_times[-1]))
+        original_times = [self.__tick_to_time[self.time_to_tick(time)]
+                          for time in original_times]
+        # Use spacing between timing to change tempo changes
+        tempo_change_times, tempo_changes = self.get_tempo_changes()
+        # Since we will be using spacing between times, we must remove all
+        # times where there is no difference (or else the scale would be 0 or
+        # infinite)
+        non_repeats = [0] + [n for n in range(1, len(new_times))
+                             if new_times[n - 1] != new_times[n] and
+                             original_times[n - 1] != original_times[n]]
+        new_times = [new_times[n] for n in non_repeats]
+        original_times = [original_times[n] for n in non_repeats]
+        # Compute the time scaling between the original and new timebase
+        # This indicates how much we should scale tempi within that range
+        speed_scales = np.diff(original_times)/np.diff(new_times)
+        # Find the index of the first tempo change time within original_times
+        tempo_idx = 0
+        while (tempo_idx + 1 < len(tempo_changes) and
+               original_times[0] >= tempo_change_times[tempo_idx + 1]):
+            tempo_idx += 1
+        # Create new lists of tempo change time and scaled tempi
+        new_tempo_change_times, new_tempo_changes = [], []
+        for start_time, end_time, speed_scale in zip(
+                original_times[:-1], original_times[1:], speed_scales):
+            # Add the tempo change time and scaled tempo
+            new_tempo_change_times.append(start_time)
+            new_tempo_changes.append(tempo_changes[tempo_idx]*speed_scale)
+            # Also add and scale all tempi within the range of this scaled zone
+            while (tempo_idx + 1 < len(tempo_changes) and
+                   start_time <= tempo_change_times[tempo_idx + 1] and
+                   end_time > tempo_change_times[tempo_idx + 1]):
+                tempo_idx += 1
+                new_tempo_change_times.append(tempo_change_times[tempo_idx])
+                new_tempo_changes.append(tempo_changes[tempo_idx]*speed_scale)
+        # Interpolate the new tempo change times
+        new_tempo_change_times = np.interp(
+            new_tempo_change_times, original_times, new_times)
+
+        # Now, convert tempo changes to ticks and tick scales
+        # Start from the first tempo change time if its time 0, otherwise use
+        # 120 bpm by default at time 0.
+        if new_tempo_change_times[0] == 0:
+            last_tick = 0
+            new_tempo_change_times = new_tempo_change_times[1:]
+            last_tick_scale = 60.0/(new_tempo_changes[0]*self.resolution)
+            new_tempo_changes = new_tempo_changes[1:]
+        else:
+            last_tick, last_tick_scale = 0, 60.0/(120.0*self.resolution)
+        self._tick_scales = [(last_tick, last_tick_scale)]
+        # Keep track of the previous tick scale time for computing the tick
+        # for each tick scale
+        previous_time = 0.
+        for time, tempo in zip(new_tempo_change_times, new_tempo_changes):
+            # Compute new tick location as the last tick plus the time between
+            # the last and next tempo change, scaled by the tick scaling
+            tick = last_tick + (time - previous_time)/last_tick_scale
+            # Update the tick scale
+            tick_scale = 60.0/(tempo*self.resolution)
+            # Don't add tick scales if they are repeats
+            if tick_scale != last_tick_scale:
+                # Add in the new tick scale
+                self._tick_scales.append((int(round(tick)), tick_scale))
+                # Update the time and values of the previous tick scale
+                previous_time = time
+                last_tick, last_tick_scale = tick, tick_scale
+        # Update the tick-to-time mapping
+        self._update_tick_to_time(self._tick_scales[-1][0] + 1)
 
     def remove_invalid_notes(self):
         """Removes any notes which have an end time <= start time.
