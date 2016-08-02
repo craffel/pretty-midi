@@ -901,6 +901,9 @@ class PrettyMIDI(object):
             New times to map to
 
         """
+        # Get original downbeat locations (we will use them to determine where
+        # to put the first time signature change)
+        original_downbeats = self.get_downbeats()
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
             instrument.notes = [copy.deepcopy(note)
@@ -983,9 +986,6 @@ class PrettyMIDI(object):
         # Adjust key signature change event times
         adjust_meta(self.key_signature_changes)
 
-        # Get original downbeat locations (we will use them to determine where
-        # to put the first time signature change)
-        original_downbeats = self.get_downbeats()
         # Remove all downbeats which appear before the start of original_times
         original_downbeats = original_downbeats[
             original_downbeats >= original_times[0]]
