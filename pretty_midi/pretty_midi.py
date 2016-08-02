@@ -173,9 +173,14 @@ class PrettyMIDI(object):
         Parameters
         ----------
         max_tick : int
-            last tick to compute time for
+            Last tick to compute time for.  If _tick_scales contains a tick
+            which is larger than this value, it will be used instead.
 
         """
+        # If max_tick is smaller than the largest tick in self._tick_scales,
+        # use this largest tick instead
+        max_scale_tick = max(ts[0] for ts in self._tick_scales)
+        max_tick = max_tick if max_tick > max_scale_tick else max_scale_tick
         # Allocate tick to time array - indexed by tick from 0 to max_tick
         self.__tick_to_time = np.zeros(max_tick + 1)
         # Keep track of the end time of the last tick in the previous interval
