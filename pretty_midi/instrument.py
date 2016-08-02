@@ -26,6 +26,9 @@ class Instrument(object):
     is_drum : bool
         Is the instrument a drum instrument (channel 9)?
         Default False
+    name : str
+        Name of the instrument.
+        Default ''
 
     Attributes
     ----------
@@ -33,6 +36,8 @@ class Instrument(object):
         The program number of this instrument.
     is_drum : bool
         Is the instrument a drum instrument (channel 9)?
+    name : str
+        Name of the instrument.
     notes : list
         List of Note objects
     pitch_bends : list
@@ -42,7 +47,7 @@ class Instrument(object):
 
     """
 
-    def __init__(self, program, is_drum=False):
+    def __init__(self, program, is_drum=False, name=''):
         """Create the Instrument.
         notes gets initialized to empty list.
         Fill with `(Instrument).notes.append(event)`
@@ -50,6 +55,7 @@ class Instrument(object):
         """
         self.program = program
         self.is_drum = is_drum
+        self.name = name
         self.notes = []
         self.pitch_bends = []
         self.control_changes = []
@@ -488,5 +494,5 @@ class Instrument(object):
         return synthesized
 
     def __repr__(self):
-        return 'Instrument(program={}, is_drum={})'.format(
-            self.program, self.is_drum, len(self.notes))
+        return 'Instrument(program={}, is_drum={}, name="{}")'.format(
+            self.program, self.is_drum, self.name.replace('"', r'\"'))
