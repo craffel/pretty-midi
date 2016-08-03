@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pretty_midi',
-    version='0.2-pre',
+    version='0.2',
     description='Functions and classes for handling MIDI data conveniently.',
     author='Colin Raffel',
     author_email='craffel@gmail.com',
