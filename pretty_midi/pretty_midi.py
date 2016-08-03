@@ -10,7 +10,7 @@ import collections
 import copy
 
 from .instrument import Instrument
-from .containers import KeySignature, TimeSignature
+from .containers import KeySignature, TimeSignature, Lyric
 from .containers import Note, PitchBend, ControlChange
 from .utilities import mode_accidentals_to_key_number
 from .utilities import key_number_to_mode_accidentals
@@ -102,6 +102,8 @@ class PrettyMIDI(object):
             self.key_signature_changes = []
             # Empty time signatures changes list
             self.time_signature_changes = []
+            # Empty lyrics list
+            self.lyrics = []
 
     def _load_tempo_changes(self, midi_data):
         """Populates self._tick_scales with tuples of (tick, tick_scale)
@@ -138,8 +140,9 @@ class PrettyMIDI(object):
                         self._tick_scales.append((event.tick, tick_scale))
 
     def _load_metadata(self, midi_data):
-        """Populates self.time_signature_changes with TimeSignature objects and
-        populates self.key_signature_changes with KeySignature objects.
+        """Populates self.time_signature_changes with TimeSignature objects,
+        self.key_signature_changes with KeySignature objects, and self.lyrics
+        with Lyric objects.
 
         Parameters
         ----------
@@ -147,11 +150,11 @@ class PrettyMIDI(object):
             MIDI object from which data will be read
         """
 
-        # list to store key signature changes
+        # Initialize empty lists for storing key signature changes, time
+        # signature changes, and lyrics
         self.key_signature_changes = []
-
-        # list to store time signatures changes
         self.time_signature_changes = []
+        self.lyrics = []
 
         for event in midi_data[0]:
             if isinstance(event, midi.events.KeySignatureEvent):
@@ -165,6 +168,10 @@ class PrettyMIDI(object):
                                        event.get_denominator(),
                                        self.__tick_to_time[event.tick])
                 self.time_signature_changes.append(ts_obj)
+
+            elif isinstance(event, midi.events.LyricsEvent):
+                self.lyrics.append(Lyric(
+                    event.text, self.__tick_to_time[event.tick]))
 
     def _update_tick_to_time(self, max_tick):
         """Creates __tick_to_time, a class member array which maps ticks to
@@ -990,6 +997,8 @@ class PrettyMIDI(object):
 
         # Adjust key signature change event times
         adjust_meta(self.key_signature_changes)
+        # Adjust lyrics
+        adjust_meta(self.lyrics)
 
         # Remove all downbeats which appear before the start of original_times
         original_downbeats = original_downbeats[
@@ -1135,14 +1144,15 @@ class PrettyMIDI(object):
                 'Set Tempo': lambda e: (1 * 256 * 256),
                 'Time Signature': lambda e: (2 * 256 * 256),
                 'Key Signature': lambda e: (3 * 256 * 256),
-                'Program Change': lambda e: (4 * 256 * 256),
-                'Pitch Wheel': lambda e: ((5 * 256 * 256) + e.pitch),
+                'Lyrics': lambda e: (4 * 256 * 256),
+                'Program Change': lambda e: (5 * 256 * 256),
+                'Pitch Wheel': lambda e: ((6 * 256 * 256) + e.pitch),
                 'Control Change': lambda e: (
-                    (6 * 256 * 256) + (e.control * 256) + e.value),
-                'Note Off': lambda e: ((7 * 256 * 256) + (e.pitch * 256)),
+                    (7 * 256 * 256) + (e.control * 256) + e.value),
+                'Note Off': lambda e: ((8 * 256 * 256) + (e.pitch * 256)),
                 'Note On': lambda e: (
-                    (8 * 256 * 256) + (e.pitch * 256) + e.velocity),
-                'End of Track': lambda e: (9 * 256 * 256)
+                    (9 * 256 * 256) + (e.pitch * 256) + e.velocity),
+                'End of Track': lambda e: (10 * 256 * 256)
             }
             # If the events have the same tick, and both events have types
             # which appear in the secondary_sort dictionary, use the dictionary
@@ -1193,6 +1203,12 @@ class PrettyMIDI(object):
             midi_ks.set_minor(mode)
             midi_ks.tick = self.time_to_tick(ks.time)
             timing_track += [midi_ks]
+        # Add in all lyrics events
+        for l in self.lyrics:
+            midi_lyric = midi.events.LyricsEvent()
+            midi_lyric.data = [ord(c) for c in l.text]
+            midi_lyric.tick = self.time_to_tick(l.time)
+            timing_track += [midi_lyric]
         # Sort the (absolute-tick-timed) events.
         timing_track.sort(key=lambda event: event.tick)
         # Add in an end of track event

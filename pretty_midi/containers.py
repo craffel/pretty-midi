@@ -188,3 +188,25 @@ class KeySignature(object):
     def __str__(self):
         return '{} at {:.2f} seconds'.format(
             key_number_to_key_name(self.key_number), self.time)
+
+
+class Lyric(object):
+    """Timestamped lyric text.
+
+    Attributes
+    ----------
+    text : str
+        The text of the lyric.
+    time : float
+        The time in seconds of the lyric.
+    """
+    def __init__(self, text, time):
+        self.text = text
+        self.time = time
+
+    def __repr__(self):
+        return 'Lyric(text="{}", time={})'.format(
+            self.text.replace('"', r'\"'), self.time)
+
+    def __str__(self):
+        return '"{}" at {:.2f} seconds'.format(self.text, self.time)
