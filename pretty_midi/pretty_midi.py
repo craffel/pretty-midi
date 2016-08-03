@@ -5,6 +5,7 @@ format
 
 import midi
 import numpy as np
+import math
 import warnings
 import collections
 import copy
@@ -928,15 +929,24 @@ class PrettyMIDI(object):
             Absolute tick corresponding to the supplied time
 
         """
-        # Ticks will be accumulated over tick scale changes
-        tick = 0
-        # Iterate through all the tempo changes (tick scale changes!)
-        for change_tick, tick_scale in reversed(self._tick_scales):
-            change_time = self.tick_to_time(change_tick)
-            if time > change_time:
-                tick += (time - change_time)/tick_scale
-                time = change_time
-        return int(round(tick))
+        # Find the index of the ticktime which is smaller than time
+        tick = np.searchsorted(self.__tick_to_time, time, side="left")
+        # If the closest tick was the final tick in self.__tick_to_time...
+        if tick == len(self.__tick_to_time):
+            # start from time at end of __tick_to_time
+            tick -= 1
+            # Add on ticks assuming the final tick_scale amount
+            _, final_tick_scale = self._tick_scales[-1]
+            tick += (time - self.__tick_to_time[tick])/final_tick_scale
+            # Re-round/quantize
+            return int(round(tick))
+        # If the tick is not 0 and the previous ticktime in a is closer to time
+        if tick and (math.fabs(time - self.__tick_to_time[tick - 1]) <
+                     math.fabs(time - self.__tick_to_time[tick])):
+            # Decrement index by 1
+            return tick - 1
+        else:
+            return tick
 
     def adjust_times(self, original_times, new_times):
         """Adjusts the timing of the events in the MIDI object.
