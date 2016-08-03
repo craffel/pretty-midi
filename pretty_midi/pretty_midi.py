@@ -226,6 +226,8 @@ class PrettyMIDI(object):
         # indices, which we will retrieve/populate using the __get_instrument
         # function below.
         instrument_map = {}
+        # This dict will map track indices to any track names encountered
+        track_name_map = collections.defaultdict(str)
 
         def __get_instrument(program, is_drum, channel, track):
             """Gets the Instrument corresponding to the given program number,
@@ -238,7 +240,8 @@ class PrettyMIDI(object):
             if (program, is_drum, channel, track) in instrument_map:
                 return instrument_map[(program, is_drum, channel, track)]
             # Create the instrument if none was found
-            self.instruments.append(Instrument(program, is_drum))
+            self.instruments.append(
+                Instrument(program, is_drum, track_name_map[track_idx]))
             instrument = self.instruments[-1]
             # Add the instrument to the instrument map
             instrument_map[(program, is_drum, channel, track)] = instrument
@@ -255,6 +258,10 @@ class PrettyMIDI(object):
             # initialize to program 0 for all channels
             current_instrument = np.zeros(16, dtype=np.int)
             for event in track:
+                # Look for track name events
+                if event.name == 'Track Name':
+                    # Set the track name for the current track
+                    track_name_map[track_idx] = event.text
                 # Look for program change events
                 if event.name == 'Program Change':
                     # Update the instrument for this channel
@@ -1222,6 +1229,11 @@ class PrettyMIDI(object):
         for n, instrument in enumerate(self.instruments):
             # Initialize track for this instrument
             track = midi.Track(tick_relative=False)
+            # Add track name event if instrument has a name
+            if instrument.name:
+                track_name = midi.TrackNameEvent(
+                    tick=0, data=[ord(c) for c in instrument.name])
+                track.append(track_name)
             # If it's a drum event, we need to set channel to 9
             if instrument.is_drum:
                 channel = 9
