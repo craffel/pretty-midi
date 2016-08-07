@@ -500,7 +500,7 @@ class PrettyMIDI(object):
         ts_idx = 0
         # Move past all time signature changes up to the supplied start time
         while (ts_idx < len(self.time_signature_changes) - 1 and
-                beats[-1] > self.time_signature_changes[ts_idx + 1].time):
+                beats[-1] >= self.time_signature_changes[ts_idx + 1].time):
             ts_idx += 1
 
         def get_current_bpm():
