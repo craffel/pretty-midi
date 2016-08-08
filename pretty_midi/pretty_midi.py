@@ -540,8 +540,6 @@ class PrettyMIDI(object):
                 while (tempo_idx < tempo_change_times.shape[0] - 1 and
                         next_beat + beat_remaining*60.0/bpm >=
                         tempo_change_times[tempo_idx + 1]):
-                    # Update the current bpm
-                    bpm = get_current_bpm()
                     # Compute the amount the beat location overshoots
                     overshot_ratio = (tempo_change_times[tempo_idx + 1] -
                                       next_beat)/(60.0/bpm)
@@ -551,8 +549,9 @@ class PrettyMIDI(object):
                     beat_remaining -= overshot_ratio
                     # Increment the tempo index
                     tempo_idx = tempo_idx + 1
-                # Update the current bpm
-                bpm = get_current_bpm()
+                    # Update the current bpm
+                    bpm = get_current_bpm()
+                # Add in the remainder of the beat at the current tempo
                 next_beat += beat_remaining*60./bpm
             # Check if we have just passed the first time signature change
             if self.time_signature_changes and ts_idx == 0:
