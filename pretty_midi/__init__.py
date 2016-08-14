@@ -59,8 +59,82 @@ Example usage for creating a simple MIDI file:
 
 Further examples can be found in the source tree's `examples directory
 <https://github.com/craffel/pretty-midi/tree/master/examples>`_.
-"""
 
+``pretty_midi.PrettyMIDI``
+==========================
+
+.. autoclass:: PrettyMIDI
+   :members:
+   :undoc-members:
+
+``pretty_midi.Instrument``
+==========================
+
+.. autoclass:: Instrument
+   :members:
+   :undoc-members:
+
+``pretty_midi.Note``
+====================
+
+.. autoclass:: Note
+   :members:
+   :undoc-members:
+
+``pretty_midi.PitchBend``
+=========================
+
+.. autoclass:: PitchBend
+   :members:
+   :undoc-members:
+
+``pretty_midi.ControlChange``
+=============================
+
+.. autoclass:: ControlChange
+   :members:
+   :undoc-members:
+
+``pretty_midi.TimeSignature``
+=============================
+
+.. autoclass:: TimeSignature
+   :members:
+   :undoc-members:
+
+``pretty_midi.KeySignature``
+============================
+
+.. autoclass:: KeySignature
+   :members:
+   :undoc-members:
+
+``pretty_midi.Lyric``
+=====================
+
+.. autoclass:: Lyric
+   :members:
+   :undoc-members:
+
+Utility functions
+=================
+.. autofunction:: key_number_to_key_name
+.. autofunction:: key_name_to_key_number
+.. autofunction:: mode_accidentals_to_key_number
+.. autofunction:: key_number_to_mode_accidentals
+.. autofunction:: qpm_to_bpm
+.. autofunction:: note_number_to_hz
+.. autofunction:: hz_to_note_number
+.. autofunction:: note_name_to_number
+.. autofunction:: note_number_to_name
+.. autofunction:: note_number_to_drum_name
+.. autofunction:: drum_name_to_note_number
+.. autofunction:: program_to_instrument_name
+.. autofunction:: instrument_name_to_program
+.. autofunction:: program_to_instrument_class
+.. autofunction:: pitch_bend_to_semitones
+.. autofunction:: semitones_to_pitch_bend
+"""
 from .pretty_midi import *
 from .instrument import *
 from .containers import *
