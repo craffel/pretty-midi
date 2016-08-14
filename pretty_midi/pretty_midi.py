@@ -362,8 +362,6 @@ class PrettyMIDI(object):
     def get_tempo_changes(self):
         """Return arrays of tempo changes and their times.
 
-        This is direct from the MIDI file.
-
         Returns
         -------
         tempo_change_times : np.ndarray
