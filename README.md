@@ -1,4 +1,4 @@
-pretty_midi contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
+`pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
 As of now it relies on the bleeding-edge python-midi package (install from master on GitHub, not PIP):
 
@@ -13,7 +13,7 @@ https://code.google.com/p/pyfluidsynth/
 Documentation is available here:
 http://craffel.github.io/pretty-midi/
 
-If you end up using pretty_midi in a published research project, please cite the following report:
+If you end up using `pretty_midi` in a published research project, please cite the following report:
 
 Colin Raffel and Daniel P. W. Ellis. [_Intuitive Analysis, Creation and Manipulation of MIDI Data with pretty_midi_](http://colinraffel.com/publications/ismir2014intuitive.pdf). In Proceedings of the 15th International Conference on Music Information Retrieval Late Breaking and Demo Papers, 2014.
 
