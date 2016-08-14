@@ -49,7 +49,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'pretty_midi'
-copyright = u'2014, Colin Raffel'
+copyright = u'Colin Raffel'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
