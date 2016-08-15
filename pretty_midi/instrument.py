@@ -200,7 +200,8 @@ class Instrument(object):
         """
         # Cycle through all note ends and all pitch bends and find the largest
         events = ([n.end for n in self.notes] +
-                  [b.time for b in self.pitch_bends])
+                  [b.time for b in self.pitch_bends] +
+                  [c.time for c in self.control_changes])
         # If there are no events, just return 0
         if len(events) == 0:
             return 0.

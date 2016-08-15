@@ -391,14 +391,17 @@ class PrettyMIDI(object):
             Time, in seconds, where this MIDI file ends.
 
         """
-        # Cycle through all notes from all instruments and find the largest
-        events = ([n.end for i in self.instruments for n in i.notes] +
-                  [b.time for i in self.instruments for b in i.pitch_bends])
+        # Get end times from all instruments, and times of all meta-events
+        meta_events = [self.time_signature_changes, self.key_signature_changes,
+                       self.lyrics]
+        times = ([i.get_end_time() for i in self.instruments] +
+                 [e.time for m in meta_events for e in m] +
+                 self.get_tempo_changes()[0].tolist())
         # If there are no events, return 0
-        if len(events) == 0:
+        if len(times) == 0:
             return 0.
         else:
-            return max(events)
+            return max(times)
 
     def estimate_tempi(self):
         """Return an empirical estimate of tempos and each tempo's probability.
