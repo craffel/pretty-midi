@@ -28,8 +28,8 @@ class PrettyMIDI(object):
     ----------
     midi_file : str or file
         Path or file pointer to a MIDI file.
-        Default None which means create an empty class with the supplied values
-        for resolutiona and initial tempo.
+        Default ``None`` which means create an empty class with the supplied
+        values for resolution and initial tempo.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
     intitial_tempo : float
@@ -38,13 +38,13 @@ class PrettyMIDI(object):
     Attributes
     ----------
     instruments : list
-        List of pretty_midi.Instrument objects.
+        List of :class:`pretty_midi.Instrument` objects.
 
     """
 
     def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
-        """Initialize the PrettyMIDI container, either by populating it with
-        MIDI data from a file or from scratch with no data.
+        """Initialize either by populating it with MIDI data from a file or
+        from scratch with no data.
 
         """
         if midi_file is not None:
@@ -107,12 +107,13 @@ class PrettyMIDI(object):
             self.lyrics = []
 
     def _load_tempo_changes(self, midi_data):
-        """Populates self._tick_scales with tuples of (tick, tick_scale)
+        """Populates ``self._tick_scales`` with tuples of
+        ``(tick, tick_scale)`` loaded from ``midi_data``.
 
         Parameters
         ----------
         midi_data : midi.FileReader
-            MIDI object from which data will be read
+            MIDI object from which data will be read.
         """
 
         # MIDI data is given in "ticks".
@@ -141,14 +142,14 @@ class PrettyMIDI(object):
                         self._tick_scales.append((event.tick, tick_scale))
 
     def _load_metadata(self, midi_data):
-        """Populates self.time_signature_changes with TimeSignature objects,
-        self.key_signature_changes with KeySignature objects, and self.lyrics
-        with Lyric objects.
+        """Populates ``self.time_signature_changes`` with ``TimeSignature``
+        objects, ``self.key_signature_changes`` with ``KeySignature`` objects,
+        and ``self.lyrics`` with ``Lyric`` objects.
 
         Parameters
         ----------
         midi_data : midi.FileReader
-            MIDI object from which data will be read
+            MIDI object from which data will be read.
         """
 
         # Initialize empty lists for storing key signature changes, time
@@ -175,14 +176,14 @@ class PrettyMIDI(object):
                     event.text, self.__tick_to_time[event.tick]))
 
     def _update_tick_to_time(self, max_tick):
-        """Creates __tick_to_time, a class member array which maps ticks to
-        time starting from tick 0 and ending at max_tick
+        """Creates ``self.__tick_to_time``, a class member array which maps
+        ticks to time starting from tick 0 and ending at ``max_tick``.
 
         Parameters
         ----------
         max_tick : int
-            Last tick to compute time for.  If _tick_scales contains a tick
-            which is larger than this value, it will be used instead.
+            Last tick to compute time for.  If ``self._tick_scales`` contains a
+            tick which is larger than this value, it will be used instead.
 
         """
         # If max_tick is smaller than the largest tick in self._tick_scales,
@@ -210,13 +211,12 @@ class PrettyMIDI(object):
                                             tick_scale*ticks)
 
     def _load_instruments(self, midi_data):
-        """Populates the list of instruments in midi_data.
+        """Populates ``self.instruments`` using ``midi_data``.
 
         Parameters
         ----------
         midi_data : midi.FileReader
-            MIDI object from which data will be read
-
+            MIDI object from which data will be read.
         """
         # MIDI files can contain a collection of tracks; each track can have
         # events occuring on one of sixteen channels, and events can correspond
@@ -367,7 +367,7 @@ class PrettyMIDI(object):
         tempo_change_times : np.ndarray
             Times, in seconds, where the tempo changes.
         tempi : np.ndarray
-            What the tempo is at each point in time in tempo_change_times
+            What the tempo is at each point in time in ``tempo_change_times``.
 
         """
 
@@ -382,12 +382,13 @@ class PrettyMIDI(object):
         return tempo_change_times, tempi
 
     def get_end_time(self):
-        """Returns the time of the end of this MIDI file (latest note-off event).
+        """Returns the time of the end of the MIDI object (time of the last
+        event in all instruments/meta-events).
 
         Returns
         -------
         end_time : float
-            Time, in seconds, where this MIDI file ends
+            Time, in seconds, where this MIDI file ends.
 
         """
         # Cycle through all notes from all instruments and find the largest
@@ -400,17 +401,16 @@ class PrettyMIDI(object):
             return max(events)
 
     def estimate_tempi(self):
-        """Return an empirical estimate of tempos in the piece and each tempo's
-        probability.
+        """Return an empirical estimate of tempos and each tempo's probability.
         Based on "Automatic Extraction of Tempo and Beat from Expressive
-        Performance", Dixon 2001
+        Performance", Dixon 2001.
 
         Returns
         -------
         tempos : np.ndarray
-            Array of estimated tempos, in bpm
+            Array of estimated tempos, in beats per minute.
         probabilities : np.ndarray
-            Array of the probability of each tempo estimate
+            Array of the probabilities of each tempo estimate.
 
         """
         # Grab the list of onsets
@@ -451,8 +451,8 @@ class PrettyMIDI(object):
         return 60./clusters, cluster_counts
 
     def estimate_tempo(self):
-        """Returns the best tempo estimate from estimate_tempi(), for
-        convenience
+        """Returns the best tempo estimate from
+        :func:`pretty_midi.PrettyMIDI.estimate_tempi()`, for convenience.
 
         Returns
         -------
@@ -468,8 +468,6 @@ class PrettyMIDI(object):
 
     def get_beats(self, start_time=0.):
         """Return a list of beat locations, according to MIDI tempo changes.
-        Will not be correct if the MIDI data has been modified without changing
-        tempo information.
 
         Parameters
         ----------
@@ -582,15 +580,15 @@ class PrettyMIDI(object):
         Parameters
         ----------
         candidates : int
-            Number of candidate onsets to try
+            Number of candidate onsets to try.
         tolerance : float
             The tolerance in seconds around which onsets will be used to
-            treat a beat as correct
+            treat a beat as correct.
 
         Returns
         -------
         beat_start : float
-            The offset which is chosen as the beat start location
+            The offset which is chosen as the beat start location.
         """
         # Get a sorted list of all notes from all instruments
         note_list = [n for i in self.instruments for n in i.notes]
@@ -640,6 +638,20 @@ class PrettyMIDI(object):
         return start_times[np.argmax(onset_scores)]
 
     def get_downbeats(self, start_time=0.):
+        """Return a list of downbeat locations, according to MIDI tempo changes
+        and time signature change events.
+
+        Parameters
+        ----------
+        start_time : float
+            Location of the first downbeat, in seconds.
+
+        Returns
+        -------
+        downbeats : np.ndarray
+            Downbeat locations, in seconds.
+
+        """
         # Get beat locations
         beats = self.get_beats(start_time)
         # Make a copy of time signatures as we will be manipulating it
@@ -687,7 +699,7 @@ class PrettyMIDI(object):
         Returns
         -------
         onsets : np.ndarray
-            Onset locations, in seconds
+            Onset locations, in seconds.
 
         """
         onsets = np.array([])
@@ -698,21 +710,21 @@ class PrettyMIDI(object):
         return np.sort(onsets)
 
     def get_piano_roll(self, fs=100, times=None):
-        """Get the MIDI data in piano roll notation.
+        """Compute a piano roll matrix of the MIDI data.
 
         Parameters
         ----------
         fs : int
             Sampling frequency of the columns, i.e. each column is spaced apart
-            by 1./fs seconds
+            by ``1./fs`` seconds.
         times : np.ndarray
             Times of the start of each column in the piano roll.
-            Default None which is np.arange(0, get_end_time(), 1./fs)
+            Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
 
         Returns
         -------
         piano_roll : np.ndarray, shape=(128,times.shape[0])
-            Piano roll of MIDI data, flattened across instruments
+            Piano roll of MIDI data, flattened across instruments.
 
         """
 
@@ -733,14 +745,14 @@ class PrettyMIDI(object):
 
     def get_pitch_class_histogram(self, use_duration=False,
                                   use_velocity=False, normalize=True):
-        """Computes the histogram of pitch classes given all tracks
+        """Computes the histogram of pitch classes.
 
         Parameters
         ----------
         use_duration : bool
-            Weight frequency by note duration
+            Weight frequency by note duration.
         use_velocity : bool
-            Weight frequency by note velocity
+            Weight frequency by note velocity.
         normalize : bool
             Normalizes the histogram such that the sum of bin values is 1.
 
@@ -748,7 +760,7 @@ class PrettyMIDI(object):
         -------
         histogram : np.ndarray, shape=(12,)
             Histogram of pitch classes given all tracks, optionally weighted
-            by their durations or velocities
+            by their durations or velocities.
         """
         # Sum up all histograms from all instruments defaulting to np.zeros(12)
         histogram = sum([
@@ -763,10 +775,9 @@ class PrettyMIDI(object):
 
     def get_pitch_class_transition_matrix(self, normalize=False,
                                           time_thresh=0.05):
-        """Computes the total pitch class transition matrix of all instruments
-
-        Transitions are added whenever the end of a note is within time_tresh
-        from the start of any other note.
+        """Computes the total pitch class transition matrix of all instruments.
+        Transitions are added whenever the end of a note is within
+        ``time_tresh`` from the start of any other note.
 
         Parameters
         ----------
@@ -779,7 +790,7 @@ class PrettyMIDI(object):
         Returns
         -------
         pitch_class_transition_matrix : np.ndarray, shape=(12,12)
-            Pitch class transition matrix given all tracks
+            Pitch class transition matrix.
         """
         # Sum up all matrices from all instruments defaulting zeros matrix
         pc_trans_mat = sum(
@@ -799,15 +810,15 @@ class PrettyMIDI(object):
         ----------
         fs : int
             Sampling frequency of the columns, i.e. each column is spaced apart
-            by 1./fs seconds
+            by ``1./fs`` seconds.
         times : np.ndarray
             Times of the start of each column in the piano roll.
-            Default None which is np.arange(0, get_end_time(), 1./fs)
+            Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
 
         Returns
         -------
         piano_roll : np.ndarray, shape=(12,times.shape[0])
-            Chromagram of MIDI data, flattened across instruments
+            Chromagram of MIDI data, flattened across instruments.
 
         """
         # First, get the piano roll
@@ -824,15 +835,15 @@ class PrettyMIDI(object):
         Parameters
         ----------
         fs : int
-            Sampling rate of the synthesized audio signal, default 44100
+            Sampling rate of the synthesized audio signal.
         wave : function
             Function which returns a periodic waveform,
-            e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+            e.g. ``np.sin``, ``scipy.signal.square``, etc.
 
         Returns
         -------
         synthesized : np.ndarray
-            Waveform of the MIDI data, synthesized at fs
+            Waveform of the MIDI data, synthesized at ``fs``.
 
         """
         # If there are no instruments, return an empty array
@@ -855,16 +866,16 @@ class PrettyMIDI(object):
         Parameters
         ----------
         fs : int
-            Sampling rate to synthesize
+            Sampling rate to synthesize at.
         sf2_path : str
             Path to a .sf2 file.
-            Default None, which uses the TimGM6mb.sf2 file included with
-            pretty_midi.
+            Default ``None``, which uses the TimGM6mb.sf2 file included with
+            ``pretty_midi``.
 
         Returns
         -------
         synthesized : np.ndarray
-            Waveform of the MIDI data, synthesized at fs
+            Waveform of the MIDI data, synthesized at ``fs``.
 
         """
         # If there are no instruments, or all instruments have no notes, return
@@ -886,17 +897,17 @@ class PrettyMIDI(object):
 
     def tick_to_time(self, tick):
         """Converts from an absolute tick to time in seconds using
-        self.__tick_to_time
+        ``self.__tick_to_time``.
 
         Parameters
         ----------
         tick : int
-            absolute tick to convert
+            Absolute tick to convert.
 
         Returns
         -------
         time : float
-            time in seconds of tick
+            Time in seconds of tick.
 
         """
         # Check that the tick isn't too big
@@ -913,17 +924,17 @@ class PrettyMIDI(object):
 
     def time_to_tick(self, time):
         """Converts from a time in seconds to absolute tick using
-        self._tick_scales
+        ``self._tick_scales``.
 
         Parameters
         ----------
         time : float
-            Time, in seconds
+            Time, in seconds.
 
         Returns
         -------
         tick : int
-            Absolute tick corresponding to the supplied time
+            Absolute tick corresponding to the supplied time.
 
         """
         # Find the index of the ticktime which is smaller than time
@@ -947,18 +958,18 @@ class PrettyMIDI(object):
 
     def adjust_times(self, original_times, new_times):
         """Adjusts the timing of the events in the MIDI object.
-        The parameters `original_times` and `new_times` define a mapping, so
-        that if an event originally occurs at time `original_times[n]`, it
-        will be moved so that it occurs at `new_times[n]`.  If events don't
-        occur exactly on a time in `original_times`, their timing will be
+        The parameters ``original_times`` and ``new_times`` define a mapping,
+        so that if an event originally occurs at time ``original_times[n]``, it
+        will be moved so that it occurs at ``new_times[n]``.  If events don't
+        occur exactly on a time in ``original_times``, their timing will be
         linearly interpolated.
 
         Parameters
         ----------
         original_times : np.ndarray
-            Times to map from
+            Times to map from.
         new_times : np.ndarray
-            New times to map to
+            New times to map to.
 
         """
         # Get original downbeat locations (we will use them to determine where
@@ -1152,7 +1163,7 @@ class PrettyMIDI(object):
         self._update_tick_to_time(self._tick_scales[-1][0] + 1)
 
     def remove_invalid_notes(self):
-        """Removes any notes which have an end time <= start time.
+        """Removes any notes whose end time is before or at their start time.
 
         """
         # Simply call the child method on all instruments
@@ -1160,12 +1171,12 @@ class PrettyMIDI(object):
             instrument.remove_invalid_notes()
 
     def write(self, filename):
-        """Write the PrettyMIDI object out to a .mid file
+        """Write the MIDI data out to a .mid file.
 
         Parameters
         ----------
         filename : str
-            Path to write .mid file to
+            Path to write .mid file to.
 
         """
 

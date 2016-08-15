@@ -10,7 +10,7 @@ from .constants import DRUM_MAP, INSTRUMENT_MAP, INSTRUMENT_CLASSES
 
 
 def key_number_to_key_name(key_number):
-    """Convert a key number to a key string
+    """Convert a key number to a key string.
 
     Parameters
     ----------
@@ -21,10 +21,10 @@ def key_number_to_key_name(key_number):
 
     Returns
     -------
-    str
-        'Root mode', e.g. Gb minor.
-        Gives preference for keys with flats, with the
-        exception of F#, G# and C# minor.
+    key_name : str
+        Key name in the format ``'(root) (mode)'``, e.g. ``'Gb minor'``.
+        Gives preference for keys with flats, with the exception of F#, G# and
+        C# minor.
     """
 
     if not isinstance(key_number, int):
@@ -52,20 +52,20 @@ def key_number_to_key_name(key_number):
 
 
 def key_name_to_key_number(key_string):
-    """Convert a correctly formated string key to key number
+    """Convert a correctly formated string key to key number.
 
     Parameters
     ----------
     key_string : str
-        Format is ``'key mode'``, where:
-            `key` is notaded using ABCDEFG with # or b;
-            `mode` is notated using 'major' or 'minor'.
+        Format is ``'(root) (mode)'``, where:
+        ``(root)`` is notated using ABCDEFG with # for sharp or b for flat;
+        ``(mode)`` is notated using 'major' or 'minor'.
         Letter case is irrelevant for mode.
 
     Returns
     -------
-        key_number : int
-            Integer number representing the key and its mode
+    key_number : int
+        Integer representing the key and its mode.
     """
 
     if not isinstance(key_string, str):
@@ -112,20 +112,19 @@ def key_name_to_key_number(key_string):
 
 
 def mode_accidentals_to_key_number(mode, num_accidentals):
-    """Convert to pretty_midi's given number of accidentals and mode
-    key_number
+    """Convert a given number of accidentals and mode to a key number.
 
     Parameters
     ----------
     mode : int
-        0 is major, 1 is minor
+        0 is major, 1 is minor.
     num_accidentals : int
-        Positive number is used for sharps, negative number is used for flats
+        Positive number is used for sharps, negative number is used for flats.
 
     Returns
     -------
     key_number : int
-        Integer number representing the key and its mode
+        Integer representing the key and its mode.
     """
 
     if not (isinstance(num_accidentals, int) and
@@ -164,20 +163,20 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
 
 
 def key_number_to_mode_accidentals(key_number):
-    """Converts a key number to number of accidentals and mode
+    """Converts a key number to number of accidentals and mode.
 
     Parameters
     ----------
     key_number : int
-        Key number as used in pretty midi
+        Key number as used in ``pretty_midi``.
 
     Returns
     -------
     mode : int
-        0 for major, 1 for minor
+        0 for major, 1 for minor.
     num_accidentals : int
-        Number of accidentals according to python's midi package
-        Positive is for sharps and negative is for flats
+        Number of accidentals.
+        Positive is for sharps and negative is for flats.
     """
 
     if not ((isinstance(key_number, int) and
@@ -202,21 +201,21 @@ def key_number_to_mode_accidentals(key_number):
 
 
 def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
-    """Converts from quarter notes per minute to beats per minute
+    """Converts from quarter notes per minute to beats per minute.
 
     Parameters
     ----------
     quarter_note_tempo : float
-        quarter note tempo
+        Quarter note tempo.
     numerator : int
-        numerator of time signature
+        Numerator of time signature.
     denominator : int
-        denominator of time signature
+        Denominator of time signature.
 
     Returns
     -------
-    float
-        Tempo in beats per minute
+    bpm : float
+        Tempo in beats per minute.
     """
 
     if not (isinstance(quarter_note_tempo, (int, float)) and
@@ -263,12 +262,12 @@ def note_number_to_hz(note_number):
     Parameters
     ----------
     note_number : float
-        MIDI note number, can be fractional
+        MIDI note number, can be fractional.
 
     Returns
     -------
     note_frequency : float
-        Frequency of the note in Hz
+        Frequency of the note in Hz.
 
     """
     # MIDI note numbers are defined as the number of semitones relative to C0
@@ -277,17 +276,17 @@ def note_number_to_hz(note_number):
 
 
 def hz_to_note_number(frequency):
-    """Convert a frequency in Hz to a (fractional) frequency
+    """Convert a frequency in Hz to a (fractional) note number.
 
     Parameters
     ----------
     frequency : float
-        Frequency of the note in Hz
+        Frequency of the note in Hz.
 
     Returns
     -------
     note_number : float
-        MIDI note number, can be fractional
+        MIDI note number, can be fractional.
 
     """
     # MIDI note numbers are defined as the number of semitones relative to C0
@@ -296,20 +295,21 @@ def hz_to_note_number(frequency):
 
 
 def note_name_to_number(note_name):
-    """Converts a note name in the format (note)(accidental)(octave number)
-    to MIDI note number.
+    """Converts a note name in the format
+    ``'(note)(accidental)(octave number)'`` (e.g. ``'C#4'``) to MIDI note
+    number.
 
-    (note) is required, and is case-insensitive.
+    ``'(note)'`` is required, and is case-insensitive.
 
-    (accidental) should be '' for natural, '#' for sharp and '!' or 'b' for
-    flat.
+    ``'(accidental)'`` should be ``''`` for natural, ``'#'`` for sharp and
+    ``'!'`` or ``'b'`` for flat.
 
-    If (octave) is '', octave 0 is assumed.
+    If ``'(octave)'`` is ``''``, octave 0 is assumed.
 
     Parameters
     ----------
     note_name : str
-        A note name, as described above
+        A note name, as described above.
 
     Returns
     -------
@@ -345,7 +345,7 @@ def note_name_to_number(note_name):
 
 def note_number_to_name(note_number):
     """Convert a MIDI note number to its name, in the format
-    (note)(accidental)(octave number) (e.g. 'C#4')
+    ``'(note)(accidental)(octave number)'`` (e.g. ``'C#4'``).
 
     Parameters
     ----------
@@ -458,7 +458,7 @@ def program_to_instrument_name(program_number):
     Parameters
     ----------
     program_number : int
-        MIDI program number, between 0 and 127
+        MIDI program number, between 0 and 127.
 
     Returns
     -------
@@ -524,7 +524,7 @@ def program_to_instrument_class(program_number):
     Parameters
     ----------
     program_number : int
-        MIDI program number, between 0 and 127
+        MIDI program number, between 0 and 127.
 
     Returns
     -------
@@ -546,13 +546,13 @@ def program_to_instrument_class(program_number):
 
 
 def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
-    """Convert a MIDI pitch bend value (in the range -8192, 8191) to the bend
-    amount in semitones.
+    """Convert a MIDI pitch bend value (in the range ``[-8192, 8191]``) to the
+    bend amount in semitones.
 
     Parameters
     ----------
     pitch_bend : int
-        MIDI pitch bend amount, in [-8192, 8191]
+        MIDI pitch bend amount, in ``[-8192, 8191]``.
     semitone_range : float
         Convert to +/- this semitone range.  Default is 2., which is the
         General MIDI standard +/-2 semitone range.
@@ -560,7 +560,7 @@ def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
     Returns
     -------
     semitones : float
-        Number of semitones corresponding to this pitch bend amount
+        Number of semitones corresponding to this pitch bend amount.
 
     """
 
@@ -568,12 +568,12 @@ def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
 
 
 def semitones_to_pitch_bend(semitones, semitone_range=2.):
-    """Convert a semitone value to the corresponding MIDI pitch bend int
+    """Convert a semitone value to the corresponding MIDI pitch bend integer.
 
     Parameters
     ----------
     semitones : float
-        Number of semitones for the pitch bend
+        Number of semitones for the pitch bend.
     semitone_range : float
         Convert to +/- this semitone range.  Default is 2., which is the
         General MIDI standard +/-2 semitone range.
@@ -581,7 +581,7 @@ def semitones_to_pitch_bend(semitones, semitone_range=2.):
     Returns
     -------
     pitch_bend : int
-        MIDI pitch bend amount, in [-8192, 8191]
+        MIDI pitch bend amount, in ``[-8192, 8191]``.
 
     """
     return int(8192*(semitones/semitone_range))

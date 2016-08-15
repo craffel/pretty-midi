@@ -11,17 +11,13 @@ class Note(object):
     Parameters
     ----------
     velocity : int
-        Note velocity
+        Note velocity.
     pitch : int
-        Note pitch, as a MIDI note number
+        Note pitch, as a MIDI note number.
     start : float
-        Note on time, absolute, in seconds
+        Note on time, absolute, in seconds.
     end : float
-        Note off time, absolute, in seconds
-
-    Notes
-    -----
-    This class is simply a container for its parameters.
+        Note off time, absolute, in seconds.
 
     """
 
@@ -45,13 +41,9 @@ class PitchBend(object):
     Parameters
     ----------
     pitch : int
-        MIDI pitch bend amount, in the range [-8192, 8191]
+        MIDI pitch bend amount, in the range ``[-8192, 8191]``.
     time : float
-        Time where the pitch bend occurs
-
-    Notes
-    -----
-    This class is simply a container for its parameters.
+        Time where the pitch bend occurs.
 
     """
 
@@ -72,15 +64,11 @@ class ControlChange(object):
     Parameters
     ----------
     number : int
-        The control change number, in [0, 127]
+        The control change number, in ``[0, 127]``.
     value : int
-        The value of the control change, in [0, 127]
+        The value of the control change, in ``[0, 127]``.
     time : float
-        Time where the pitch bend occurs
-
-    Notes
-    -----
-    This class is simply a container for its parameters.
+        Time where the control change occurs.
 
     """
 
@@ -99,20 +87,21 @@ class ControlChange(object):
 
 class TimeSignature(object):
     """Container for a Time Signature event, which contains the time signature
-    numerator, denominator and the event time in seconds
+    numerator, denominator and the event time in seconds.
 
     Attributes
     ----------
     numerator : int
-        Numerator of time signature
+        Numerator of time signature.
     denominator : int
-        Denominator of time signature
+        Denominator of time signature.
     time : float
-        Time of event in seconds
+        Time of event in seconds.
 
     Examples
     --------
-    Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds
+    Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds:
+
     >>> ts = TimeSignature(6, 8, 3.14)
     >>> print ts
     6/8 at 3.14 seconds
@@ -146,21 +135,20 @@ class TimeSignature(object):
 
 
 class KeySignature(object):
-    """Contains the key signature and the event time in seconds
-
+    """Contains the key signature and the event time in seconds.
     Only supports major and minor keys.
 
     Attributes
     ----------
     key_number : int
-        key number accordingly to [0,11] Major, [12,23] minor
-        For example, 0 is C Major, 12 is C minor
+        Key number according to ``[0, 11]`` Major, ``[12, 23]`` minor.
+        For example, 0 is C Major, 12 is C minor.
     time : float
-        time of event in seconds
+        Time of event in seconds.
 
     Examples
     --------
-    Instantiate a C# minor KeySignature object at 3.14 seconds.
+    Instantiate a C# minor KeySignature object at 3.14 seconds:
 
     >>> ks = KeySignature(13, 3.14)
     >>> print ks

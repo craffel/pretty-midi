@@ -17,18 +17,16 @@ DEFAULT_SF2 = 'TimGM6mb.sf2'
 
 
 class Instrument(object):
-    """Object to hold event information for a single instrument
+    """Object to hold event information for a single instrument.
 
     Parameters
     ----------
     program : int
-        MIDI program number (instrument index), in [0, 127]
+        MIDI program number (instrument index), in ``[0, 127]``.
     is_drum : bool
         Is the instrument a drum instrument (channel 9)?
-        Default False
     name : str
         Name of the instrument.
-        Default ''
 
     Attributes
     ----------
@@ -39,18 +37,16 @@ class Instrument(object):
     name : str
         Name of the instrument.
     notes : list
-        List of Note objects
+        List of :class:`pretty_midi.Note` objects.
     pitch_bends : list
-        List of of PitchBend objects
+        List of of :class:`pretty_midi.PitchBend` objects.
     control_changes : list
-        List of ControlChange objects
+        List of :class:`pretty_midi.ControlChange` objects.
 
     """
 
     def __init__(self, program, is_drum=False, name=''):
         """Create the Instrument.
-        notes gets initialized to empty list.
-        Fill with `(Instrument).notes.append(event)`
 
         """
         self.program = program
@@ -62,12 +58,12 @@ class Instrument(object):
 
     def get_onsets(self):
         """Get all onsets of all notes played by this instrument.
-        May contain duplicates
+        May contain duplicates.
 
         Returns
         -------
         onsets : np.ndarray
-                List of all note onsets
+                List of all note onsets.
 
         """
         onsets = []
@@ -78,21 +74,21 @@ class Instrument(object):
         return np.sort(onsets)
 
     def get_piano_roll(self, fs=100, times=None):
-        """Get a piano roll notation of the note events of this instrument.
+        """Compute a piano roll matrix of this instrument.
 
         Parameters
         ----------
         fs : int
             Sampling frequency of the columns, i.e. each column is spaced apart
-            by 1./fs seconds
+            by ``1./fs`` seconds.
         times : np.ndarray
-            times of the start of each column in the piano roll,
-            Default None which is np.arange(0, get_end_time(), 1./fs)
+            Times of the start of each column in the piano roll.
+            Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
 
         Returns
         -------
-        piano_roll : np.ndarray, shape=(128, times.shape[0])
-            Piano roll matrix of this instrument
+        piano_roll : np.ndarray, shape=(128,times.shape[0])
+            Piano roll of this instrument.
 
         """
         # If there are no notes, return an empty matrix
@@ -168,21 +164,21 @@ class Instrument(object):
         return piano_roll_integrated
 
     def get_chroma(self, fs=100, times=None):
-        """Get a chroma matrix for the note events in this instrument.
+        """Get a sequence of chroma vectors from this instrument.
 
         Parameters
         ----------
         fs : int
-            Sampling frequency of the columns, i.e. each column is spaced
-            apart by 1./fs seconds
+            Sampling frequency of the columns, i.e. each column is spaced apart
+            by ``1./fs`` seconds.
         times : np.ndarray
-            times of the start of each column in the chroma matrix,
-            Default None which is np.arange(0, get_end_time(), 1./fs)
+            Times of the start of each column in the piano roll.
+            Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
 
         Returns
         -------
-        chroma : np.ndarray, shape=(12,times.shape[0])
-            Chromagram matrix of this instrument
+        piano_roll : np.ndarray, shape=(12,times.shape[0])
+            Chromagram of this instrument.
 
         """
         # First, get the piano roll
@@ -194,12 +190,12 @@ class Instrument(object):
         return chroma_matrix
 
     def get_end_time(self):
-        """Returns the time of the end of the events in this instrument
+        """Returns the time of the end of the events in this instrument.
 
         Returns
         -------
         end_time : float
-            Time, in seconds, of the end of the last event
+            Time, in seconds, of the last event.
 
         """
         # Cycle through all note ends and all pitch bends and find the largest
@@ -213,15 +209,15 @@ class Instrument(object):
 
     def get_pitch_class_histogram(self, use_duration=False, use_velocity=False,
                                   normalize=False):
-        """Computes the frequency of pitch classes of the current instrument,
+        """Computes the frequency of pitch classes of this instrument,
         optionally weighted by their durations or velocities.
 
         Parameters
         ----------
         use_duration : bool
-            Weight frequency by note duration
+            Weight frequency by note duration.
         use_velocity : bool
-            Weight frequency by note velocity
+            Weight frequency by note velocity.
         normalize : bool
             Normalizes the histogram such that the sum of bin values is 1.
 
@@ -229,7 +225,7 @@ class Instrument(object):
         -------
         histogram : np.ndarray, shape=(12,)
             Histogram of pitch classes given current instrument, optionally
-            weighted by their durations or velocities
+            weighted by their durations or velocities.
         """
 
         # Return all zeros if track is drum
@@ -253,10 +249,9 @@ class Instrument(object):
 
     def get_pitch_class_transition_matrix(self, normalize=False,
                                           time_thresh=0.05):
-        """Computes the pitch class transition matrix of the current instrument
-
-        Transitions are added whenever the end of a note is within time_tresh
-        from the start of any other note.
+        """Computes the pitch class transition matrix of this instrument.
+        Transitions are added whenever the end of a note is within
+        ``time_tresh`` from the start of any other note.
 
         Parameters
         ----------
@@ -269,7 +264,7 @@ class Instrument(object):
         Returns
         -------
         transition_matrix : np.ndarray, shape=(12,12)
-            Pitch class transition matrix
+            Pitch class transition matrix.
         """
 
         # instrument is drum or less than one note, return all zeros
@@ -294,7 +289,7 @@ class Instrument(object):
         return transition_matrix
 
     def remove_invalid_notes(self):
-        """Removes any notes which have an end time <= start time.
+        """Removes any notes whose end time is before or at their start time.
 
         """
         # Crete a list of all invalid notes
@@ -313,15 +308,15 @@ class Instrument(object):
         Parameters
         ----------
         fs : int
-            Sampling rate of the synthesized audio signal, default 44100
+            Sampling rate of the synthesized audio signal.
         wave : function
             Function which returns a periodic waveform,
-            e.g. np.sin, scipy.signal.square, etc.  Default np.sin
+            e.g. ``np.sin``, ``scipy.signal.square``, etc.
 
         Returns
         -------
         synthesized : np.ndarray
-            Waveform of the instrument's notes, synthesized at fs
+            Waveform of the instrument's notes, synthesized at ``fs``.
 
         """
         # Pre-allocate output waveform
@@ -400,16 +395,16 @@ class Instrument(object):
         Parameters
         ----------
         fs : int
-            Sampling rate to synthesize
+            Sampling rate to synthesize.
         sf2_path : str
             Path to a .sf2 file.
-            Default None, which uses the TimGM6mb.sf2 file included with
-            pretty_midi.
+            Default ``None``, which uses the TimGM6mb.sf2 file included with
+            ``pretty_midi``.
 
         Returns
         -------
         synthesized : np.ndarray
-            Waveform of the MIDI data, synthesized at fs
+            Waveform of the MIDI data, synthesized at ``fs``.
 
         """
         # If sf2_path is None, use the included TimGM6mb.sf2 path
