@@ -6,15 +6,15 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>pretty_midi &mdash; pretty_midi 0.1 documentation</title>
+    <title>pretty_midi &mdash; pretty_midi 0.2.2 documentation</title>
     
-    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1',
+        VERSION:     '0.2.2',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,11 +23,10 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-    <link rel="top" title="pretty_midi 0.1 documentation" href="#" /> 
+    <link rel="top" title="pretty_midi 0.2.2 documentation" href="#" /> 
   </head>
-  <body>
-    <div class="related">
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -36,157 +35,132 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="#">pretty_midi 0.1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
-  <div class="section" id="module-pretty_midi.pretty_midi">
-<span id="pretty-midi"></span><h1>pretty_midi<a class="headerlink" href="#module-pretty_midi.pretty_midi" title="Permalink to this headline">¶</a></h1>
-<p>Utility functions for handling MIDI data in an easy to read/manipulate format</p>
+  <div class="section" id="module-pretty_midi">
+<span id="pretty-midi"></span><h1><a class="reference internal" href="#module-pretty_midi" title="pretty_midi"><code class="xref py py-mod docutils literal"><span class="pre">pretty_midi</span></code></a><a class="headerlink" href="#module-pretty_midi" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal"><span class="pre">pretty_midi</span></code> contains utility function/classes for handling MIDI data,
+so that it&#8217;s in a format from which it is easy to modify and extract
+information.
+If you end up using <code class="docutils literal"><span class="pre">pretty_midi</span></code> in a published research project, please
+cite the following report:</p>
+<p>Colin Raffel and Daniel P. W. Ellis.
+<a class="reference external" href="http://colinraffel.com/publications/ismir2014intuitive.pdf">Intuitive Analysis, Creation and Manipulation of MIDI Data with pretty_midi</a>.
+In 15th International Conference on Music Information Retrieval Late Breaking
+and Demo Papers, 2014.</p>
+<p>Example usage for analyzing, manipulating and synthesizing a MIDI file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pretty_midi</span>
+<span class="c1"># Load MIDI file into PrettyMIDI object</span>
+<span class="n">midi_data</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">PrettyMIDI</span><span class="p">(</span><span class="s1">&#39;example.mid&#39;</span><span class="p">)</span>
+<span class="c1"># Print an empirical estimate of its global tempo</span>
+<span class="k">print</span> <span class="n">midi_data</span><span class="o">.</span><span class="n">estimate_tempo</span><span class="p">()</span>
+<span class="c1"># Compute the relative amount of each semitone across the entire song,</span>
+<span class="c1"># a proxy for key</span>
+<span class="n">total_velocity</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">midi_data</span><span class="o">.</span><span class="n">get_chroma</span><span class="p">()))</span>
+<span class="k">print</span> <span class="p">[</span><span class="nb">sum</span><span class="p">(</span><span class="n">semitone</span><span class="p">)</span><span class="o">/</span><span class="n">total_velocity</span> <span class="k">for</span> <span class="n">semitone</span> <span class="ow">in</span> <span class="n">midi_data</span><span class="o">.</span><span class="n">get_chroma</span><span class="p">()]</span>
+<span class="c1"># Shift all notes up by 5 semitones</span>
+<span class="k">for</span> <span class="n">instrument</span> <span class="ow">in</span> <span class="n">midi_data</span><span class="o">.</span><span class="n">instruments</span><span class="p">:</span>
+    <span class="c1"># Don&#39;t want to shift drum notes</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">instrument</span><span class="o">.</span><span class="n">is_drum</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">note</span> <span class="ow">in</span> <span class="n">instrument</span><span class="o">.</span><span class="n">notes</span><span class="p">:</span>
+            <span class="n">note</span><span class="o">.</span><span class="n">pitch</span> <span class="o">+=</span> <span class="mi">5</span>
+<span class="c1"># Synthesize the resulting MIDI data using sine waves</span>
+<span class="n">audio_data</span> <span class="o">=</span> <span class="n">midi_data</span><span class="o">.</span><span class="n">synthesize</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Example usage for creating a simple MIDI file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pretty_midi</span>
+<span class="c1"># Create a PrettyMIDI object</span>
+<span class="n">cello_c_chord</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">PrettyMIDI</span><span class="p">()</span>
+<span class="c1"># Create an Instrument instance for a cello instrument</span>
+<span class="n">cello_program</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">instrument_name_to_program</span><span class="p">(</span><span class="s1">&#39;Cello&#39;</span><span class="p">)</span>
+<span class="n">cello</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">Instrument</span><span class="p">(</span><span class="n">program</span><span class="o">=</span><span class="n">cello_program</span><span class="p">)</span>
+<span class="c1"># Iterate over note names, which will be converted to note number later</span>
+<span class="k">for</span> <span class="n">note_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;C5&#39;</span><span class="p">,</span> <span class="s1">&#39;E5&#39;</span><span class="p">,</span> <span class="s1">&#39;G5&#39;</span><span class="p">]:</span>
+    <span class="c1"># Retrieve the MIDI note number for this note name</span>
+    <span class="n">note_number</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">note_name_to_number</span><span class="p">(</span><span class="n">note_name</span><span class="p">)</span>
+    <span class="c1"># Create a Note instance, starting at 0s and ending at .5s</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="n">pretty_midi</span><span class="o">.</span><span class="n">Note</span><span class="p">(</span>
+        <span class="n">velocity</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">pitch</span><span class="o">=</span><span class="n">note_number</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=.</span><span class="mi">5</span><span class="p">)</span>
+    <span class="c1"># Add it to our cello instrument</span>
+    <span class="n">cello</span><span class="o">.</span><span class="n">notes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">note</span><span class="p">)</span>
+<span class="c1"># Add the cello instrument to the PrettyMIDI object</span>
+<span class="n">cello_c_chord</span><span class="o">.</span><span class="n">instruments</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cello</span><span class="p">)</span>
+<span class="c1"># Write out the MIDI data</span>
+<span class="n">cello_c_chord</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;cello-C-chord.mid&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Further examples can be found in the source tree&#8217;s <a class="reference external" href="https://github.com/craffel/pretty-midi/tree/master/examples">examples directory</a>.</p>
+<div class="section" id="pretty-midi-prettymidi">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.PrettyMIDI</span></code><a class="headerlink" href="#pretty-midi-prettymidi" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
-<dt id="pretty_midi.pretty_midi.ControlChange">
-<em class="property">class </em><tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">ControlChange</tt><big>(</big><em>number</em>, <em>value</em>, <em>time</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.ControlChange" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>A control change event.</p>
+<dt id="pretty_midi.PrettyMIDI">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">PrettyMIDI</code><span class="sig-paren">(</span><em>midi_file=None</em>, <em>resolution=220</em>, <em>initial_tempo=120.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI" title="Permalink to this definition">¶</a></dt>
+<dd><p>A container for MIDI data in an easily-manipulable format.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The control change number, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>value <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The value of the control change, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Time where the pitch bend occurs</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>midi_file</strong> : str or file</p>
+<blockquote>
+<div><p>Path or file pointer to a MIDI file.
+Default <code class="docutils literal"><span class="pre">None</span></code> which means create an empty class with the supplied
+values for resolution and initial tempo.</p>
+</div></blockquote>
+<p><strong>resolution</strong> : int</p>
+<blockquote>
+<div><p>Resolution of the MIDI data, when no file is provided.</p>
+</div></blockquote>
+<p><strong>intitial_tempo</strong> : float</p>
+<blockquote class="last">
+<div><p>Initial tempo for the MIDI data, when no file is provided.</p>
+</div></blockquote>
 </td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="17%" />
+<col width="83%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>instruments</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.Instrument" title="pretty_midi.Instrument"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Instrument</span></code></a> objects.</td>
 </tr>
 </tbody>
 </table>
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.ControlChange.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>number</em>, <em>value</em>, <em>time</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.ControlChange.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create pitch bend object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The control change number, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>value <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The value of the control change, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Time where the pitch bend occurs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
+<dt id="pretty_midi.PrettyMIDI.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>midi_file=None</em>, <em>resolution=220</em>, <em>initial_tempo=120.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize either by populating it with MIDI data from a file or
+from scratch with no data.</p>
 </dd></dl>
 
-</dd></dl>
-
-<dl class="class">
-<dt id="pretty_midi.pretty_midi.Instrument">
-<em class="property">class </em><tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">Instrument</tt><big>(</big><em>program</em>, <em>is_drum=False</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>Object to hold event information for a single instrument</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>program <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The program number of this instrument.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>is_drum <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd><p class="first last">Is the instrument a drum instrument (channel 9)?</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>notes <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">List of Note objects</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>pitch_bends <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">List of of PitchBend objects</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>control_changes <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">List of ControlChange objects</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>program</em>, <em>is_drum=False</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create the Instrument.
-notes gets initialized to empty list.
-Fill with (Instrument).notes.append(event)</p>
+<dt id="pretty_midi.PrettyMIDI.get_tempo_changes">
+<code class="descname">get_tempo_changes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_tempo_changes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return arrays of tempo changes and their times.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>program <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI program number (instrument index), in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>is_drum <span class="classifier-delimiter">:</span> <span class="classifier">bool</span></dt>
-<dd><p class="first last">Is the instrument a drum instrument (channel 9)?
-Default False</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tempo_change_times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times, in seconds, where the tempo changes.</p>
+</div></blockquote>
+<p><strong>tempi</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>What the tempo is at each point in time in <code class="docutils literal"><span class="pre">tempo_change_times</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -194,40 +168,342 @@ Default False</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.fluidsynth">
-<tt class="descname">fluidsynth</tt><big>(</big><em>fs=44100</em>, <em>sf2_path=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.fluidsynth" title="Permalink to this definition">¶</a></dt>
+<dt id="pretty_midi.PrettyMIDI.get_end_time">
+<code class="descname">get_end_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_end_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the time of the end of the MIDI object (time of the last
+event in all instruments/meta-events).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>end_time</strong> : float</p>
+<blockquote class="last">
+<div><p>Time, in seconds, where this MIDI file ends.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.estimate_tempi">
+<code class="descname">estimate_tempi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.estimate_tempi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an empirical estimate of tempos and each tempo&#8217;s probability.
+Based on &#8220;Automatic Extraction of Tempo and Beat from Expressive
+Performance&#8221;, Dixon 2001.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tempos</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Array of estimated tempos, in beats per minute.</p>
+</div></blockquote>
+<p><strong>probabilities</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Array of the probabilities of each tempo estimate.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.estimate_tempo">
+<code class="descname">estimate_tempo</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.estimate_tempo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the best tempo estimate from
+<a class="reference internal" href="#pretty_midi.PrettyMIDI.estimate_tempi" title="pretty_midi.PrettyMIDI.estimate_tempi"><code class="xref py py-func docutils literal"><span class="pre">pretty_midi.PrettyMIDI.estimate_tempi()</span></code></a>, for convenience.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tempo</strong> : float</p>
+<blockquote class="last">
+<div><p>Estimated tempo, in bpm</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_beats">
+<code class="descname">get_beats</code><span class="sig-paren">(</span><em>start_time=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_beats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of beat locations, according to MIDI tempo changes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>start_time</strong> : float</p>
+<blockquote>
+<div><p>Location of the first beat, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>beats</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Beat locations, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.estimate_beat_start">
+<code class="descname">estimate_beat_start</code><span class="sig-paren">(</span><em>candidates=10</em>, <em>tolerance=0.025</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.estimate_beat_start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimate the location of the first beat based on which of the first
+few onsets results in the best correlation with the onset spike train.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>candidates</strong> : int</p>
+<blockquote>
+<div><p>Number of candidate onsets to try.</p>
+</div></blockquote>
+<p><strong>tolerance</strong> : float</p>
+<blockquote>
+<div><p>The tolerance in seconds around which onsets will be used to
+treat a beat as correct.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>beat_start</strong> : float</p>
+<blockquote class="last">
+<div><p>The offset which is chosen as the beat start location.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_downbeats">
+<code class="descname">get_downbeats</code><span class="sig-paren">(</span><em>start_time=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_downbeats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a list of downbeat locations, according to MIDI tempo changes
+and time signature change events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>start_time</strong> : float</p>
+<blockquote>
+<div><p>Location of the first downbeat, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>downbeats</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Downbeat locations, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_onsets">
+<code class="descname">get_onsets</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_onsets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a sorted list of the times of all onsets of all notes from
+all instruments.  May have duplicate entries.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>onsets</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Onset locations, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_piano_roll">
+<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_piano_roll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a piano roll matrix of the MIDI data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling frequency of the columns, i.e. each column is spaced apart
+by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.</p>
+</div></blockquote>
+<p><strong>times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times of the start of each column in the piano roll.
+Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>piano_roll</strong> : np.ndarray, shape=(128,times.shape[0])</p>
+<blockquote class="last">
+<div><p>Piano roll of MIDI data, flattened across instruments.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_pitch_class_histogram">
+<code class="descname">get_pitch_class_histogram</code><span class="sig-paren">(</span><em>use_duration=False</em>, <em>use_velocity=False</em>, <em>normalize=True</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_pitch_class_histogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the histogram of pitch classes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>use_duration</strong> : bool</p>
+<blockquote>
+<div><p>Weight frequency by note duration.</p>
+</div></blockquote>
+<p><strong>use_velocity</strong> : bool</p>
+<blockquote>
+<div><p>Weight frequency by note velocity.</p>
+</div></blockquote>
+<p><strong>normalize</strong> : bool</p>
+<blockquote>
+<div><p>Normalizes the histogram such that the sum of bin values is 1.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>histogram</strong> : np.ndarray, shape=(12,)</p>
+<blockquote class="last">
+<div><p>Histogram of pitch classes given all tracks, optionally weighted
+by their durations or velocities.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_pitch_class_transition_matrix">
+<code class="descname">get_pitch_class_transition_matrix</code><span class="sig-paren">(</span><em>normalize=False</em>, <em>time_thresh=0.05</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_pitch_class_transition_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the total pitch class transition matrix of all instruments.
+Transitions are added whenever the end of a note is within
+<code class="docutils literal"><span class="pre">time_tresh</span></code> from the start of any other note.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>normalize</strong> : bool</p>
+<blockquote>
+<div><p>Normalize transition matrix such that matrix sum equals is 1.</p>
+</div></blockquote>
+<p><strong>time_thresh</strong> : float</p>
+<blockquote>
+<div><p>Maximum temporal threshold, in seconds, between the start of a note
+and end time of any other note for a transition to be added.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>pitch_class_transition_matrix</strong> : np.ndarray, shape=(12,12)</p>
+<blockquote class="last">
+<div><p>Pitch class transition matrix.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.get_chroma">
+<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_chroma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the MIDI data as a sequence of chroma vectors.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling frequency of the columns, i.e. each column is spaced apart
+by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.</p>
+</div></blockquote>
+<p><strong>times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times of the start of each column in the piano roll.
+Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>piano_roll</strong> : np.ndarray, shape=(12,times.shape[0])</p>
+<blockquote class="last">
+<div><p>Chromagram of MIDI data, flattened across instruments.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.synthesize">
+<code class="descname">synthesize</code><span class="sig-paren">(</span><em>fs=44100</em>, <em>wave=&lt;ufunc 'sin'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.synthesize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Synthesize the pattern using some waveshape.  Ignores drum track.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling rate of the synthesized audio signal.</p>
+</div></blockquote>
+<p><strong>wave</strong> : function</p>
+<blockquote>
+<div><p>Function which returns a periodic waveform,
+e.g. <code class="docutils literal"><span class="pre">np.sin</span></code>, <code class="docutils literal"><span class="pre">scipy.signal.square</span></code>, etc.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>synthesized</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Waveform of the MIDI data, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.fluidsynth">
+<code class="descname">fluidsynth</code><span class="sig-paren">(</span><em>fs=44100</em>, <em>sf2_path=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.fluidsynth" title="Permalink to this definition">¶</a></dt>
 <dd><p>Synthesize using fluidsynth.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>fs <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Sampling rate to synthesize</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>sf2_path <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Path to a .sf2 file.
-Default None, which uses the TimGM6mb.sf2 file included with
-pretty_midi.</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling rate to synthesize at.</p>
+</div></blockquote>
+<p><strong>sf2_path</strong> : str</p>
+<blockquote>
+<div><p>Path to a .sf2 file.
+Default <code class="docutils literal"><span class="pre">None</span></code>, which uses the TimGM6mb.sf2 file included with
+<code class="docutils literal"><span class="pre">pretty_midi</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>synthesized <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Waveform of the MIDI data, synthesized at fs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>synthesized</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Waveform of the MIDI data, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -235,33 +511,24 @@ pretty_midi.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.get_chroma">
-<tt class="descname">get_chroma</tt><big>(</big><em>times=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.get_chroma" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get a chroma matrix for the note events in this instrument.</p>
+<dt id="pretty_midi.PrettyMIDI.tick_to_time">
+<code class="descname">tick_to_time</code><span class="sig-paren">(</span><em>tick</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.tick_to_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts from an absolute tick to time in seconds using
+<code class="docutils literal"><span class="pre">self.__tick_to_time</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>times <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">times of the start of each column in the chroma matrix,
-Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>tick</strong> : int</p>
+<blockquote>
+<div><p>Absolute tick to convert.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>chroma <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray, shape=(12,times.shape[0])</span></dt>
-<dd><p class="first last">Chromagram matrix of this instrument</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>time</strong> : float</p>
+<blockquote class="last">
+<div><p>Time in seconds of tick.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -269,20 +536,24 @@ Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.get_end_time">
-<tt class="descname">get_end_time</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.get_end_time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the time of the end of the events in this instrument</p>
+<dt id="pretty_midi.PrettyMIDI.time_to_tick">
+<code class="descname">time_to_tick</code><span class="sig-paren">(</span><em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.time_to_tick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts from a time in seconds to absolute tick using
+<code class="docutils literal"><span class="pre">self._tick_scales</span></code>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>end_time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd>Time, in seconds, of the end of the last event</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>time</strong> : float</p>
+<blockquote>
+<div><p>Time, in seconds.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>tick</strong> : int</p>
+<blockquote class="last">
+<div><p>Absolute tick corresponding to the supplied time.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -290,21 +561,131 @@ Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.get_onsets">
-<tt class="descname">get_onsets</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.get_onsets" title="Permalink to this definition">¶</a></dt>
+<dt id="pretty_midi.PrettyMIDI.adjust_times">
+<code class="descname">adjust_times</code><span class="sig-paren">(</span><em>original_times</em>, <em>new_times</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.adjust_times" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adjusts the timing of the events in the MIDI object.
+The parameters <code class="docutils literal"><span class="pre">original_times</span></code> and <code class="docutils literal"><span class="pre">new_times</span></code> define a mapping,
+so that if an event originally occurs at time <code class="docutils literal"><span class="pre">original_times[n]</span></code>, it
+will be moved so that it occurs at <code class="docutils literal"><span class="pre">new_times[n]</span></code>.  If events don&#8217;t
+occur exactly on a time in <code class="docutils literal"><span class="pre">original_times</span></code>, their timing will be
+linearly interpolated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>original_times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times to map from.</p>
+</div></blockquote>
+<p><strong>new_times</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>New times to map to.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.remove_invalid_notes">
+<code class="descname">remove_invalid_notes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.remove_invalid_notes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes any notes whose end time is before or at their start time.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.PrettyMIDI.write">
+<code class="descname">write</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write the MIDI data out to a .mid file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename</strong> : str</p>
+<blockquote class="last">
+<div><p>Path to write .mid file to.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-instrument">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.Instrument</span></code><a class="headerlink" href="#pretty-midi-instrument" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.Instrument">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">Instrument</code><span class="sig-paren">(</span><em>program</em>, <em>is_drum=False</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument" title="Permalink to this definition">¶</a></dt>
+<dd><p>Object to hold event information for a single instrument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>program</strong> : int</p>
+<blockquote>
+<div><p>MIDI program number (instrument index), in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">127]</span></code>.</p>
+</div></blockquote>
+<p><strong>is_drum</strong> : bool</p>
+<blockquote>
+<div><p>Is the instrument a drum instrument (channel 9)?</p>
+</div></blockquote>
+<p><strong>name</strong> : str</p>
+<blockquote class="last">
+<div><p>Name of the instrument.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="79%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>program</td>
+<td>(int) The program number of this instrument.</td>
+</tr>
+<tr class="row-even"><td>is_drum</td>
+<td>(bool) Is the instrument a drum instrument (channel 9)?</td>
+</tr>
+<tr class="row-odd"><td>name</td>
+<td>(str) Name of the instrument.</td>
+</tr>
+<tr class="row-even"><td>notes</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.Note" title="pretty_midi.Note"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Note</span></code></a> objects.</td>
+</tr>
+<tr class="row-odd"><td>pitch_bends</td>
+<td>(list) List of of <a class="reference internal" href="#pretty_midi.PitchBend" title="pretty_midi.PitchBend"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.PitchBend</span></code></a> objects.</td>
+</tr>
+<tr class="row-even"><td>control_changes</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.ControlChange" title="pretty_midi.ControlChange"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.ControlChange</span></code></a> objects.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pretty_midi.Instrument.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>program</em>, <em>is_drum=False</em>, <em>name=''</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create the Instrument.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.get_onsets">
+<code class="descname">get_onsets</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_onsets" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get all onsets of all notes played by this instrument.
-May contain duplicates</p>
+May contain duplicates.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>onsets <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>List of all note onsets</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>onsets</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>List of all note onsets.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -312,33 +693,29 @@ May contain duplicates</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.get_piano_roll">
-<tt class="descname">get_piano_roll</tt><big>(</big><em>times=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.get_piano_roll" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get a piano roll notation of the note events of this instrument.</p>
+<dt id="pretty_midi.Instrument.get_piano_roll">
+<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_piano_roll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a piano roll matrix of this instrument.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>times <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">times of the start of each column in the piano roll,
-Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling frequency of the columns, i.e. each column is spaced apart
+by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.</p>
+</div></blockquote>
+<p><strong>times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times of the start of each column in the piano roll.
+Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>piano_roll <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray, shape=(128,times.shape[0])</span></dt>
-<dd><p class="first last">Piano roll matrix of this instrument</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>piano_roll</strong> : np.ndarray, shape=(128,times.shape[0])</p>
+<blockquote class="last">
+<div><p>Piano roll of this instrument.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -346,237 +723,148 @@ Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.Instrument.synthesize">
-<tt class="descname">synthesize</tt><big>(</big><em>fs=44100</em>, <em>wave=&lt;ufunc 'sin'&gt;</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Instrument.synthesize" title="Permalink to this definition">¶</a></dt>
+<dt id="pretty_midi.Instrument.get_chroma">
+<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_chroma" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a sequence of chroma vectors from this instrument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling frequency of the columns, i.e. each column is spaced apart
+by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.</p>
+</div></blockquote>
+<p><strong>times</strong> : np.ndarray</p>
+<blockquote>
+<div><p>Times of the start of each column in the piano roll.
+Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>piano_roll</strong> : np.ndarray, shape=(12,times.shape[0])</p>
+<blockquote class="last">
+<div><p>Chromagram of this instrument.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.get_end_time">
+<code class="descname">get_end_time</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_end_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the time of the end of the events in this instrument.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>end_time</strong> : float</p>
+<blockquote class="last">
+<div><p>Time, in seconds, of the last event.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.get_pitch_class_histogram">
+<code class="descname">get_pitch_class_histogram</code><span class="sig-paren">(</span><em>use_duration=False</em>, <em>use_velocity=False</em>, <em>normalize=False</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_pitch_class_histogram" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the frequency of pitch classes of this instrument,
+optionally weighted by their durations or velocities.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>use_duration</strong> : bool</p>
+<blockquote>
+<div><p>Weight frequency by note duration.</p>
+</div></blockquote>
+<p><strong>use_velocity</strong> : bool</p>
+<blockquote>
+<div><p>Weight frequency by note velocity.</p>
+</div></blockquote>
+<p><strong>normalize</strong> : bool</p>
+<blockquote>
+<div><p>Normalizes the histogram such that the sum of bin values is 1.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>histogram</strong> : np.ndarray, shape=(12,)</p>
+<blockquote class="last">
+<div><p>Histogram of pitch classes given current instrument, optionally
+weighted by their durations or velocities.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.get_pitch_class_transition_matrix">
+<code class="descname">get_pitch_class_transition_matrix</code><span class="sig-paren">(</span><em>normalize=False</em>, <em>time_thresh=0.05</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_pitch_class_transition_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the pitch class transition matrix of this instrument.
+Transitions are added whenever the end of a note is within
+<code class="docutils literal"><span class="pre">time_tresh</span></code> from the start of any other note.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>normalize</strong> : bool</p>
+<blockquote>
+<div><p>Normalize transition matrix such that matrix sum equals to 1.</p>
+</div></blockquote>
+<p><strong>time_thresh</strong> : float</p>
+<blockquote>
+<div><p>Maximum temporal threshold, in seconds, between the start of a note
+and end time of any other note for a transition to be added.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>transition_matrix</strong> : np.ndarray, shape=(12,12)</p>
+<blockquote class="last">
+<div><p>Pitch class transition matrix.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.remove_invalid_notes">
+<code class="descname">remove_invalid_notes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.remove_invalid_notes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes any notes whose end time is before or at their start time.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Instrument.synthesize">
+<code class="descname">synthesize</code><span class="sig-paren">(</span><em>fs=44100</em>, <em>wave=&lt;ufunc 'sin'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.synthesize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Synthesize the instrument&#8217;s notes using some waveshape.
 For drum instruments, returns zeros.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>fs <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Sampling rate of the synthesized audio signal, default 44100</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>wave <span class="classifier-delimiter">:</span> <span class="classifier">function</span></dt>
-<dd><p class="first last">Function which returns a periodic waveform,
-e.g. np.sin, scipy.signal.square, etc.  Default np.sin</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling rate of the synthesized audio signal.</p>
+</div></blockquote>
+<p><strong>wave</strong> : function</p>
+<blockquote>
+<div><p>Function which returns a periodic waveform,
+e.g. <code class="docutils literal"><span class="pre">np.sin</span></code>, <code class="docutils literal"><span class="pre">scipy.signal.square</span></code>, etc.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>synthesized <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Waveform of the instrument&#8217;s notes, synthesized at fs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pretty_midi.pretty_midi.Note">
-<em class="property">class </em><tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">Note</tt><big>(</big><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Note" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>A note event.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>velocity <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Note velocity, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>pitch <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Note pitch, as a MIDI note number, in [0, 127]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>start <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Note on time, absolute, in seconds</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>end <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Note off time, absolute, in seconds</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.Note.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.Note.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a note object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>velocity <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Note velocity</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>pitch <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Note pitch, as a MIDI note number</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>start <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Note on time, absolute, in seconds</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>end <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Note off time, absolute, in seconds</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pretty_midi.pretty_midi.PitchBend">
-<em class="property">class </em><tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">PitchBend</tt><big>(</big><em>pitch</em>, <em>time</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PitchBend" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>A pitch bend event.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>pitch <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI pitch bend amount, in the range [-8192, 8191]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Time where the pitch bend occurs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PitchBend.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>pitch</em>, <em>time</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PitchBend.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create pitch bend object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>pitch <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI pitch bend amount, in the range [-8192, 8191]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Time where the pitch bend occurs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI">
-<em class="property">class </em><tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">PrettyMIDI</tt><big>(</big><em>midi_file=None</em>, <em>resolution=220</em>, <em>initial_tempo=120.0</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <tt class="xref py py-class docutils literal"><span class="pre">object</span></tt></p>
-<p>A container for MIDI data in an easily-manipulable format.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Attributes:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>instruments <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">List of pretty_midi.Instrument objects</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.__init__">
-<tt class="descname">__init__</tt><big>(</big><em>midi_file=None</em>, <em>resolution=220</em>, <em>initial_tempo=120.0</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Initialize the PrettyMIDI container with some midi data</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>midi_file <span class="classifier-delimiter">:</span> <span class="classifier">str or file</span></dt>
-<dd><p class="first last">Path or file pointer to a MIDI file.
-Default None which means create an empty class with the
-supplied values for resolutiona and initial tempo.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>resolution <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Resolution of the MIDI data, when no file is provided.</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>intitial_tempo <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Initial tempo for the MIDI data, when no file is provided.</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>synthesized</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Waveform of the instrument&#8217;s notes, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -584,465 +872,590 @@ supplied values for resolutiona and initial tempo.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.estimate_tempii">
-<tt class="descname">estimate_tempii</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.estimate_tempii" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return an empirical estimate of tempos in the piece and each tempo&#8217;s
-probability
-Based on &#8220;Automatic Extraction of Tempo and Beat from Expressive
-Performance&#8221;, Dixon 2001</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>tempos <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>Array of estimated tempos, in bpm</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>probabilities <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>Array of the probability of each tempo estimate</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.estimate_tempo">
-<tt class="descname">estimate_tempo</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.estimate_tempo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the best tempo estimate from estimate_tempii(), for convenience</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>tempo <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd>Estimated tempo, in bpm</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.fluidsynth">
-<tt class="descname">fluidsynth</tt><big>(</big><em>fs=44100</em>, <em>sf2_path=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.fluidsynth" title="Permalink to this definition">¶</a></dt>
+<dt id="pretty_midi.Instrument.fluidsynth">
+<code class="descname">fluidsynth</code><span class="sig-paren">(</span><em>fs=44100</em>, <em>sf2_path=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.fluidsynth" title="Permalink to this definition">¶</a></dt>
 <dd><p>Synthesize using fluidsynth.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>fs <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Sampling rate to synthesize</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>sf2_path <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Path to a .sf2 file.
-Default None, which uses the TimGM6mb.sf2 file included with
-pretty_midi.</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>fs</strong> : int</p>
+<blockquote>
+<div><p>Sampling rate to synthesize.</p>
+</div></blockquote>
+<p><strong>sf2_path</strong> : str</p>
+<blockquote>
+<div><p>Path to a .sf2 file.
+Default <code class="docutils literal"><span class="pre">None</span></code>, which uses the TimGM6mb.sf2 file included with
+<code class="docutils literal"><span class="pre">pretty_midi</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>synthesized <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Waveform of the MIDI data, synthesized at fs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>synthesized</strong> : np.ndarray</p>
+<blockquote class="last">
+<div><p>Waveform of the MIDI data, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_beats">
-<tt class="descname">get_beats</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_beats" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a list of beat locations, estimated according to the MIDI file
-tempo changes.
-Will not be correct if the MIDI data has been modified without changing
-tempo information.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-note">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.Note</span></code><a class="headerlink" href="#pretty-midi-note" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.Note">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">Note</code><span class="sig-paren">(</span><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Note" title="Permalink to this definition">¶</a></dt>
+<dd><p>A note event.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>beats <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>Beat locations, in seconds</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>velocity</strong> : int</p>
+<blockquote>
+<div><p>Note velocity.</p>
+</div></blockquote>
+<p><strong>pitch</strong> : int</p>
+<blockquote>
+<div><p>Note pitch, as a MIDI note number.</p>
+</div></blockquote>
+<p><strong>start</strong> : float</p>
+<blockquote>
+<div><p>Note on time, absolute, in seconds.</p>
+</div></blockquote>
+<p><strong>end</strong> : float</p>
+<blockquote class="last">
+<div><p>Note off time, absolute, in seconds.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="pretty_midi.Note.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Note.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a note object.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_chroma">
-<tt class="descname">get_chroma</tt><big>(</big><em>times=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_chroma" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the MIDI data as a sequence of chroma vectors.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-pitchbend">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.PitchBend</span></code><a class="headerlink" href="#pretty-midi-pitchbend" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.PitchBend">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">PitchBend</code><span class="sig-paren">(</span><em>pitch</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PitchBend" title="Permalink to this definition">¶</a></dt>
+<dd><p>A pitch bend event.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>times <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Times of the start of each column in the piano roll.
-Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>piano_roll <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray, shape=(12,times.shape[0])</span></dt>
-<dd><p class="first last">Chromagram of MIDI data, flattened across instruments</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>pitch</strong> : int</p>
+<blockquote>
+<div><p>MIDI pitch bend amount, in the range <code class="docutils literal"><span class="pre">[-8192,</span> <span class="pre">8191]</span></code>.</p>
+</div></blockquote>
+<p><strong>time</strong> : float</p>
+<blockquote class="last">
+<div><p>Time where the pitch bend occurs.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="pretty_midi.PitchBend.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>pitch</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PitchBend.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create pitch bend object.</p>
 </dd></dl>
 
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_end_time">
-<tt class="descname">get_end_time</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_end_time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the time of the end of this MIDI file (latest note-off event).</p>
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-controlchange">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.ControlChange</span></code><a class="headerlink" href="#pretty-midi-controlchange" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.ControlChange">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">ControlChange</code><span class="sig-paren">(</span><em>number</em>, <em>value</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.ControlChange" title="Permalink to this definition">¶</a></dt>
+<dd><p>A control change event.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>end_time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd>Time, in seconds, where this MIDI file ends</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>number</strong> : int</p>
+<blockquote>
+<div><p>The control change number, in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">127]</span></code>.</p>
+</div></blockquote>
+<p><strong>value</strong> : int</p>
+<blockquote>
+<div><p>The value of the control change, in <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">127]</span></code>.</p>
+</div></blockquote>
+<p><strong>time</strong> : float</p>
+<blockquote class="last">
+<div><p>Time where the control change occurs.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="pretty_midi.ControlChange.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>number</em>, <em>value</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.ControlChange.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create control change object.</p>
 </dd></dl>
 
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-timesignature">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.TimeSignature</span></code><a class="headerlink" href="#pretty-midi-timesignature" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.TimeSignature">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">TimeSignature</code><span class="sig-paren">(</span><em>numerator</em>, <em>denominator</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.TimeSignature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container for a Time Signature event, which contains the time signature
+numerator, denominator and the event time in seconds.</p>
+<p class="rubric">Examples</p>
+<p>Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ts</span> <span class="o">=</span> <span class="n">TimeSignature</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">ts</span>
+<span class="go">6/8 at 3.14 seconds</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>numerator</td>
+<td>(int) Numerator of time signature.</td>
+</tr>
+<tr class="row-even"><td>denominator</td>
+<td>(int) Denominator of time signature.</td>
+</tr>
+<tr class="row-odd"><td>time</td>
+<td>(float) Time of event in seconds.</td>
+</tr>
+</tbody>
+</table>
 <dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_onsets">
-<tt class="descname">get_onsets</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_onsets" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a sorted list of the times of all onsets of all notes from all
-instruments.  May have duplicate entries.</p>
+<dt id="pretty_midi.TimeSignature.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>numerator</em>, <em>denominator</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.TimeSignature.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-keysignature">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.KeySignature</span></code><a class="headerlink" href="#pretty-midi-keysignature" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.KeySignature">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">KeySignature</code><span class="sig-paren">(</span><em>key_number</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.KeySignature" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contains the key signature and the event time in seconds.
+Only supports major and minor keys.</p>
+<p class="rubric">Examples</p>
+<p>Instantiate a C# minor KeySignature object at 3.14 seconds:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ks</span> <span class="o">=</span> <span class="n">KeySignature</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">ks</span>
+<span class="go">C# minor at 3.14 seconds</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="8%" />
+<col width="92%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>key_number</td>
+<td>(int) Key number according to <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">11]</span></code> Major, <code class="docutils literal"><span class="pre">[12,</span> <span class="pre">23]</span></code> minor. For example, 0 is C Major, 12 is C minor.</td>
+</tr>
+<tr class="row-even"><td>time</td>
+<td>(float) Time of event in seconds.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pretty_midi.KeySignature.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>key_number</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.KeySignature.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="pretty-midi-lyric">
+<h2><code class="docutils literal"><span class="pre">pretty_midi.Lyric</span></code><a class="headerlink" href="#pretty-midi-lyric" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="pretty_midi.Lyric">
+<em class="property">class </em><code class="descclassname">pretty_midi.</code><code class="descname">Lyric</code><span class="sig-paren">(</span><em>text</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Lyric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Timestamped lyric text.</p>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="9%" />
+<col width="91%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>text</td>
+<td>(str) The text of the lyric.</td>
+</tr>
+<tr class="row-even"><td>time</td>
+<td>(float) The time in seconds of the lyric.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="pretty_midi.Lyric.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>text</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Lyric.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="utility-functions">
+<h2>Utility functions<a class="headerlink" href="#utility-functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="pretty_midi.key_number_to_key_name">
+<code class="descclassname">pretty_midi.</code><code class="descname">key_number_to_key_name</code><span class="sig-paren">(</span><em>key_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.key_number_to_key_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a key number to a key string.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>onsets <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>Onset locations, in seconds</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>key_number</strong> : int</p>
+<blockquote>
+<div><p>Uses pitch classes to represent major and minor keys.
+For minor keys, adds a 12 offset.
+For example, C major is 0 and C minor is 12.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>key_name</strong> : str</p>
+<blockquote class="last">
+<div><p>Key name in the format <code class="docutils literal"><span class="pre">'(root)</span> <span class="pre">(mode)'</span></code>, e.g. <code class="docutils literal"><span class="pre">'Gb</span> <span class="pre">minor'</span></code>.
+Gives preference for keys with flats, with the exception of F#, G# and
+C# minor.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_piano_roll">
-<tt class="descname">get_piano_roll</tt><big>(</big><em>times=None</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_piano_roll" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the MIDI data in piano roll notation.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>times <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Times of the start of each column in the piano roll.
-Default None which is np.arange(0, get_end_time(), 1/100.0)</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>piano_roll <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray, shape=(128,times.shape[0])</span></dt>
-<dd><p class="first last">Piano roll of MIDI data, flattened across instruments</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.get_tempo_changes">
-<tt class="descname">get_tempo_changes</tt><big>(</big><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.get_tempo_changes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return arrays of tempo changes and their times.
-This is direct from the MIDI file.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><ul>
-<li><dl class="first docutils">
-<dt>tempo_change_times <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>Times, in seconds, where the tempo changes.</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>tempii <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd>What the tempo is at each point in time in tempo_change_times</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.synthesize">
-<tt class="descname">synthesize</tt><big>(</big><em>fs=44100</em>, <em>wave=&lt;ufunc 'sin'&gt;</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.synthesize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Synthesize the pattern using some waveshape.  Ignores drum track.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>fs <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Sampling rate of the synthesized audio signal, default 44100</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>wave <span class="classifier-delimiter">:</span> <span class="classifier">function</span></dt>
-<dd><p class="first last">Function which returns a periodic waveform,
-e.g. np.sin, scipy.signal.square, etc.  Default np.sin</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>synthesized <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
-<dd><p class="first last">Waveform of the MIDI data, synthesized at fs</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.tick_to_time">
-<tt class="descname">tick_to_time</tt><big>(</big><em>tick</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.tick_to_time" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts from an absolute tick to time in seconds using
-self.__tick_to_time</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>tick <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">absolute tick to convert</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">time in seconds of tick</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.time_to_tick">
-<tt class="descname">time_to_tick</tt><big>(</big><em>time</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.time_to_tick" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts from a time in seconds to absolute tick using
-self.__tick_scales</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>time <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Time, in seconds</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>tick <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">Absolute tick corresponding to the supplied time</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
-<dt id="pretty_midi.pretty_midi.PrettyMIDI.write">
-<tt class="descname">write</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.PrettyMIDI.write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write the PrettyMIDI object out to a .mid file</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last">
-<li><dl class="first docutils">
-<dt>filename <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Path to write .mid file to</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.drum_name_to_note_number">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">drum_name_to_note_number</tt><big>(</big><em>drum_name</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.drum_name_to_note_number" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts a drum name to the corresponding MIDI note number for a percussion
-instrument.  Conversion is case, whitespace, and non-alphanumeric character
-insensitive.</p>
+<dt id="pretty_midi.key_name_to_key_number">
+<code class="descclassname">pretty_midi.</code><code class="descname">key_name_to_key_number</code><span class="sig-paren">(</span><em>key_string</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.key_name_to_key_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a correctly formated string key to key number.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>drum_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of a drum which exists in the general MIDI standard.
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>key_string</strong> : str</p>
+<blockquote>
+<div><p>Format is <code class="docutils literal"><span class="pre">'(root)</span> <span class="pre">(mode)'</span></code>, where:
+<code class="docutils literal"><span class="pre">(root)</span></code> is notated using ABCDEFG with # for sharp or b for flat;
+<code class="docutils literal"><span class="pre">(mode)</span></code> is notated using &#8216;major&#8217; or &#8216;minor&#8217;.
+Letter case is irrelevant for mode.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>key_number</strong> : int</p>
+<blockquote class="last">
+<div><p>Integer representing the key and its mode.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.mode_accidentals_to_key_number">
+<code class="descclassname">pretty_midi.</code><code class="descname">mode_accidentals_to_key_number</code><span class="sig-paren">(</span><em>mode</em>, <em>num_accidentals</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.mode_accidentals_to_key_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a given number of accidentals and mode to a key number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>mode</strong> : int</p>
+<blockquote>
+<div><p>0 is major, 1 is minor.</p>
+</div></blockquote>
+<p><strong>num_accidentals</strong> : int</p>
+<blockquote>
+<div><p>Positive number is used for sharps, negative number is used for flats.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>key_number</strong> : int</p>
+<blockquote class="last">
+<div><p>Integer representing the key and its mode.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.key_number_to_mode_accidentals">
+<code class="descclassname">pretty_midi.</code><code class="descname">key_number_to_mode_accidentals</code><span class="sig-paren">(</span><em>key_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.key_number_to_mode_accidentals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a key number to number of accidentals and mode.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>key_number</strong> : int</p>
+<blockquote>
+<div><p>Key number as used in <code class="docutils literal"><span class="pre">pretty_midi</span></code>.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>mode</strong> : int</p>
+<blockquote>
+<div><p>0 for major, 1 for minor.</p>
+</div></blockquote>
+<p><strong>num_accidentals</strong> : int</p>
+<blockquote class="last">
+<div><p>Number of accidentals.
+Positive is for sharps and negative is for flats.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.qpm_to_bpm">
+<code class="descclassname">pretty_midi.</code><code class="descname">qpm_to_bpm</code><span class="sig-paren">(</span><em>quarter_note_tempo</em>, <em>numerator</em>, <em>denominator</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.qpm_to_bpm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts from quarter notes per minute to beats per minute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>quarter_note_tempo</strong> : float</p>
+<blockquote>
+<div><p>Quarter note tempo.</p>
+</div></blockquote>
+<p><strong>numerator</strong> : int</p>
+<blockquote>
+<div><p>Numerator of time signature.</p>
+</div></blockquote>
+<p><strong>denominator</strong> : int</p>
+<blockquote>
+<div><p>Denominator of time signature.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>bpm</strong> : float</p>
+<blockquote class="last">
+<div><p>Tempo in beats per minute.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.note_number_to_hz">
+<code class="descclassname">pretty_midi.</code><code class="descname">note_number_to_hz</code><span class="sig-paren">(</span><em>note_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.note_number_to_hz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a (fractional) MIDI note number to its frequency in Hz.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>note_number</strong> : float</p>
+<blockquote>
+<div><p>MIDI note number, can be fractional.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>note_frequency</strong> : float</p>
+<blockquote class="last">
+<div><p>Frequency of the note in Hz.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.hz_to_note_number">
+<code class="descclassname">pretty_midi.</code><code class="descname">hz_to_note_number</code><span class="sig-paren">(</span><em>frequency</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.hz_to_note_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a frequency in Hz to a (fractional) note number.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>frequency</strong> : float</p>
+<blockquote>
+<div><p>Frequency of the note in Hz.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>note_number</strong> : float</p>
+<blockquote class="last">
+<div><p>MIDI note number, can be fractional.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.note_name_to_number">
+<code class="descclassname">pretty_midi.</code><code class="descname">note_name_to_number</code><span class="sig-paren">(</span><em>note_name</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.note_name_to_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a note name in the format
+<code class="docutils literal"><span class="pre">'(note)(accidental)(octave</span> <span class="pre">number)'</span></code> (e.g. <code class="docutils literal"><span class="pre">'C#4'</span></code>) to MIDI note
+number.</p>
+<p><code class="docutils literal"><span class="pre">'(note)'</span></code> is required, and is case-insensitive.</p>
+<p><code class="docutils literal"><span class="pre">'(accidental)'</span></code> should be <code class="docutils literal"><span class="pre">''</span></code> for natural, <code class="docutils literal"><span class="pre">'#'</span></code> for sharp and
+<code class="docutils literal"><span class="pre">'!'</span></code> or <code class="docutils literal"><span class="pre">'b'</span></code> for flat.</p>
+<p>If <code class="docutils literal"><span class="pre">'(octave)'</span></code> is <code class="docutils literal"><span class="pre">''</span></code>, octave 0 is assumed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>note_name</strong> : str</p>
+<blockquote>
+<div><p>A note name, as described above.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>note_number</strong> : int</p>
+<blockquote class="last">
+<div><p>MIDI note number corresponding to the provided note name.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Thanks to Brian McFee.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.note_number_to_name">
+<code class="descclassname">pretty_midi.</code><code class="descname">note_number_to_name</code><span class="sig-paren">(</span><em>note_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.note_number_to_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a MIDI note number to its name, in the format
+<code class="docutils literal"><span class="pre">'(note)(accidental)(octave</span> <span class="pre">number)'</span></code> (e.g. <code class="docutils literal"><span class="pre">'C#4'</span></code>).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>note_number</strong> : int</p>
+<blockquote>
+<div><p>MIDI note number.  If not an int, it will be rounded.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>note_name</strong> : str</p>
+<blockquote class="last">
+<div><p>Name of the supplied MIDI note number.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Thanks to Brian McFee.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.note_number_to_drum_name">
+<code class="descclassname">pretty_midi.</code><code class="descname">note_number_to_drum_name</code><span class="sig-paren">(</span><em>note_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.note_number_to_drum_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a MIDI note number in a percussion instrument to the
+corresponding drum name, according to the General MIDI standard.</p>
+<p>Any MIDI note number outside of the valid range (note 35-81, zero-indexed)
+will result in an empty string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>note_number</strong> : int</p>
+<blockquote>
+<div><p>MIDI note number.  If not an int, it will be rounded.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>drum_name</strong> : str</p>
+<blockquote class="last">
+<div><p>Name of the drum for this note for a percussion instrument.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="pretty_midi.drum_name_to_note_number">
+<code class="descclassname">pretty_midi.</code><code class="descname">drum_name_to_note_number</code><span class="sig-paren">(</span><em>drum_name</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.drum_name_to_note_number" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a drum name to the corresponding MIDI note number for a
+percussion instrument.  Conversion is case, whitespace, and
+non-alphanumeric character insensitive.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>drum_name</strong> : str</p>
+<blockquote>
+<div><p>Name of a drum which exists in the general MIDI standard.
 If the drum is not found, a ValueError is raised.</p>
-</dd>
-</dl>
-</li>
-</ul>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The MIDI note number corresponding to this drum.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>note_number</strong> : int</p>
+<blockquote class="last">
+<div><p>The MIDI note number corresponding to this drum.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<p class="rubric">Notes</p>
+<p>See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.hz_to_note_number">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">hz_to_note_number</tt><big>(</big><em>frequency</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.hz_to_note_number" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a frequency in Hz to a (fractional) frequency</p>
+<dt id="pretty_midi.program_to_instrument_name">
+<code class="descclassname">pretty_midi.</code><code class="descname">program_to_instrument_name</code><span class="sig-paren">(</span><em>program_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.program_to_instrument_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a MIDI program number to the corresponding General MIDI
+instrument name.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>frequency <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Frequency of the note in Hz</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>program_number</strong> : int</p>
+<blockquote>
+<div><p>MIDI program number, between 0 and 127.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">MIDI note number, can be fractional</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>instrument_name</strong> : str</p>
+<blockquote class="last">
+<div><p>Name of the instrument corresponding to this program number.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<p class="rubric">Notes</p>
+<p>See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.instrument_name_to_program">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">instrument_name_to_program</tt><big>(</big><em>instrument_name</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.instrument_name_to_program" title="Permalink to this definition">¶</a></dt>
+<dt id="pretty_midi.instrument_name_to_program">
+<code class="descclassname">pretty_midi.</code><code class="descname">instrument_name_to_program</code><span class="sig-paren">(</span><em>instrument_name</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.instrument_name_to_program" title="Permalink to this definition">¶</a></dt>
 <dd><p>Converts an instrument name to the corresponding General MIDI program
 number.  Conversion is case, whitespace, and non-alphanumeric character
 insensitive.</p>
@@ -1050,220 +1463,76 @@ insensitive.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>instrument_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of an instrument which exists in the general MIDI standard.
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>instrument_name</strong> : str</p>
+<blockquote>
+<div><p>Name of an instrument which exists in the general MIDI standard.
 If the instrument is not found, a ValueError is raised.</p>
-</dd>
-</dl>
-</li>
-</ul>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>program_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">The MIDI program number corresponding to this instrument.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>program_number</strong> : int</p>
+<blockquote class="last">
+<div><p>The MIDI program number corresponding to this instrument.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<p class="rubric">Notes</p>
+<p>See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.note_name_to_number">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">note_name_to_number</tt><big>(</big><em>note_name</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.note_name_to_number" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts a note name in the format (note)(accidental)(octave number)
-to MIDI note number.</p>
-<p>(note) is required, and is case-insensitive.</p>
-<p>(accidental) should be &#8216;&#8217; for natural, &#8216;#&#8217; for sharp and &#8216;!&#8217; or &#8216;b&#8217; for
-flat.</p>
-<p>If (octave) is &#8216;&#8217;, octave 0 is assumed.</p>
+<dt id="pretty_midi.program_to_instrument_class">
+<code class="descclassname">pretty_midi.</code><code class="descname">program_to_instrument_class</code><span class="sig-paren">(</span><em>program_number</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.program_to_instrument_class" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a MIDI program number to the corresponding General MIDI
+instrument class.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>note_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">A note name, as described above</p>
-</dd>
-</dl>
-</li>
-</ul>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>program_number</strong> : int</p>
+<blockquote>
+<div><p>MIDI program number, between 0 and 127.</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI note number corresponding to the provided note name.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">Thanks to Brian McFee.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>instrument_class</strong> : str</p>
+<blockquote class="last">
+<div><p>Name of the instrument class corresponding to this program number.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
 </table>
+<p class="rubric">Notes</p>
+<p>See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.note_number_to_drum_name">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">note_number_to_drum_name</tt><big>(</big><em>note_number</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.note_number_to_drum_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts a MIDI note number in a percussion instrument to the corresponding
-drum name, according to the General MIDI standard.</p>
-<p>Any MIDI note number outside of the valid range (note 35-81, zero-indexed)
-will result in an empty string.</p>
+<dt id="pretty_midi.pitch_bend_to_semitones">
+<code class="descclassname">pretty_midi.</code><code class="descname">pitch_bend_to_semitones</code><span class="sig-paren">(</span><em>pitch_bend</em>, <em>semitone_range=2.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.pitch_bend_to_semitones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a MIDI pitch bend value (in the range <code class="docutils literal"><span class="pre">[-8192,</span> <span class="pre">8191]</span></code>) to the
+bend amount in semitones.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI note number.  If not an int, it will be rounded.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>drum_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of the drum for this note for a percussion instrument.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pretty_midi.pretty_midi.note_number_to_hz">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">note_number_to_hz</tt><big>(</big><em>note_number</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.note_number_to_hz" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a (fractional) MIDI note number to its frequency in Hz.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">MIDI note number, can be fractional</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>note_frequency <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Frequency of the note in Hz</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pretty_midi.pretty_midi.note_number_to_name">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">note_number_to_name</tt><big>(</big><em>note_number</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.note_number_to_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a MIDI note number to its name, in the format
-(note)(accidental)(octave number) (e.g. &#8216;C#4&#8217;)</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>note_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI note number.  If not an int, it will be rounded.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>note_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of the supplied MIDI note number.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">Thanks to Brian McFee.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pretty_midi.pretty_midi.pitch_bend_to_semitones">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">pitch_bend_to_semitones</tt><big>(</big><em>pitch_bend</em>, <em>semitone_range=2.0</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.pitch_bend_to_semitones" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a MIDI pitch bend value (in the range -8192, 8191) to the bend
-amount in semitones.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>pitch_bend <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI pitch bend amount, in [-8192, 8191]</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>semitone_range <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Convert to +/- this semitone range.  Default is 2., which is the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>pitch_bend</strong> : int</p>
+<blockquote>
+<div><p>MIDI pitch bend amount, in <code class="docutils literal"><span class="pre">[-8192,</span> <span class="pre">8191]</span></code>.</p>
+</div></blockquote>
+<p><strong>semitone_range</strong> : float</p>
+<blockquote>
+<div><p>Convert to +/- this semitone range.  Default is 2., which is the
 General MIDI standard +/-2 semitone range.</p>
-</dd>
-</dl>
-</li>
-</ul>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>semitones <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Number of semitones corresponding to this pitch bend amount</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>semitones</strong> : float</p>
+<blockquote class="last">
+<div><p>Number of semitones corresponding to this pitch bend amount.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -1271,113 +1540,28 @@ General MIDI standard +/-2 semitone range.</p>
 </dd></dl>
 
 <dl class="function">
-<dt id="pretty_midi.pretty_midi.program_to_instrument_class">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">program_to_instrument_class</tt><big>(</big><em>program_number</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.program_to_instrument_class" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts a MIDI program number to the corresponding General MIDI instrument
-class.</p>
+<dt id="pretty_midi.semitones_to_pitch_bend">
+<code class="descclassname">pretty_midi.</code><code class="descname">semitones_to_pitch_bend</code><span class="sig-paren">(</span><em>semitones</em>, <em>semitone_range=2.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.semitones_to_pitch_bend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a semitone value to the corresponding MIDI pitch bend integer.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>program_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI program number, between 0 and 127</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>instrument_class <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of the instrument class corresponding to this program number.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pretty_midi.pretty_midi.program_to_instrument_name">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">program_to_instrument_name</tt><big>(</big><em>program_number</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.program_to_instrument_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Converts a MIDI program number to the corresponding General MIDI instrument
-name.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>program_number <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI program number, between 0 and 127</p>
-</dd>
-</dl>
-</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul>
-<li><dl class="first docutils">
-<dt>instrument_name <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">Name of the instrument corresponding to this program number.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Note:</th><td class="field-body"><p class="first last">See <a class="reference external" href="http://www.midi.org/techspecs/gm1sound.php">http://www.midi.org/techspecs/gm1sound.php</a></p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="pretty_midi.pretty_midi.semitones_to_pitch_bend">
-<tt class="descclassname">pretty_midi.pretty_midi.</tt><tt class="descname">semitones_to_pitch_bend</tt><big>(</big><em>semitones</em>, <em>semitone_range=2.0</em><big>)</big><a class="headerlink" href="#pretty_midi.pretty_midi.semitones_to_pitch_bend" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a semitone value to the corresponding MIDI pitch bend int</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first">
-<li><dl class="first docutils">
-<dt>semitones <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Number of semitones for the pitch bend</p>
-</dd>
-</dl>
-</li>
-<li><dl class="first docutils">
-<dt>semitone_range <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
-<dd><p class="first last">Convert to +/- this semitone range.  Default is 2., which is the
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>semitones</strong> : float</p>
+<blockquote>
+<div><p>Number of semitones for the pitch bend.</p>
+</div></blockquote>
+<p><strong>semitone_range</strong> : float</p>
+<blockquote>
+<div><p>Convert to +/- this semitone range.  Default is 2., which is the
 General MIDI standard +/-2 semitone range.</p>
-</dd>
-</dl>
-</li>
-</ul>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul>
-<li><dl class="first docutils">
-<dt>pitch_bend <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">MIDI pitch bend amount, in [-8192, 8191]</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>pitch_bend</strong> : int</p>
+<blockquote class="last">
+<div><p>MIDI pitch bend amount, in <code class="docutils literal"><span class="pre">[-8192,</span> <span class="pre">8191]</span></code>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -1385,33 +1569,38 @@ General MIDI standard +/-2 semitone range.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
-<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
-<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
-</ul>
 </div>
 
 
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">pretty_midi</a></li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+<li><a class="reference internal" href="#"><code class="docutils literal"><span class="pre">pretty_midi</span></code></a><ul>
+<li><a class="reference internal" href="#pretty-midi-prettymidi"><code class="docutils literal"><span class="pre">pretty_midi.PrettyMIDI</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-instrument"><code class="docutils literal"><span class="pre">pretty_midi.Instrument</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-note"><code class="docutils literal"><span class="pre">pretty_midi.Note</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-pitchbend"><code class="docutils literal"><span class="pre">pretty_midi.PitchBend</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-controlchange"><code class="docutils literal"><span class="pre">pretty_midi.ControlChange</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-timesignature"><code class="docutils literal"><span class="pre">pretty_midi.TimeSignature</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-keysignature"><code class="docutils literal"><span class="pre">pretty_midi.KeySignature</span></code></a></li>
+<li><a class="reference internal" href="#pretty-midi-lyric"><code class="docutils literal"><span class="pre">pretty_midi.Lyric</span></code></a></li>
+<li><a class="reference internal" href="#utility-functions">Utility functions</a></li>
+</ul>
+</li>
 </ul>
 
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="_sources/index.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
@@ -1428,7 +1617,7 @@ General MIDI standard +/-2 semitone range.</p>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
@@ -1437,12 +1626,12 @@ General MIDI standard +/-2 semitone range.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="#">pretty_midi 0.1 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.2 documentation</a> &raquo;</li> 
       </ul>
     </div>
-    <div class="footer">
-        &copy; Copyright 2014, Colin Raffel.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.2.
+    <div class="footer" role="contentinfo">
+        &copy; Copyright Colin Raffel.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
     </div>
   </body>
 </html>

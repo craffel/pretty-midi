@@ -3,19 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-pretty_midi
-===========
-.. automodule:: pretty_midi.pretty_midi
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :member-order: bysource
+:mod:`pretty_midi`
+******************
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+.. automodule:: pretty_midi
