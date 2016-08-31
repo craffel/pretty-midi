@@ -242,7 +242,7 @@ class PrettyMIDI(object):
             # If we have already created an instrument for this program
             # number/track/channel, return it
             if (program, is_drum, channel, track) in instrument_map:
-              return instrument_map[(program, is_drum, channel, track)]
+                return instrument_map[(program, is_drum, channel, track)]
             # If there's a straggler instrument for this instrument and we
             # aren't being requested to create a new instrument
             if not create_new and (is_drum, channel, track) in stragglers:
