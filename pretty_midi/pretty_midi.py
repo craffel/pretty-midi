@@ -360,14 +360,16 @@ class PrettyMIDI(object):
         self.instruments = [i for i in instrument_map.values()]
 
     def get_tempo_changes(self):
-        """Return arrays of tempo changes and their times.
+        """Return arrays of tempo changes in quarter notes-per-minute and their
+        times.
 
         Returns
         -------
         tempo_change_times : np.ndarray
             Times, in seconds, where the tempo changes.
         tempi : np.ndarray
-            What the tempo is at each point in time in ``tempo_change_times``.
+            What the tempo is, in quarter notes-per-minute, at each point in
+            time in ``tempo_change_times``.
 
         """
 
