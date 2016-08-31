@@ -242,7 +242,7 @@ class PrettyMIDI(object):
             # If we have already created an instrument for this program
             # number/track/channel, return it
             if (program, is_drum, channel, track) in instrument_map:
-                return instrument_map[(program, is_drum, channel, track)]
+              return instrument_map[(program, is_drum, channel, track)]
             # If there's a straggler instrument for this instrument and we
             # aren't being requested to create a new instrument
             if not create_new and (is_drum, channel, track) in stragglers:
@@ -294,8 +294,7 @@ class PrettyMIDI(object):
                     # Check whether this event is for the drum channel
                     is_drum = (event.channel == 9)
                     # Store this as the last note-on location
-                    note_on_index = (current_instrument[event.channel],
-                                     is_drum, event.pitch)
+                    note_on_index = (event.channel, is_drum, event.pitch)
                     last_note_on[note_on_index].append((
                         self.__tick_to_time[event.tick],
                         event.velocity))
@@ -305,13 +304,11 @@ class PrettyMIDI(object):
                     # Get the instrument's drum type
                     is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
-                    if (current_instrument[event.channel],
-                            is_drum, event.pitch) in last_note_on:
+                    if (event.channel, is_drum, event.pitch) in last_note_on:
                         # Get the start/stop times and velocity of every note
                         # which was turned on with this instrument/drum/pitch
                         for start, velocity in last_note_on[
-                            (current_instrument[event.channel],
-                             is_drum, event.pitch)]:
+                            (event.channel, is_drum, event.pitch)]:
                             end = self.__tick_to_time[event.tick]
                             # Create the note event
                             note = Note(velocity, event.pitch, start, end)
@@ -326,8 +323,7 @@ class PrettyMIDI(object):
                             # Add the note event
                             instrument.notes.append(note)
                         # Remove the last note on for this instrument
-                        del last_note_on[(current_instrument[event.channel],
-                                          is_drum, event.pitch)]
+                        del last_note_on[(event.channel, is_drum, event.pitch)]
                 # Store pitch bends
                 elif event.name == 'Pitch Wheel':
                     # Create pitch bend class instance
