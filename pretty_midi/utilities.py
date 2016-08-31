@@ -142,7 +142,7 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
     # check if key signature has sharps or flats
     if num_accidentals >= 0:
         num_sharps = num_accidentals / 6
-        key = sharp_keys[num_accidentals % 7] + '#' * num_sharps
+        key = sharp_keys[num_accidentals % 7] + '#' * int(num_sharps)
     else:
         if num_accidentals == -1:
             key = 'F'
