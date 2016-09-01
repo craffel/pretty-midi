@@ -233,7 +233,7 @@ class PrettyMIDI(object):
         # This dict will map track indices to any track names encountered
         track_name_map = collections.defaultdict(str)
 
-        def __get_instrument(program, is_drum, channel, track, create_new):
+        def __get_instrument(program, channel, track, create_new):
             """Gets the Instrument corresponding to the given program number,
             drum/non-drum type, channel, and track index.  If no such
             instrument exists, one is created.
@@ -241,40 +241,40 @@ class PrettyMIDI(object):
             """
             # If we have already created an instrument for this program
             # number/track/channel, return it
-            if (program, is_drum, channel, track) in instrument_map:
-                return instrument_map[(program, is_drum, channel, track)]
+            if (program, channel, track) in instrument_map:
+                return instrument_map[(program, channel, track)]
             # If there's a straggler instrument for this instrument and we
             # aren't being requested to create a new instrument
-            if not create_new and (is_drum, channel, track) in stragglers:
-                return stragglers[(is_drum, channel, track)]
+            if not create_new and (channel, track) in stragglers:
+                return stragglers[(channel, track)]
             # If we are told to, create a new instrument and store it
             if create_new:
+                is_drum = (channel == 9)
                 instrument = Instrument(
                     program, is_drum, track_name_map[track_idx])
                 # If any events appeared for this instrument before now,
                 # include them in the new instrument
-                if (is_drum, channel, track) in stragglers:
-                    straggler = stragglers[(is_drum, channel, track)]
+                if (channel, track) in stragglers:
+                    straggler = stragglers[(channel, track)]
                     instrument.control_changes = straggler.control_changes
                     instrument.pitch_bends = straggler.pitch_bends
                 # Add the instrument to the instrument map
-                instrument_map[(program, is_drum, channel, track)] = instrument
+                instrument_map[(program, channel, track)] = instrument
             # Otherwise, create a "straggler" instrument which holds events
             # which appear before we actually want to create a proper new
             # instrument
             else:
                 # Create a "straggler" instrument
-                instrument = Instrument(
-                    program, is_drum, track_name_map[track_idx])
+                instrument = Instrument(program, track_name_map[track_idx])
                 # Note that stragglers ignores program number, because we want
                 # to store all events on a track which appear before the first
                 # note-on, regardless of program
-                stragglers[(is_drum, channel, track)] = instrument
+                stragglers[(channel, track)] = instrument
             return instrument
 
         for track_idx, track in enumerate(midi_data):
             # Keep track of last note on location:
-            # key = (instrument, is_drum, note),
+            # key = (instrument, note),
             # value = (note on time, velocity)
             last_note_on = collections.defaultdict(list)
             # Keep track of which instrument is playing in each channel
@@ -291,24 +291,20 @@ class PrettyMIDI(object):
                     current_instrument[event.channel] = event.data[0]
                 # Note ons are note on events with velocity > 0
                 elif event.name == 'Note On' and event.velocity > 0:
-                    # Check whether this event is for the drum channel
-                    is_drum = (event.channel == 9)
                     # Store this as the last note-on location
-                    note_on_index = (event.channel, is_drum, event.pitch)
+                    note_on_index = (event.channel, event.pitch)
                     last_note_on[note_on_index].append((
                         self.__tick_to_time[event.tick],
                         event.velocity))
                 # Note offs can also be note on events with 0 velocity
                 elif event.name == 'Note Off' or (event.name == 'Note On' and
                                                   event.velocity == 0):
-                    # Get the instrument's drum type
-                    is_drum = (event.channel == 9)
                     # Check that a note-on exists (ignore spurious note-offs)
-                    if (event.channel, is_drum, event.pitch) in last_note_on:
+                    if (event.channel, event.pitch) in last_note_on:
                         # Get the start/stop times and velocity of every note
                         # which was turned on with this instrument/drum/pitch
                         for start, velocity in last_note_on[
-                            (event.channel, is_drum, event.pitch)]:
+                            (event.channel, event.pitch)]:
                             end = self.__tick_to_time[event.tick]
                             # Create the note event
                             note = Note(velocity, event.pitch, start, end)
@@ -319,23 +315,22 @@ class PrettyMIDI(object):
                             # instrument
                             # Create a new instrument if none exists
                             instrument = __get_instrument(
-                                program, is_drum, event.channel, track_idx, 1)
+                                program, event.channel, track_idx, 1)
                             # Add the note event
                             instrument.notes.append(note)
                         # Remove the last note on for this instrument
-                        del last_note_on[(event.channel, is_drum, event.pitch)]
+                        del last_note_on[(event.channel, event.pitch)]
                 # Store pitch bends
                 elif event.name == 'Pitch Wheel':
                     # Create pitch bend class instance
                     bend = PitchBend(event.pitch,
                                      self.__tick_to_time[event.tick])
-                    # Get the program and drum type for the current inst
+                    # Get the program for the current inst
                     program = current_instrument[event.channel]
-                    is_drum = (event.channel == 9)
                     # Retrieve the Instrument instance for the current inst
                     # Don't create a new instrument if none exists
                     instrument = __get_instrument(
-                        program, is_drum, event.channel, track_idx, 0)
+                        program, event.channel, track_idx, 0)
                     # Add the pitch bend event
                     instrument.pitch_bends.append(bend)
                 # Store control changes
@@ -343,13 +338,12 @@ class PrettyMIDI(object):
                     control_change = ControlChange(
                         event.data[0], event.data[1],
                         self.__tick_to_time[event.tick])
-                    # Get the program and drum type for the current inst
+                    # Get the program for the current inst
                     program = current_instrument[event.channel]
-                    is_drum = (event.channel == 9)
                     # Retrieve the Instrument instance for the current inst
                     # Don't create a new instrument if none exists
                     instrument = __get_instrument(
-                        program, is_drum, event.channel, track_idx, 0)
+                        program, event.channel, track_idx, 0)
                     # Add the control change event
                     instrument.control_changes.append(control_change)
         # Initialize list of instruments from instrument_map
