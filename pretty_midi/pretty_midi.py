@@ -459,7 +459,7 @@ class PrettyMIDI(object):
         if tempi.size == 0:
             raise ValueError("Can't provide a global tempo estimate when there"
                              " are fewer than two notes.")
-        return tempi[0][0]
+        return tempi[0]
 
     def get_beats(self, start_time=0.):
         """Return a list of beat locations, according to MIDI tempo changes.
