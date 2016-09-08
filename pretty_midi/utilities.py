@@ -340,7 +340,7 @@ def note_name_to_number(note_name):
         raise ValueError('Improper note format: {}'.format(note_name))
 
     # Convert from the extrated ints to a full note number
-    return 12*octave + pitch_map[pitch] + offset
+    return 12*(octave + 1) + pitch_map[pitch] + offset
 
 
 def note_number_to_name(note_number):
@@ -370,7 +370,7 @@ def note_number_to_name(note_number):
     note_number = int(np.round(note_number))
 
     # Get the semitone and the octave, and concatenate to create the name
-    return semis[note_number % 12] + str(note_number/12)
+    return semis[note_number % 12] + str(note_number/12 - 1)
 
 
 def note_number_to_drum_name(note_number):
