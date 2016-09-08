@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>pretty_midi &mdash; pretty_midi 0.2.2 documentation</title>
+    <title>pretty_midi &mdash; pretty_midi 0.2.4 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.2.2',
+        VERSION:     '0.2.4',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="pretty_midi 0.2.2 documentation" href="#" /> 
+    <link rel="top" title="pretty_midi 0.2.4 documentation" href="#" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -35,7 +35,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.4 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -148,7 +148,8 @@ from scratch with no data.</p>
 <dl class="method">
 <dt id="pretty_midi.PrettyMIDI.get_tempo_changes">
 <code class="descname">get_tempo_changes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_tempo_changes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return arrays of tempo changes and their times.</p>
+<dd><p>Return arrays of tempo changes in quarter notes-per-minute and their
+times.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -159,7 +160,8 @@ from scratch with no data.</p>
 </div></blockquote>
 <p><strong>tempi</strong> : np.ndarray</p>
 <blockquote class="last">
-<div><p>What the tempo is at each point in time in <code class="docutils literal"><span class="pre">tempo_change_times</span></code>.</p>
+<div><p>What the tempo is, in quarter notes-per-minute, at each point in
+time in <code class="docutils literal"><span class="pre">tempo_change_times</span></code>.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -1626,7 +1628,7 @@ General MIDI standard +/-2 semitone range.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.2 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.4 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
