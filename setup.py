@@ -26,4 +26,6 @@ setup(
         'numpy >= 1.7.0',
         'midi'
     ],
+    dependency_links=[
+        'https://github.com/vishnubob/python-midi/tarball/master#egg=midi']
 )
