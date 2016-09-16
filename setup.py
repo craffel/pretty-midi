@@ -24,8 +24,9 @@ setup(
     license='MIT',
     install_requires=[
         'numpy >= 1.7.0',
-        'midi'
+        'midi ==v0.2.3'
     ],
     dependency_links=[
-        'https://github.com/vishnubob/python-midi/tarball/master#egg=midi']
+        ('https://github.com/vishnubob/python-midi/tarball/'
+         'master#egg=midi-v0.2.3')]
 )
