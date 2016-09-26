@@ -1270,7 +1270,7 @@ class PrettyMIDI(object):
         tracks += [timing_track]
         # Create a list of possible channels to assign - this seems to matter
         # for some synths.
-        channels = range(16)
+        channels = list(range(16))
         # Don't assign the drum channel by mistake!
         channels.remove(9)
         for n, instrument in enumerate(self.instruments):
