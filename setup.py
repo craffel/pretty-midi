@@ -27,5 +27,5 @@ setup(
         'midi'
     ],
     dependency_links=[
-        'https://github.com/vishnubob/python-midi/tarball/master#egg=midi']
+        'https://github.com/vishnubob/python-midi/tarball/master#egg=feature/python3']
 )
