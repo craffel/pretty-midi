@@ -24,8 +24,10 @@ setup(
     license='MIT',
     install_requires=[
         'numpy >= 1.7.0',
-        'midi'
+        'midi',
+        'fluidsynth'
     ],
     dependency_links=[
-        'https://github.com/vishnubob/python-midi/tarball/master#egg=midi']
+        'https://github.com/vishnubob/python-midi/tarball/master#egg=midi',
+        'https://github.com/nwhitehead/pyfluidsynth/tarball/master#egg=fluidsynth']
 )
