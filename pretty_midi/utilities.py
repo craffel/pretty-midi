@@ -52,60 +52,65 @@ def key_number_to_key_name(key_number):
 
 
 def key_name_to_key_number(key_string):
-    """Convert a correctly formated string key to key number.
+    """Convert a key name string to key number.
 
     Parameters
     ----------
     key_string : str
         Format is ``'(root) (mode)'``, where:
-        ``(root)`` is notated using ABCDEFG with # for sharp or b for flat;
-        ``(mode)`` is notated using 'major' or 'minor'.
-        Letter case is irrelevant for mode.
+          * ``(root)`` is one of ABCDEFG or abcdefg.  A lowercase root
+            indicates a minor key when no mode string is specified.  Optionally
+            a # for sharp or b for flat can be specified.
+
+          * ``(mode)`` is optionally specified either as one of 'M', 'Maj',
+            'Major', 'maj', or 'major' for major or 'm', 'Min', 'Minor', 'min',
+            'minor' for minor.  If no mode is specified and the root is
+            uppercase, the mode is assumed to be major; if the root is
+            lowercase, the mode is assumed to be minor.
 
     Returns
     -------
     key_number : int
-        Integer representing the key and its mode.
+        Integer representing the key and its mode.  Integers from 0 to 11
+        represent major keys from C to B; 12 to 23 represent minor keys from C
+        to B.
     """
+    # Create lists of possible mode names (major or minor)
+    major_strs = ['M', 'Maj', 'Major', 'maj', 'major']
+    minor_strs = ['m', 'Min', 'Minor', 'min', 'minor']
+    # Construct regular expression for matching key
+    pattern = re.compile(
+        # Start with any of A-G, a-g
+        ur'^(?P<key>[ABCDEFGabcdefg])'
+        # Next, look for #, b, or nothing
+        '(?P<flatsharp>[#b]?)'
+        # Allow for a space between key and mode
+        ' ?'
+        # Next, look for any of the mode strings
+        '(?P<mode>(?:(?:' +
+        # Next, look for any of the major or minor mode strings
+        ')|(?:'.join(major_strs + minor_strs) + '))?)$')
+    # Match provided key string
+    result = re.match(pattern, key_string)
+    if result is None:
+        raise ValueError('Supplied key {} is not valid.'.format(key_string))
+    # Convert result to dictionary
+    result = result.groupdict()
 
-    if not isinstance(key_string, str):
-        raise ValueError('key_string is not String')
-    if not key_string[1] in ['#', 'b', ' ']:
-        raise ValueError(
-            '2nd character {} is not #, b nor blank_space'.format(
-                key_string[1]))
-
-    # split key and mode, ignore case
-    key_str, mode_str = key_string.split()
-    key_str = key_str.upper()
-    mode_str = mode_str.lower()
-
-    # instantiate default pitch classes and supported modes
-    note_names_pc = {'C': 0, 'D': 2, 'E': 4,
-                     'F': 5, 'G': 7, 'A': 9, 'B': 11}
-    modes = ['major', 'minor']
-
-    # check that both key and mode are valid
-    if not key_str[0] in note_names_pc:
-        raise ValueError('Key {} is not recognized'.format(key_str[0]))
-    if mode_str not in modes:
-        raise ValueError('Mode {} is not recognized'.format(mode_str))
-
-    # lookup dictionary
-    key_number = note_names_pc[key_str[0]]
-
-    # if len is 2, has a sharp or flat
-    if len(key_str) == 2:
-        if key_str[1] == '#':
+    # Map from key string to pitch class number
+    key_number = {'c': 0, 'd': 2, 'e': 4, 'f': 5,
+                  'g': 7, 'a': 9, 'b': 11}[result['key'].lower()]
+    # Increment or decrement pitch class if a flat or sharp was specified
+    if result['flatsharp']:
+        if result['flatsharp'] == '#':
             key_number += 1
-        else:
+        elif result['flatsharp'] == 'b':
             key_number -= 1
-
-    # circle around 12 pitch classes
+    # Circle around 12 pitch classes
     key_number = key_number % 12
-
-    # offset if mode is minor
-    if mode_str == 'minor':
+    # Offset if mode is minor, or the key name is lowercase
+    if result['mode'] in minor_strs or (result['key'].islower() and
+                                        result['mode'] not in major_strs):
         key_number += 12
 
     return key_number
