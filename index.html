@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>pretty_midi &mdash; pretty_midi 0.2.4 documentation</title>
+    <title>pretty_midi &mdash; pretty_midi 0.2.6 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.2.4',
+        VERSION:     '0.2.6',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="pretty_midi 0.2.4 documentation" href="#" /> 
+    <link rel="top" title="pretty_midi 0.2.6 documentation" href="#" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -35,7 +35,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.4 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.6 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -1150,23 +1150,35 @@ C# minor.</p>
 <dl class="function">
 <dt id="pretty_midi.key_name_to_key_number">
 <code class="descclassname">pretty_midi.</code><code class="descname">key_name_to_key_number</code><span class="sig-paren">(</span><em>key_string</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.key_name_to_key_number" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert a correctly formated string key to key number.</p>
+<dd><p>Convert a key name string to key number.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>key_string</strong> : str</p>
 <blockquote>
-<div><p>Format is <code class="docutils literal"><span class="pre">'(root)</span> <span class="pre">(mode)'</span></code>, where:
-<code class="docutils literal"><span class="pre">(root)</span></code> is notated using ABCDEFG with # for sharp or b for flat;
-<code class="docutils literal"><span class="pre">(mode)</span></code> is notated using &#8216;major&#8217; or &#8216;minor&#8217;.
-Letter case is irrelevant for mode.</p>
+<div><dl class="docutils">
+<dt>Format is <code class="docutils literal"><span class="pre">'(root)</span> <span class="pre">(mode)'</span></code>, where:</dt>
+<dd><ul class="first last simple">
+<li><code class="docutils literal"><span class="pre">(root)</span></code> is one of ABCDEFG or abcdefg.  A lowercase root
+indicates a minor key when no mode string is specified.  Optionally
+a # for sharp or b for flat can be specified.</li>
+<li><code class="docutils literal"><span class="pre">(mode)</span></code> is optionally specified either as one of &#8216;M&#8217;, &#8216;Maj&#8217;,
+&#8216;Major&#8217;, &#8216;maj&#8217;, or &#8216;major&#8217; for major or &#8216;m&#8217;, &#8216;Min&#8217;, &#8216;Minor&#8217;, &#8216;min&#8217;,
+&#8216;minor&#8217; for minor.  If no mode is specified and the root is
+uppercase, the mode is assumed to be major; if the root is
+lowercase, the mode is assumed to be minor.</li>
+</ul>
+</dd>
+</dl>
 </div></blockquote>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>key_number</strong> : int</p>
 <blockquote class="last">
-<div><p>Integer representing the key and its mode.</p>
+<div><p>Integer representing the key and its mode.  Integers from 0 to 11
+represent major keys from C to B; 12 to 23 represent minor keys from C
+to B.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -1628,7 +1640,7 @@ General MIDI standard +/-2 semitone range.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.4 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.6 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
