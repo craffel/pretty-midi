@@ -3,7 +3,7 @@ format
 
 """
 
-import midi
+import mido
 import numpy as np
 import math
 import warnings
@@ -12,11 +12,9 @@ import copy
 from functools import cmp_to_key
 
 from .instrument import Instrument
-from .containers import KeySignature, TimeSignature, Lyric
-from .containers import Note, PitchBend, ControlChange
-from .utilities import mode_accidentals_to_key_number
-from .utilities import key_number_to_mode_accidentals
-from .utilities import qpm_to_bpm
+from .containers import (KeySignature, TimeSignature, Lyric, Note,
+                         PitchBend, ControlChange)
+from .utilities import (key_name_to_key_number, qpm_to_bpm)
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -50,19 +48,29 @@ class PrettyMIDI(object):
         """
         if midi_file is not None:
             # Load in the MIDI data using the midi module
-            midi_data = midi.read_midifile(midi_file)
+            if isinstance(midi_file, basestring):
+                # If a string was given, pass it as the string filename
+                midi_data = mido.MidiFile(filename=midi_file)
+            else:
+                # Otherwise, try passing it in as a file pointer
+                midi_data = mido.MidiFile(file=midi_file)
 
             # Convert tick values in midi_data to absolute, a useful thing.
-            midi_data.make_ticks_abs()
+            for track in midi_data.tracks:
+                tick = 0
+                for event in track:
+                    event.time += tick
+                    tick = event.time
 
             # Store the resolution for later use
-            self.resolution = midi_data.resolution
+            self.resolution = midi_data.ticks_per_beat
 
             # Populate the list of tempo changes (tick scales)
             self._load_tempo_changes(midi_data)
 
             # Update the array which maps ticks to time
-            max_tick = max([max([e.tick for e in t]) for t in midi_data]) + 1
+            max_tick = max([max([e.time for e in t])
+                            for t in midi_data.tracks]) + 1
             # If max_tick is huge, the MIDI file is probably corrupt
             # and creating the __tick_to_time array will thrash memory
             if max_tick > MAX_TICK:
@@ -77,16 +85,13 @@ class PrettyMIDI(object):
 
             # Check that there are tempo, key and time change events
             # only on track 0
-            if sum([sum([isinstance(event, (midi.events.SetTempoEvent,
-                                            midi.events.KeySignatureEvent,
-                                            midi.events.TimeSignatureEvent))
-                        for event in track]) for track in midi_data[1:]]):
-                warnings.warn(("Tempo, Key or Time signature change events"
-                               " found on non-zero tracks."
-                               "  This is not a valid type 0 or type 1 MIDI"
-                               " file. Tempo, Key or Time Signature"
-                               " may be wrong."),
-                              RuntimeWarning)
+            if any(e.type in ('set_tempo', 'key_signature', 'time_signature')
+                   for track in midi_data.tracks[1:] for e in track):
+                warnings.warn(
+                    "Tempo, Key or Time signature change events found on "
+                    "non-zero tracks.  This is not a valid type 0 or type 1 "
+                    "MIDI file.  Tempo, Key or Time Signature may be wrong.",
+                    RuntimeWarning)
 
             # Populate the list of instruments
             self._load_instruments(midi_data)
@@ -123,24 +128,24 @@ class PrettyMIDI(object):
         # So, create a list of tuples, (time, tempo)
         # denoting a tempo change at a certain time.
         # By default, set the tempo to 120 bpm, starting at time 0
-        self._tick_scales = [(0, 60.0/(120.0*midi_data.resolution))]
+        self._tick_scales = [(0, 60.0/(120.0*self.resolution))]
         # For SMF file type 0, all events are on track 0.
         # For type 1, all tempo events should be on track 1.
         # Everyone ignores type 2.
         # So, just look at events on track 0
-        for event in midi_data[0]:
-            if isinstance(event, midi.events.SetTempoEvent):
+        for event in midi_data.tracks[0]:
+            if event.type == 'set_tempo':
                 # Only allow one tempo change event at the beginning
-                if event.tick == 0:
-                    bpm = event.get_bpm()
-                    self._tick_scales = [(0, 60.0/(bpm*midi_data.resolution))]
+                if event.time == 0:
+                    bpm = 6e7/event.tempo
+                    self._tick_scales = [(0, 60.0/(bpm*self.resolution))]
                 else:
                     # Get time and BPM up to this point
                     _, last_tick_scale = self._tick_scales[-1]
-                    tick_scale = 60.0/(event.get_bpm()*midi_data.resolution)
+                    tick_scale = 60.0/((6e7/event.tempo)*self.resolution)
                     # Ignore repetition of BPM, which happens often
                     if tick_scale != last_tick_scale:
-                        self._tick_scales.append((event.tick, tick_scale))
+                        self._tick_scales.append((event.time, tick_scale))
 
     def _load_metadata(self, midi_data):
         """Populates ``self.time_signature_changes`` with ``TimeSignature``
@@ -159,22 +164,22 @@ class PrettyMIDI(object):
         self.time_signature_changes = []
         self.lyrics = []
 
-        for event in midi_data[0]:
-            if isinstance(event, midi.events.KeySignatureEvent):
-                key_obj = KeySignature(mode_accidentals_to_key_number(
-                    event.data[1], event.get_alternatives()),
-                    self.__tick_to_time[event.tick])
+        for event in midi_data.tracks[0]:
+            if event.type == 'key_signature':
+                key_obj = KeySignature(
+                    key_name_to_key_number(event.key),
+                    self.__tick_to_time[event.time])
                 self.key_signature_changes.append(key_obj)
 
-            elif isinstance(event, midi.events.TimeSignatureEvent):
-                ts_obj = TimeSignature(event.get_numerator(),
-                                       event.get_denominator(),
-                                       self.__tick_to_time[event.tick])
+            elif event.type == 'time_signature':
+                ts_obj = TimeSignature(event.numerator,
+                                       event.denominator,
+                                       self.__tick_to_time[event.time])
                 self.time_signature_changes.append(ts_obj)
 
-            elif isinstance(event, midi.events.LyricsEvent):
+            elif event.type == 'lyrics':
                 self.lyrics.append(Lyric(
-                    event.text, self.__tick_to_time[event.tick]))
+                    event.text, self.__tick_to_time[event.time]))
 
     def _update_tick_to_time(self, max_tick):
         """Creates ``self.__tick_to_time``, a class member array which maps
@@ -273,7 +278,7 @@ class PrettyMIDI(object):
                 stragglers[(channel, track)] = instrument
             return instrument
 
-        for track_idx, track in enumerate(midi_data):
+        for track_idx, track in enumerate(midi_data.tracks):
             # Keep track of last note on location:
             # key = (instrument, note),
             # value = (note on time, velocity)
@@ -283,32 +288,32 @@ class PrettyMIDI(object):
             current_instrument = np.zeros(16, dtype=np.int)
             for event in track:
                 # Look for track name events
-                if event.name == 'Track Name':
+                if event.type == 'track_name':
                     # Set the track name for the current track
-                    track_name_map[track_idx] = event.text
+                    track_name_map[track_idx] = event.name
                 # Look for program change events
-                if event.name == 'Program Change':
+                if event.type == 'program_change':
                     # Update the instrument for this channel
-                    current_instrument[event.channel] = event.data[0]
+                    current_instrument[event.channel] = event.program
                 # Note ons are note on events with velocity > 0
-                elif event.name == 'Note On' and event.velocity > 0:
+                elif event.type == 'note_on' and event.velocity > 0:
                     # Store this as the last note-on location
-                    note_on_index = (event.channel, event.pitch)
+                    note_on_index = (event.channel, event.note)
                     last_note_on[note_on_index].append((
-                        self.__tick_to_time[event.tick],
+                        self.__tick_to_time[event.time],
                         event.velocity))
                 # Note offs can also be note on events with 0 velocity
-                elif event.name == 'Note Off' or (event.name == 'Note On' and
+                elif event.type == 'note_off' or (event.type == 'note_on' and
                                                   event.velocity == 0):
                     # Check that a note-on exists (ignore spurious note-offs)
-                    if (event.channel, event.pitch) in last_note_on:
+                    if (event.channel, event.note) in last_note_on:
                         # Get the start/stop times and velocity of every note
                         # which was turned on with this instrument/drum/pitch
                         for start, velocity in last_note_on[
-                            (event.channel, event.pitch)]:
-                            end = self.__tick_to_time[event.tick]
+                                (event.channel, event.note)]:
+                            end = self.__tick_to_time[event.time]
                             # Create the note event
-                            note = Note(velocity, event.pitch, start, end)
+                            note = Note(velocity, event.note, start, end)
                             # Get the program and drum type for the current
                             # instrument
                             program = current_instrument[event.channel]
@@ -320,12 +325,12 @@ class PrettyMIDI(object):
                             # Add the note event
                             instrument.notes.append(note)
                         # Remove the last note on for this instrument
-                        del last_note_on[(event.channel, event.pitch)]
+                        del last_note_on[(event.channel, event.note)]
                 # Store pitch bends
-                elif event.name == 'Pitch Wheel':
+                elif event.type == 'pitchwheel':
                     # Create pitch bend class instance
                     bend = PitchBend(event.pitch,
-                                     self.__tick_to_time[event.tick])
+                                     self.__tick_to_time[event.time])
                     # Get the program for the current inst
                     program = current_instrument[event.channel]
                     # Retrieve the Instrument instance for the current inst
@@ -335,10 +340,10 @@ class PrettyMIDI(object):
                     # Add the pitch bend event
                     instrument.pitch_bends.append(bend)
                 # Store control changes
-                elif event.name == 'Control Change':
+                elif event.type == 'control_change':
                     control_change = ControlChange(
-                        event.data[0], event.data[1],
-                        self.__tick_to_time[event.tick])
+                        event.control, event.value,
+                        self.__tick_to_time[event.time])
                     # Get the program for the current inst
                     program = current_instrument[event.channel]
                     # Retrieve the Instrument instance for the current inst
@@ -1179,16 +1184,16 @@ class PrettyMIDI(object):
         def event_compare(event1, event2):
             """Compares two events for sorting.
 
-            Parameters
-            ----------
-            event1, event2 : midi.Event
-              Two events to be compared.
-
             Events are sorted by tick time ascending. Events with the same tick
             time ares sorted by event type. Some events are sorted by
             additional values. For example, Note On events are sorted by pitch
             then velocity, ensuring that a Note Off (Note On with velocity 0)
             will never follow a Note On with the same pitch.
+
+            Parameters
+            ----------
+            event1, event2 : mido.Message
+               Two events to be compared.
             """
             # Construct a dictionary which will map event names to numeric
             # values which produce the correct sorting.  Each dictionary value
@@ -1196,79 +1201,75 @@ class PrettyMIDI(object):
             # The spacing for these scores is 256, which is larger than the
             # largest value a MIDI value can take.
             secondary_sort = {
-                'Set Tempo': lambda e: (1 * 256 * 256),
-                'Time Signature': lambda e: (2 * 256 * 256),
-                'Key Signature': lambda e: (3 * 256 * 256),
-                'Lyrics': lambda e: (4 * 256 * 256),
-                'Program Change': lambda e: (5 * 256 * 256),
-                'Pitch Wheel': lambda e: ((6 * 256 * 256) + e.pitch),
-                'Control Change': lambda e: (
+                'set_tempo': lambda e: (1 * 256 * 256),
+                'time_signature': lambda e: (2 * 256 * 256),
+                'key_signature': lambda e: (3 * 256 * 256),
+                'lyrics': lambda e: (4 * 256 * 256),
+                'program_change': lambda e: (5 * 256 * 256),
+                'pitchwheel': lambda e: ((6 * 256 * 256) + e.pitch),
+                'control_change': lambda e: (
                     (7 * 256 * 256) + (e.control * 256) + e.value),
-                'Note Off': lambda e: ((8 * 256 * 256) + (e.pitch * 256)),
-                'Note On': lambda e: (
-                    (9 * 256 * 256) + (e.pitch * 256) + e.velocity),
-                'End of Track': lambda e: (10 * 256 * 256)
+                'note_off': lambda e: ((8 * 256 * 256) + (e.note * 256)),
+                'note_on': lambda e: (
+                    (9 * 256 * 256) + (e.note * 256) + e.velocity),
+                'end_of_track': lambda e: (10 * 256 * 256)
             }
             # If the events have the same tick, and both events have types
             # which appear in the secondary_sort dictionary, use the dictionary
             # to determine their ordering.
-            if (event1.tick == event2.tick and
-                    event1.name in secondary_sort and
-                    event2.name in secondary_sort):
-                return (secondary_sort[event1.name](event1) -
-                        secondary_sort[event2.name](event2))
+            if (event1.time == event2.time and
+                    event1.type in secondary_sort and
+                    event2.type in secondary_sort):
+                return (secondary_sort[event1.type](event1) -
+                        secondary_sort[event2.type](event2))
             # Otherwise, just return the difference of their ticks.
-            return event1.tick - event2.tick
+            return event1.time - event2.time
 
-        # Initialize list of tracks to output
-        tracks = []
+        # Initialize output MIDI object
+        mid = mido.MidiFile(ticks_per_beat=self.resolution)
         # Create track 0 with timing information
-        timing_track = midi.Track(tick_relative=False)
+        timing_track = mido.MidiTrack()
         # Add a default time signature only if there is not one at time 0.
         add_ts = True
         if self.time_signature_changes:
             add_ts = min([ts.time for ts in self.time_signature_changes]) > 0.0
         if add_ts:
-            timing_track += [
-                midi.TimeSignatureEvent(tick=0, data=[4, 2, 24, 8])]
+            # Add time signature event with default values (4/4)
+            timing_track.append(mido.MetaMessage(
+                'time_signature', time=0, numerator=4, denominator=4))
 
         # Add in each tempo change event
         for (tick, tick_scale) in self._tick_scales:
-            tempo_event = midi.SetTempoEvent(tick=tick)
-            # Compute the BPM
-            tempo_event.set_bpm(60.0/(tick_scale*self.resolution))
-            timing_track += [tempo_event]
+            timing_track.append(mido.MetaMessage(
+                'set_tempo', time=tick,
+                # Convert from microseconds per quarter note to BPM
+                tempo=int(6e7/(60./(tick_scale*self.resolution)))))
         # Add in each time signature
         for ts in self.time_signature_changes:
-            midi_ts = midi.events.TimeSignatureEvent()
-            midi_ts.set_numerator(ts.numerator)
-            midi_ts.set_denominator(ts.denominator)
-            # Set notated 32nd notes per quarter-note to a reasonable default.
-            midi_ts.set_thirtyseconds(8)
-            # Set midi clocks per metronome clicks to a reasonable default.
-            midi_ts.set_metronome(24)
-            midi_ts.tick = self.time_to_tick(ts.time)
-            timing_track += [midi_ts]
+            timing_track.append(mido.MetaMessage(
+                'time_signature', time=self.time_to_tick(ts.time),
+                numerator=ts.numerator, denominator=ts.denominator))
         # Add in each key signature
+        # Mido accepts key changes in a different format than pretty_midi, this
+        # list maps key number to mido key name
+        key_number_to_mido_key_name = [
+            'C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B',
+            'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am',
+            'Bbm', 'Bm']
         for ks in self.key_signature_changes:
-            midi_ks = midi.events.KeySignatureEvent()
-            mode, num_accidentals = key_number_to_mode_accidentals(
-                ks.key_number)
-            midi_ks.set_alternatives(num_accidentals)
-            midi_ks.set_minor(mode)
-            midi_ks.tick = self.time_to_tick(ks.time)
-            timing_track += [midi_ks]
+            timing_track.append(mido.MetaMessage(
+                'key_signature', time=self.time_to_tick(ks.time),
+                key=key_number_to_mido_key_name[ks.key_number]))
         # Add in all lyrics events
         for l in self.lyrics:
-            midi_lyric = midi.events.LyricsEvent()
-            midi_lyric.data = [ord(c) for c in l.text]
-            midi_lyric.tick = self.time_to_tick(l.time)
-            timing_track += [midi_lyric]
+            timing_track.append(mido.MetaMessage(
+                'lyrics', time=self.time_to_tick(l.time), text=l.text))
         # Sort the (absolute-tick-timed) events.
-        timing_track.sort(key=lambda event: event.tick)
+        timing_track.sort(key=lambda event: event.time)
         # Add in an end of track event
-        timing_track += [midi.EndOfTrackEvent(tick=timing_track[-1].tick + 1)]
-        tracks += [timing_track]
+        timing_track.append(mido.MetaMessage(
+            'end_of_track', time=timing_track[-1].time + 1))
+        mid.tracks.append(timing_track)
         # Create a list of possible channels to assign - this seems to matter
         # for some synths.
         channels = list(range(16))
@@ -1276,12 +1277,11 @@ class PrettyMIDI(object):
         channels.remove(9)
         for n, instrument in enumerate(self.instruments):
             # Initialize track for this instrument
-            track = midi.Track(tick_relative=False)
+            track = mido.MidiTrack()
             # Add track name event if instrument has a name
             if instrument.name:
-                track_name = midi.TrackNameEvent(
-                    tick=0, data=[ord(c) for c in instrument.name])
-                track.append(track_name)
+                track.append(mido.MetaMessage(
+                    'track_name', time=0, name=instrument.name))
             # If it's a drum event, we need to set channel to 9
             if instrument.is_drum:
                 channel = 9
@@ -1289,63 +1289,55 @@ class PrettyMIDI(object):
             else:
                 channel = channels[n % len(channels)]
             # Set the program number
-            program_change = midi.ProgramChangeEvent(tick=0)
-            program_change.set_value(instrument.program)
-            program_change.channel = channel
-            track += [program_change]
+            track.append(mido.Message(
+                'program_change', time=0, program=instrument.program,
+                channel=channel))
             # Add all note events
             for note in instrument.notes:
                 # Construct the note-on event
-                note_on = midi.NoteOnEvent(tick=self.time_to_tick(note.start))
-                note_on.set_pitch(note.pitch)
-                note_on.set_velocity(note.velocity)
-                note_on.channel = channel
+                track.append(mido.Message(
+                    'note_on', time=self.time_to_tick(note.start),
+                    channel=channel, note=note.pitch, velocity=note.velocity))
                 # Also need a note-off event (note on with velocity 0)
-                note_off = midi.NoteOnEvent(tick=self.time_to_tick(note.end))
-                note_off.set_pitch(note.pitch)
-                note_off.set_velocity(0)
-                note_off.channel = channel
-                # Add notes to track
-                track += [note_on, note_off]
+                track.append(mido.Message(
+                    'note_on', time=self.time_to_tick(note.end),
+                    channel=channel, note=note.pitch, velocity=0))
             # Add all pitch bend events
             for bend in instrument.pitch_bends:
-                tick = self.time_to_tick(bend.time)
-                bend_event = midi.PitchWheelEvent(tick=tick)
-                bend_event.set_pitch(bend.pitch)
-                bend_event.channel = channel
-                track += [bend_event]
+                track.append(mido.Message(
+                    'pitchwheel', time=self.time_to_tick(bend.time),
+                    channel=channel, pitch=bend.pitch))
             # Add all control change events
             for control_change in instrument.control_changes:
-                tick = self.time_to_tick(control_change.time)
-                control_event = midi.ControlChangeEvent(tick=tick)
-                control_event.set_control(control_change.number)
-                control_event.set_value(control_change.value)
-                control_event.channel = channel
-                track += [control_event]
+                track.append(mido.Message(
+                    'control_change',
+                    time=self.time_to_tick(control_change.time),
+                    channel=channel, control=control_change.number,
+                    value=control_change.value))
             # Sort all the events using the event_compare comparator.
-            sorted_track = sorted(track, key=cmp_to_key(event_compare))
-            track = midi.Track(sorted_track, tick_relative=False)
+            track = sorted(track, key=cmp_to_key(event_compare))
 
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
             for n, (event1, event2) in enumerate(zip(track[:-1], track[1:])):
-                if (event1.tick == event2.tick and
-                        event1.name == 'Note On' and
-                        event2.name == 'Note On' and
-                        event1.pitch == event2.pitch and
+                if (event1.time == event2.time and
+                        event1.type == 'note_on' and
+                        event2.type == 'note_on' and
+                        event1.note == event2.note and
                         event1.velocity != 0 and
                         event2.velocity == 0):
                     track[n] = event2
                     track[n + 1] = event1
             # Finally, add in an end of track event
-            track += [midi.EndOfTrackEvent(tick=track[-1].tick + 1)]
+            track.append(mido.MetaMessage(
+                'end_of_track', time=track[-1].time + 1))
             # Add to the list of output tracks
-            tracks += [track]
-        # Construct an output pattern with the currently stored resolution
-        output_pattern = midi.Pattern(resolution=self.resolution,
-                                      tracks=tracks,
-                                      tick_relative=False)
-        # Turn ticks to relative, it doesn't work otherwise
-        output_pattern.make_ticks_rel()
+            mid.tracks.append(track)
+        # Turn ticks to relative time from absolute
+        for track in mid.tracks:
+            tick = 0
+            for event in track:
+                event.time -= tick
+                tick += event.time
         # Write it out
-        midi.write_midifile(filename, output_pattern)
+        mid.save(filename)

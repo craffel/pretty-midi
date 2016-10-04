@@ -1,9 +1,5 @@
 `pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
-As of now it relies on the bleeding-edge python-midi package (install from master on GitHub, not PIP):
-
-https://github.com/vishnubob/python-midi/
-
 In order to synthesize some MIDI data using the included soundfont file (see the fluidsynth() function), you need fluidsynth and pyfluidsynth:
 
 http://www.fluidsynth.org/
