@@ -9,6 +9,7 @@ import math
 import warnings
 import collections
 import copy
+import functools
 
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
@@ -1271,7 +1272,7 @@ class PrettyMIDI(object):
         mid.tracks.append(timing_track)
         # Create a list of possible channels to assign - this seems to matter
         # for some synths.
-        channels = range(16)
+        channels = list(range(16))
         # Don't assign the drum channel by mistake!
         channels.remove(9)
         for n, instrument in enumerate(self.instruments):
@@ -1314,7 +1315,7 @@ class PrettyMIDI(object):
                     channel=channel, control=control_change.number,
                     value=control_change.value))
             # Sort all the events using the event_compare comparator.
-            track = sorted(track, cmp=event_compare)
+            track = sorted(track, key=functools.cmp_to_key(event_compare))
 
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
