@@ -9,7 +9,7 @@ import math
 import warnings
 import collections
 import copy
-from functools import cmp_to_key
+import functools
 
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
@@ -1315,7 +1315,7 @@ class PrettyMIDI(object):
                     channel=channel, control=control_change.number,
                     value=control_change.value))
             # Sort all the events using the event_compare comparator.
-            track = sorted(track, key=cmp_to_key(event_compare))
+            track = sorted(track, key=functools.cmp_to_key(event_compare))
 
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
