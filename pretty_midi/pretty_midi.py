@@ -10,6 +10,7 @@ import warnings
 import collections
 import copy
 import functools
+import six
 
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
@@ -48,7 +49,7 @@ class PrettyMIDI(object):
         """
         if midi_file is not None:
             # Load in the MIDI data using the midi module
-            if isinstance(midi_file, basestring):
+            if isinstance(midi_file, six.string_types):
                 # If a string was given, pass it as the string filename
                 midi_data = mido.MidiFile(filename=midi_file)
             else:
@@ -1176,8 +1177,8 @@ class PrettyMIDI(object):
 
         Parameters
         ----------
-        filename : str
-            Path to write .mid file to.
+        filename : str or file-like object
+            Path or file to write .mid file to.
 
         """
 
@@ -1340,4 +1341,10 @@ class PrettyMIDI(object):
                 event.time -= tick
                 tick += event.time
         # Write it out
-        mid.save(filename)
+        if isinstance(filename, six.string_types):
+            # If a string was given, pass it as the string filename
+            mid.save(filename=filename)
+        else:
+            # Otherwise, try passing it in as a file pointer
+            mid.save(file=filename)
+
