@@ -374,7 +374,7 @@ class PrettyMIDI(object):
         tempi = np.zeros(len(self._tick_scales))
         for n, (tick, tick_scale) in enumerate(self._tick_scales):
             # Convert tick of this tempo change to time in seconds
-            tempo_change_times[n] = self.__tick_to_time[tick]
+            tempo_change_times[n] = self.tick_to_time(tick)
             # Convert tick scale to a tempo
             tempi[n] = 60.0/(tick_scale*self.resolution)
         return tempo_change_times, tempi
