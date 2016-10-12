@@ -81,7 +81,7 @@ def key_name_to_key_number(key_string):
     # Construct regular expression for matching key
     pattern = re.compile(
         # Start with any of A-G, a-g
-        ur'^(?P<key>[ABCDEFGabcdefg])'
+        '^(?P<key>[ABCDEFGabcdefg])'
         # Next, look for #, b, or nothing
         '(?P<flatsharp>[#b]?)'
         # Allow for a space between key and mode
