@@ -1,0 +1,23 @@
+language: python
+
+notifications:
+    email: false
+
+python:
+    - "2.7"
+    - "3.5"
+
+before_install:
+    - pip install python-coveralls numpydoc pep8 nose
+
+install:
+    - pip install -e .
+
+before_script:
+    - pep8 pretty_midi tests examples
+
+script:
+    - nosetests -v --with-coverage --cover-package=pretty_midi
+
+after_success:
+    - coveralls
