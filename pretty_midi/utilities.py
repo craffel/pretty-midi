@@ -38,7 +38,7 @@ def key_number_to_key_name(key_number):
 
     # circle around 12 pitch classes
     key_idx = key_number % 12
-    mode = key_number / 12
+    mode = key_number // 12
 
     # check if mode is major or minor
     if mode == 0:
@@ -146,7 +146,7 @@ def mode_accidentals_to_key_number(mode, num_accidentals):
 
     # check if key signature has sharps or flats
     if num_accidentals >= 0:
-        num_sharps = num_accidentals / 6
+        num_sharps = num_accidentals // 6
         key = sharp_keys[num_accidentals % 7] + '#' * int(num_sharps)
     else:
         if num_accidentals == -1:
@@ -192,7 +192,7 @@ def key_number_to_mode_accidentals(key_number):
 
     pc_to_num_accidentals_major = {0: 0, 1: -5, 2: 2, 3: -3, 4: 4, 5: -1, 6: 6,
                                    7: 1, 8: -4, 9: 3, 10: -2, 11: 5}
-    mode = key_number / 12
+    mode = key_number // 12
 
     if mode == 0:
         num_accidentals = pc_to_num_accidentals_major[key_number]
@@ -375,7 +375,7 @@ def note_number_to_name(note_number):
     note_number = int(np.round(note_number))
 
     # Get the semitone and the octave, and concatenate to create the name
-    return semis[note_number % 12] + str(note_number/12 - 1)
+    return semis[note_number % 12] + str(note_number//12 - 1)
 
 
 def note_number_to_drum_name(note_number):
@@ -547,7 +547,7 @@ def program_to_instrument_class(program_number):
         raise ValueError('Invalid program number {}, should be between 0 and'
                          ' 127'.format(program_number))
     # Just grab the name from the instrument mapping list
-    return INSTRUMENT_CLASSES[int(program_number)/8]
+    return INSTRUMENT_CLASSES[int(program_number)//8]
 
 
 def pitch_bend_to_semitones(pitch_bend, semitone_range=2.):
