@@ -1347,4 +1347,3 @@ class PrettyMIDI(object):
         else:
             # Otherwise, try passing it in as a file pointer
             mid.save(file=filename)
-
