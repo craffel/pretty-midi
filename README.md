@@ -1,3 +1,10 @@
+# pretty_midi
+
+[![Build Status](https://travis-ci.org/craffel/pretty-midi.svg?branch=master)](https://travis-ci.org/craffel/pretty-midi)
+[![Coverage Status](https://coveralls.io/repos/github/craffel/pretty-midi/badge.svg?branch=master)](https://coveralls.io/github/craffel/pretty-midi?branch=master)
+
+## Overview
+
 `pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
 In order to synthesize some MIDI data using the included soundfont file (see the fluidsynth() function), you need fluidsynth and pyfluidsynth:
