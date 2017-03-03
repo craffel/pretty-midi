@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>pretty_midi &mdash; pretty_midi 0.2.6 documentation</title>
+    <title>pretty_midi &mdash; pretty_midi 0.2.7 documentation</title>
     
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.2.6',
+        VERSION:     '0.2.7',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +23,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="pretty_midi 0.2.6 documentation" href="#" /> 
+    <link rel="top" title="pretty_midi 0.2.7 documentation" href="#" /> 
   </head>
   <body role="document">
     <div class="related" role="navigation" aria-label="related navigation">
@@ -35,7 +35,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.6 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.7 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -129,12 +129,21 @@ values for resolution and initial tempo.</p>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="17%" />
-<col width="83%" />
+<col width="28%" />
+<col width="73%" />
 </colgroup>
 <tbody valign="top">
 <tr class="row-odd"><td>instruments</td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.Instrument" title="pretty_midi.Instrument"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Instrument</span></code></a> objects.</td>
+</tr>
+<tr class="row-even"><td>key_signature_changes</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.KeySignature" title="pretty_midi.KeySignature"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.KeySignature</span></code></a> objects.</td>
+</tr>
+<tr class="row-odd"><td>time_signature_changes</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.TimeSignature" title="pretty_midi.TimeSignature"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.TimeSignature</span></code></a> objects.</td>
+</tr>
+<tr class="row-even"><td>lyrics</td>
+<td>(list) List of <a class="reference internal" href="#pretty_midi.Lyric" title="pretty_midi.Lyric"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Lyric</span></code></a> objects.</td>
 </tr>
 </tbody>
 </table>
@@ -603,9 +612,9 @@ linearly interpolated.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename</strong> : str</p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>filename</strong> : str or file</p>
 <blockquote class="last">
-<div><p>Path to write .mid file to.</p>
+<div><p>Path or file to write .mid file to.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -939,8 +948,7 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 <dl class="method">
 <dt id="pretty_midi.Note.__init__">
 <code class="descname">__init__</code><span class="sig-paren">(</span><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Note.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a note object.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -970,8 +978,7 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 <dl class="method">
 <dt id="pretty_midi.PitchBend.__init__">
 <code class="descname">__init__</code><span class="sig-paren">(</span><em>pitch</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PitchBend.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create pitch bend object.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -1005,8 +1012,7 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 <dl class="method">
 <dt id="pretty_midi.ControlChange.__init__">
 <code class="descname">__init__</code><span class="sig-paren">(</span><em>number</em>, <em>value</em>, <em>time</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.ControlChange.__init__" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create control change object.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -1640,7 +1646,7 @@ General MIDI standard +/-2 semitone range.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.6 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.7 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
