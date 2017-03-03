@@ -39,7 +39,12 @@ class PrettyMIDI(object):
     ----------
     instruments : list
         List of :class:`pretty_midi.Instrument` objects.
-
+    key_signature_changes : list
+        List of :class:`pretty_midi.KeySignature` objects.
+    time_signature_changes : list
+        List of :class:`pretty_midi.TimeSignature` objects.
+    lyrics : list
+        List of :class:`pretty_midi.Lyric` objects.
     """
 
     def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
