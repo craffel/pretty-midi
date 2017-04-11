@@ -1271,7 +1271,7 @@ class PrettyMIDI(object):
             timing_track.append(mido.MetaMessage(
                 'lyrics', time=self.time_to_tick(l.time), text=l.text))
         # Sort the (absolute-tick-timed) events.
-        timing_track.sort(key=lambda event: event.time)
+        timing_track.sort(key=functools.cmp_to_key(event_compare))
         # Add in an end of track event
         timing_track.append(mido.MetaMessage(
             'end_of_track', time=timing_track[-1].time + 1))
