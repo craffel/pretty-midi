@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='pretty_midi',
-    version='0.2.2',
+    version='0.2.7',
     description='Functions and classes for handling MIDI data conveniently.',
     author='Colin Raffel',
     author_email='craffel@gmail.com',
@@ -24,6 +24,7 @@ setup(
     license='MIT',
     install_requires=[
         'numpy >= 1.7.0',
-        'midi'
-    ],
+        'mido >= 1.1.16',
+        'six',
+    ]
 )

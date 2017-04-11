@@ -93,7 +93,7 @@ def align(midi_object, audio_data, fs, hop, note_start, n_notes, penalty):
         penalty = distance_matrix.mean()
     # Compute lowest-cost path through distance matrix
     p, q, score = djitw.dtw(
-        distance_matrix, gully=.98, penalty=penalty)
+        distance_matrix, gully=.98, additive_penalty=penalty)
     # Adjust the timing of the MIDI object according to the alignment
     midi_object.adjust_times(midi_times[p], audio_times[q])
 

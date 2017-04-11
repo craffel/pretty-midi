@@ -22,9 +22,6 @@ class Note(object):
     """
 
     def __init__(self, velocity, pitch, start, end):
-        """Create a note object.
-
-        """
         self.velocity = velocity
         self.pitch = pitch
         self.start = start
@@ -48,9 +45,6 @@ class PitchBend(object):
     """
 
     def __init__(self, pitch, time):
-        """Create pitch bend object.
-
-        """
         self.pitch = pitch
         self.time = time
 
@@ -73,9 +67,6 @@ class ControlChange(object):
     """
 
     def __init__(self, number, value, time):
-        """Create control change object.
-
-        """
         self.number = number
         self.value = value
         self.time = time
