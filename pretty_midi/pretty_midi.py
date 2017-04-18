@@ -429,7 +429,7 @@ class PrettyMIDI(object):
         ioi = ioi[ioi > .05]
         ioi = ioi[ioi < 2]
         # Normalize all iois into the range 30...300bpm
-        for n in xrange(ioi.shape[0]):
+        for n in range(ioi.shape[0]):
             while ioi[n] < .2:
                 ioi[n] *= 2
         # Array of inner onset interval cluster means
