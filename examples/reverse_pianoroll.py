@@ -28,19 +28,12 @@ def piano_roll_to_pretty_midi(piano_roll, sf=100, program_num=1):
         time = time / sf
         if velocity > 0:
             if current_velocities[note] == 0:
-                 # print('note {} on'.format(
-                 #                       pretty_midi.note_number_to_name(note)))
-                 # print('starting at time {} with velocity {}'.format(
-                 #                                               time,velocity))
                 note_on_time[note] = time
                 current_velocities[note] = velocity
             elif current_velocities[note] > 0:
                 # change velocity with a special MIDI message
                 pass
         else:
-            # print('note {} off'.format(
-            #                      pretty_midi.note_number_to_name(note)))
-            # print('ending at time {}'.format(time))
             pm_note = pretty_midi.Note(
                     velocity=current_velocities[note],
                     pitch=note,
@@ -81,6 +74,5 @@ cello_c_am.instruments.append(cello)
 # Get piano Roll
 cello_pr = cello_c_am.get_piano_roll()
 # Piano Roll back to PrettyMidi
-new_cello = piano_roll_to_pretty_midi(cello_pr,
-             program_num=pretty_midi.instrument_name_to_program('Cello'))
+new_cello = piano_roll_to_pretty_midi(cello_pr, program_num=cello_program)
 new_cello.write('cello-C-Am.mid')
