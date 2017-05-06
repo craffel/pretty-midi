@@ -8,6 +8,10 @@ import pretty_midi
 import numpy as np
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e2d9518cd0500f6834b60160689931571b6f8d66
 def piano_roll_to_pretty_midi(piano_roll, sf=100, program_num=1):
     """Convert piano roll to a single instrument pretty_midi object"""
     notes, frames = piano_roll.shape
@@ -50,6 +54,7 @@ def piano_roll_to_pretty_midi(piano_roll, sf=100, program_num=1):
             current_velocities[note] = 0
     pm.instruments.append(instrument)
     return pm
+
 
 # Test example
 # Create a PrettyMIDI object
