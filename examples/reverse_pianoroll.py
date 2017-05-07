@@ -1,78 +1,91 @@
 from __future__ import division
 """
-Convert Piano Roll back into PrettyMIDI object.
+MIDI file to Piano Roll and back example.
 Most of this code is from @carlthome.
 @jsleep Adapted that code from mido to pretty_midi.
 """
 import pretty_midi
 import numpy as np
+import sys
+import argparse
 
 
-def piano_roll_to_pretty_midi(piano_roll, sf=100, program_num=1):
-    """Convert piano roll to a single instrument pretty_midi object"""
+def piano_roll_to_pretty_midi(piano_roll, fs=100, program=1):
+    '''Convert a Piano Roll array into a PrettyMidi object
+     with a single instrument.
+
+    Parameters
+    ----------
+    piano_roll : np.ndarray, shape=(128,time)
+        Piano roll of one instrument
+    fs : int
+        Sampling frequency of the columns, i.e. each column is spaced apart
+        by ``1./fs`` seconds.
+    program : int
+        The program number of the instrument.
+
+    Returns
+    -------
+    midi_object : pretty_midi.PrettyMIDI
+        A pretty_midi.PrettyMIDI class instance describing
+        the piano roll.
+
+    '''
     notes, frames = piano_roll.shape
     pm = pretty_midi.PrettyMIDI()
-    instrument = pretty_midi.Instrument(program=program_num)
+    instrument = pretty_midi.Instrument(program=program)
 
     # prepend,append zeros so we can acknowledge inital and ending events
     piano_roll = np.hstack((np.zeros((notes, 1)),
                             piano_roll,
                             np.zeros((notes, 1))))
 
+    # use changes in velocities to find note on / note off events
     velocity_changes = np.nonzero(np.diff(piano_roll).T)
-    current_velocities = np.zeros(notes, dtype=int)
+
+    # keep track on velocities and note on times
+    prev_velocities = np.zeros(notes, dtype=int)
     note_on_time = np.zeros(notes)
 
     for time, note in zip(*velocity_changes):
         velocity = piano_roll[note, time + 1]
-        time = time / sf
+        time = time / fs
         if velocity > 0:
-            if current_velocities[note] == 0:
+            if prev_velocities[note] == 0:
                 note_on_time[note] = time
-                current_velocities[note] = velocity
+                prev_velocities[note] = velocity
             elif current_velocities[note] > 0:
                 # change velocity with a special MIDI message
                 pass
         else:
             pm_note = pretty_midi.Note(
-                    velocity=current_velocities[note],
+                    velocity=prev_velocities[note],
                     pitch=note,
                     start=note_on_time[note],
                     end=time)
             instrument.notes.append(pm_note)
-            current_velocities[note] = 0
+            prev_velocities[note] = 0
     pm.instruments.append(instrument)
     return pm
 
+if __name__ == '__main__':
+    # Set up command-line argument parsing
+    parser = argparse.ArgumentParser(
+        description='Translate MIDI file to piano roll and back',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-# Test example
-# Create a PrettyMIDI object
-cello_c_am = pretty_midi.PrettyMIDI()
-# Create an Instrument instance for a cello instrument
-cello_program = pretty_midi.instrument_name_to_program('Cello')
-cello = pretty_midi.Instrument(program=cello_program)
-# Iterate over C Major
-for note_name in ['C5', 'E5', 'G5']:
-    # Retrieve the MIDI note number for this note name
-    note_number = pretty_midi.note_name_to_number(note_name)
-    # Create a Note instance, starting at 0s and ending at .5s
-    note = pretty_midi.Note(
-        velocity=100, pitch=note_number, start=0, end=.5)
-    # Add it to our cello instrument
-    cello.notes.append(note)
-# Iterate over A minor
-for note_name in ['A4', 'E5', 'C5']:
-    # Retrieve the MIDI note number for this note name
-    note_number = pretty_midi.note_name_to_number(note_name)
-    # Create a Note instance, starting at 0s and ending at .5s
-    note = pretty_midi.Note(
-        velocity=100, pitch=note_number, start=.5, end=1)
-    # Add it to our cello instrument
-    cello.notes.append(note)
-# Add the cello instrument to the PrettyMIDI object
-cello_c_am.instruments.append(cello)
-# Get piano Roll
-cello_pr = cello_c_am.get_piano_roll()
-# Piano Roll back to PrettyMidi
-new_cello = piano_roll_to_pretty_midi(cello_pr, program_num=cello_program)
-new_cello.write('cello-C-Am.mid')
+    parser.add_argument('input_midi', action='store',
+                        help='Path to the input MIDI file')
+    parser.add_argument('output_midi', action='store',
+                        help='Path where the translated MIDI will be written')
+    parser.add_argument('--fs', default=100, type=int, action='store',
+                        help='Sampling rate to use between conversions')
+    parser.add_argument('--program', default=1, type=int, action='store',
+                        help='Program of the instrument')
+
+    parameters = vars(parser.parse_args(sys.argv[1:]))
+    pm = pretty_midi.PrettyMIDI(parameters['input_midi'])
+    pr = pm.get_piano_roll(fs=parameters['fs'])
+    new_pm = piano_roll_to_pretty_midi(pr, fs=parameters['fs'],
+                                       program=parameters['program'])
+    new_pm.write(parameters['output_midi'])
