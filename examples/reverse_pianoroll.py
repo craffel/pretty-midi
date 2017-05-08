@@ -1,8 +1,15 @@
 from __future__ import division
 """
-MIDI file to Piano Roll and back example.
-Most of this code is from @carlthome.
-@jsleep Adapted that code from mido to pretty_midi.
+Utility function for converting a piano roll (integer matrix of shape
+(n_notes, n_frames)) to a pretty_midi.PrettyMIDI object. Note that this is a
+lossy process because certain information in a MIDI file (such as different
+instruments, pitch bends, overlapping notes, control changes, etc) cannot
+be stored in the piano roll matrix. To demonstrate the lossiness, this script
+includes a demonstration of parsing a MIDI file, constructing a piano roll
+matrix, and then creating a new MIDI from the piano roll.
+
+Most of this code is from @carlthome. @jsleep Adapted that code from mido
+ to pretty_midi.
 """
 import pretty_midi
 import numpy as np
@@ -16,7 +23,7 @@ def piano_roll_to_pretty_midi(piano_roll, fs=100, program=1):
 
     Parameters
     ----------
-    piano_roll : np.ndarray, shape=(128,time)
+    piano_roll : np.ndarray, shape=(128,time), dtype=int
         Piano roll of one instrument
     fs : int
         Sampling frequency of the columns, i.e. each column is spaced apart
@@ -35,10 +42,8 @@ def piano_roll_to_pretty_midi(piano_roll, fs=100, program=1):
     pm = pretty_midi.PrettyMIDI()
     instrument = pretty_midi.Instrument(program=program)
 
-    # prepend,append zeros so we can acknowledge inital and ending events
-    piano_roll = np.hstack((np.zeros((notes, 1)),
-                            piano_roll,
-                            np.zeros((notes, 1))))
+    # pad 1 column of zeros so we can acknowledge inital and ending events
+    piano_roll = np.pad(piano_roll, [(0, 0), (1, 1)], 'constant')
 
     # use changes in velocities to find note on / note off events
     velocity_changes = np.nonzero(np.diff(piano_roll).T)
@@ -54,9 +59,6 @@ def piano_roll_to_pretty_midi(piano_roll, fs=100, program=1):
             if prev_velocities[note] == 0:
                 note_on_time[note] = time
                 prev_velocities[note] = velocity
-            elif current_velocities[note] > 0:
-                # change velocity with a special MIDI message
-                pass
         else:
             pm_note = pretty_midi.Note(
                     velocity=prev_velocities[note],
@@ -80,7 +82,7 @@ if __name__ == '__main__':
                         help='Path where the translated MIDI will be written')
     parser.add_argument('--fs', default=100, type=int, action='store',
                         help='Sampling rate to use between conversions')
-    parser.add_argument('--program', default=1, type=int, action='store',
+    parser.add_argument('--program', default=0, type=int, action='store',
                         help='Program of the instrument')
 
     parameters = vars(parser.parse_args(sys.argv[1:]))
