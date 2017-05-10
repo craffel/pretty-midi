@@ -7,9 +7,6 @@ instruments, pitch bends, overlapping notes, control changes, etc) cannot
 be stored in the piano roll matrix. To demonstrate the lossiness, this script
 includes a demonstration of parsing a MIDI file, constructing a piano roll
 matrix, and then creating a new MIDI from the piano roll.
-
-Most of this code is from @carlthome. @jsleep Adapted that code from mido
- to pretty_midi.
 """
 import pretty_midi
 import numpy as np
@@ -53,6 +50,7 @@ def piano_roll_to_pretty_midi(piano_roll, fs=100, program=1):
     note_on_time = np.zeros(notes)
 
     for time, note in zip(*velocity_changes):
+        # use time + 1 because of padding above
         velocity = piano_roll[note, time + 1]
         time = time / fs
         if velocity > 0:
