@@ -1,47 +1,16 @@
-from __future__ import division
 """
 Utility function for converting an audio file
-to a MIDI file. Note that this method is nowhere close
+to a pretty_midi.PrettyMIDI object. Note that this method is nowhere close
 to the state-of-the-art in automatic music transcription.
 This just serves as a fun example for rough
 transcription which can be expanded on for anyone motivated.
 """
-import pretty_midi
-import numpy as np
-import librosa
+from __future__ import division
 import sys
 import argparse
-
-
-def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
-    '''Convert a CQT spectrogram into a piano roll representation by
-     thresholding scaled magnitudes.
-
-    Parameters
-    ----------
-    cqt : np.ndarray, shape=(max_midi-min_midi,frames), dtype=complex64
-        CQT spectrogram of audio.
-    min_midi : int
-        Minimum MIDI note to transcribe.
-    max_midi : int
-        Maximum MIDI note to transcribe.
-    threshold : int
-        Threshold value to activate note on event, 0-127
-
-    Returns
-    -------
-    piano_roll : np.ndarray, shape=(128,frames), dtype=int
-        Piano roll representation on audio.
-
-    '''
-    piano_roll = np.abs(cqt)
-    piano_roll = np.digitize(piano_roll, np.linspace(piano_roll.min(),
-                                                     piano_roll.max(), 127))
-    piano_roll[piano_roll < threshold] = 0
-    piano_roll = np.pad(piano_roll,
-                        [(128-max_midi, min_midi), (0, 0)], 'constant')
-    return piano_roll
-
+import numpy as np
+import pretty_midi
+import librosa
 
 def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
     '''Convert a Piano Roll array into a PrettyMidi object
@@ -88,14 +57,44 @@ def piano_roll_to_pretty_midi(piano_roll, fs=100, program=0):
                 prev_velocities[note] = velocity
         else:
             pm_note = pretty_midi.Note(
-                    velocity=prev_velocities[note],
-                    pitch=note,
-                    start=note_on_time[note],
-                    end=time)
+                velocity=prev_velocities[note],
+                pitch=note,
+                start=note_on_time[note],
+                end=time)
             instrument.notes.append(pm_note)
             prev_velocities[note] = 0
     pm.instruments.append(instrument)
     return pm
+
+
+def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
+    '''Convert a CQT spectrogram into a piano roll representation by
+     thresholding scaled magnitudes.
+
+    Parameters
+    ----------
+    cqt : np.ndarray, shape=(max_midi-min_midi,frames), dtype=complex64
+        CQT spectrogram of audio.
+    min_midi : int
+        Minimum MIDI note to transcribe.
+    max_midi : int
+        Maximum MIDI note to transcribe.
+    threshold : int
+        Threshold value to activate note on event, 0-127
+
+    Returns
+    -------
+    piano_roll : np.ndarray, shape=(128,frames), dtype=int
+        Piano roll representation on audio.
+
+    '''
+    piano_roll = np.abs(cqt)
+    piano_roll = np.digitize(piano_roll,
+        np.linspace(piano_roll.min(), piano_roll.max(), 127))
+    piano_roll[piano_roll < threshold] = 0
+    piano_roll = np.pad(piano_roll,
+        [(128 - max_midi, min_midi), (0, 0)], 'constant')
+    return piano_roll
 
 if __name__ == '__main__':
     # Set up command-line argument parsing
@@ -107,8 +106,6 @@ if __name__ == '__main__':
                         help='Path to the input Audio file')
     parser.add_argument('output_midi', action='store',
                         help='Path where the transcribed MIDI will be written')
-    parser.add_argument('--sr', default=22050, type=int, action='store',
-                        help='Sampling rate to use for CQT spectrogram')
     parser.add_argument('--program', default=0, type=int, action='store',
                         help='Program of the instrument in the output MIDI')
     parser.add_argument('--min_midi', default=24, type=int, action='store',
@@ -119,16 +116,16 @@ if __name__ == '__main__':
                         help='Threshold to activate note on event, 0-127')
 
     parameters = vars(parser.parse_args(sys.argv[1:]))
-    sr = parameters['sr']
-    y, _ = librosa.load(parameters['input_audio'], sr=sr)
+
+    y, sr = librosa.load(parameters['input_audio'])
     min_midi, max_midi = parameters['min_midi'], parameters['max_midi']
     cqt = librosa.cqt(y, sr=sr, fmin=min_midi,
-                      n_bins=max_midi-min_midi)
+        n_bins=max_midi-min_midi)
     pr = cqt_to_piano_roll(cqt, min_midi, max_midi, parameters['threshold'])
     # get audio time
     audio_time = len(y) / sr
-    # sampling frequency of cqt output with hop_length
+    # get sampling frequency of cqt spectrogram
     fs = pr.shape[1]/audio_time
     pm = piano_roll_to_pretty_midi(pr, fs=fs,
-                                   program=parameters['program'])
+        program=parameters['program'])
     pm.write(parameters['output_midi'])
