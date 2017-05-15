@@ -1,10 +1,10 @@
 from __future__ import division
 """
 Utility function for converting an audio file
-to a pretty_midi.PrettyMIDI object. Note that this method is nowhere close
+to a MIDI file. Note that this method is nowhere close
 to the state-of-the-art in automatic music transcription.
 This just serves as a fun example for rough
-transcription which can be exanded on for anyone motivated.
+transcription which can be expanded on for anyone motivated.
 """
 import pretty_midi
 import numpy as np
@@ -14,13 +14,13 @@ import argparse
 
 
 def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
-    '''Convert a CQT transformation into a piano roll representation by
+    '''Convert a CQT spectrogram into a piano roll representation by
      thresholding scaled magnitudes.
 
     Parameters
     ----------
     cqt : np.ndarray, shape=(max_midi-min_midi,frames), dtype=complex64
-        CQT transformation of audio.
+        CQT spectrogram of audio.
     min_midi : int
         Minimum MIDI note to transcribe.
     max_midi : int
@@ -30,7 +30,7 @@ def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
 
     Returns
     -------
-    piano_roll : np.ndarray, shape=(128,time), dtype=int
+    piano_roll : np.ndarray, shape=(128,frames), dtype=int
         Piano roll representation on audio.
 
     '''
@@ -108,13 +108,13 @@ if __name__ == '__main__':
     parser.add_argument('output_midi', action='store',
                         help='Path where the transcribed MIDI will be written')
     parser.add_argument('--sr', default=22050, type=int, action='store',
-                        help='Sampling rate to use for CQT transformation')
+                        help='Sampling rate to use for CQT spectrogram')
     parser.add_argument('--program', default=0, type=int, action='store',
                         help='Program of the instrument in the output MIDI')
     parser.add_argument('--min_midi', default=24, type=int, action='store',
                         help='Minimum MIDI note to transcribe')
     parser.add_argument('--max_midi', default=107, type=int, action='store',
-                        help='Minimum MIDI note to transcribe')
+                        help='Maximum MIDI note to transcribe')
     parser.add_argument('--threshold', default=64, type=int, action='store',
                         help='Threshold to activate note on event, 0-127')
 
