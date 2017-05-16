@@ -91,10 +91,13 @@ def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
     '''
     piano_roll = np.abs(cqt)
     piano_roll = np.digitize(piano_roll,
-        np.linspace(piano_roll.min(), piano_roll.max(), 127))
+                             np.linspace(piano_roll.min(),
+                                         piano_roll.max(),
+                                         127))
     piano_roll[piano_roll < threshold] = 0
     piano_roll = np.pad(piano_roll,
-        [(128 - max_midi, min_midi), (0, 0)], 'constant')
+                        [(128 - max_midi, min_midi), (0, 0)],
+                        'constant')
     return piano_roll
 
 if __name__ == '__main__':
@@ -121,12 +124,12 @@ if __name__ == '__main__':
     y, sr = librosa.load(parameters['input_audio'])
     min_midi, max_midi = parameters['min_midi'], parameters['max_midi']
     cqt = librosa.cqt(y, sr=sr, fmin=min_midi,
-        n_bins=max_midi-min_midi)
+                      n_bins=max_midi - min_midi)
     pr = cqt_to_piano_roll(cqt, min_midi, max_midi, parameters['threshold'])
     # get audio time
     audio_time = len(y) / sr
     # get sampling frequency of cqt spectrogram
     fs = pr.shape[1]/audio_time
     pm = piano_roll_to_pretty_midi(pr, fs=fs,
-        program=parameters['program'])
+                                   program=parameters['program'])
     pm.write(parameters['output_midi'])
