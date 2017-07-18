@@ -335,7 +335,8 @@ class PrettyMIDI(object):
                             start_time = self.__tick_to_time[start_tick]
                             end_time = self.__tick_to_time[end_tick]
                             # Create the note event
-                            note = Note(velocity, event.note, start_time, end_time)
+                            note = Note(velocity, event.note, start_time,
+                                        end_time)
                             # Get the program and drum type for the current
                             # instrument
                             program = current_instrument[event.channel]

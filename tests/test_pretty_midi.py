@@ -274,6 +274,7 @@ def test_adjust_times():
         assert ks.time == t
         assert ks.key_number == k
 
+
 def test_properly_order_overlapping_notes():
     def make_mido_track(notes_str, path):
         track = mido.MidiTrack()
@@ -316,7 +317,8 @@ def test_properly_order_overlapping_notes():
         pm_song = pretty_midi.PrettyMIDI(midi_path)
 
         def extract_notes(pm_track):
-            return np.array([(note.pitch, note.end-note.start) for note in pm_track.notes])
+            return np.array([(note.pitch, note.end-note.start) for note
+                             in pm_track.notes])
 
         expected = np.array([[72, 0.05], [72, 0.05], [74, 0.05], [72, 0.05]])
         assert np.allclose(expected, extract_notes(pm_song.instruments[0]))
@@ -325,4 +327,5 @@ def test_properly_order_overlapping_notes():
         pm_song.write(midi_written_path)
         pm_song_written = pretty_midi.PrettyMIDI(midi_written_path)
 
-        assert np.allclose(expected, extract_notes(pm_song_written.instruments[0]))
+        assert np.allclose(expected,
+                           extract_notes(pm_song_written.instruments[0]))
