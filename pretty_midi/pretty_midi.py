@@ -287,7 +287,7 @@ class PrettyMIDI(object):
         for track_idx, track in enumerate(midi_data.tracks):
             # Keep track of last note on location:
             # key = (instrument, note),
-            # value = (note on time, velocity)
+            # value = (note-on tick, velocity)
             last_note_on = collections.defaultdict(list)
             # Keep track of which instrument is playing in each channel
             # initialize to program 0 for all channels
@@ -306,20 +306,36 @@ class PrettyMIDI(object):
                     # Store this as the last note-on location
                     note_on_index = (event.channel, event.note)
                     last_note_on[note_on_index].append((
-                        self.__tick_to_time[event.time],
-                        event.velocity))
+                        event.time, event.velocity))
                 # Note offs can also be note on events with 0 velocity
                 elif event.type == 'note_off' or (event.type == 'note_on' and
                                                   event.velocity == 0):
                     # Check that a note-on exists (ignore spurious note-offs)
-                    if (event.channel, event.note) in last_note_on:
+                    key = (event.channel, event.note)
+                    if key in last_note_on:
                         # Get the start/stop times and velocity of every note
-                        # which was turned on with this instrument/drum/pitch
-                        for start, velocity in last_note_on[
-                                (event.channel, event.note)]:
-                            end = self.__tick_to_time[event.time]
+                        # which was turned on with this instrument/drum/pitch.
+                        # One note-off may close multiple note-on events from
+                        # previous ticks. In case there's a note-off and then
+                        # note-on at the same tick we keep the open note from
+                        # this tick.
+                        end_tick = event.time
+                        open_notes = last_note_on[key]
+
+                        notes_to_close = [
+                            (start_tick, velocity)
+                            for start_tick, velocity in open_notes
+                            if start_tick != end_tick]
+                        notes_to_keep = [
+                            (start_tick, velocity)
+                            for start_tick, velocity in open_notes
+                            if start_tick == end_tick]
+
+                        for start_tick, velocity in notes_to_close:
+                            start_time = self.__tick_to_time[start_tick]
+                            end_time = self.__tick_to_time[end_tick]
                             # Create the note event
-                            note = Note(velocity, event.note, start, end)
+                            note = Note(velocity, event.note, start_time, end_time)
                             # Get the program and drum type for the current
                             # instrument
                             program = current_instrument[event.channel]
@@ -330,8 +346,14 @@ class PrettyMIDI(object):
                                 program, event.channel, track_idx, 1)
                             # Add the note event
                             instrument.notes.append(note)
-                        # Remove the last note on for this instrument
-                        del last_note_on[(event.channel, event.note)]
+
+                        if len(notes_to_close) > 0 and len(notes_to_keep) > 0:
+                            # Note-on on the same tick but we already closed
+                            # some previous notes -> it will continue, keep it.
+                            last_note_on[key] = notes_to_keep
+                        else:
+                            # Remove the last note on for this instrument
+                            del last_note_on[key]
                 # Store pitch bends
                 elif event.type == 'pitchwheel':
                     # Create pitch bend class instance
