@@ -1,6 +1,7 @@
 import pretty_midi
 import numpy as np
 import mido
+from tempfile import NamedTemporaryFile
 
 
 def test_get_beats():
@@ -276,7 +277,7 @@ def test_adjust_times():
 
 
 def test_properly_order_overlapping_notes():
-    def make_mido_track(notes_str, path):
+    def make_mido_track(notes_str, file):
         track = mido.MidiTrack()
         for line in notes_str.split('\n'):
             line = line.strip()
@@ -284,7 +285,7 @@ def test_properly_order_overlapping_notes():
                 track.append(mido.Message.from_str(line))
         mido_file = mido.MidiFile()
         mido_file.tracks.append(track)
-        mido_file.save(path)
+        mido_file.save(file=file)
 
     # two notes with pitch 72 open at once
     bad_track = """
@@ -311,10 +312,10 @@ def test_properly_order_overlapping_notes():
     """
 
     for kind, track in (('good', good_track), ('bad', bad_track)):
-        midi_path = 'overlapping_notes_%s_track.mid' % kind
-        make_mido_track(track, midi_path)
-
-        pm_song = pretty_midi.PrettyMIDI(midi_path)
+        with NamedTemporaryFile() as file:
+            make_mido_track(track, file)
+            file.seek(0)
+            pm_song = pretty_midi.PrettyMIDI(file)
 
         def extract_notes(pm_track):
             return np.array([(note.pitch, note.end-note.start) for note
@@ -323,9 +324,10 @@ def test_properly_order_overlapping_notes():
         expected = np.array([[72, 0.05], [72, 0.05], [74, 0.05], [72, 0.05]])
         assert np.allclose(expected, extract_notes(pm_song.instruments[0]))
 
-        midi_written_path = 'overlapping_notes_%s_track_written.mid' % kind
-        pm_song.write(midi_written_path)
-        pm_song_written = pretty_midi.PrettyMIDI(midi_written_path)
+        with NamedTemporaryFile() as file:
+            pm_song.write(file)
+            file.seek(0)
+            pm_song_written = pretty_midi.PrettyMIDI(file)
 
         assert np.allclose(expected,
                            extract_notes(pm_song_written.instruments[0]))
