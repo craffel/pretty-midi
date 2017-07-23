@@ -1,5 +1,7 @@
 import pretty_midi
 import numpy as np
+import mido
+from tempfile import NamedTemporaryFile
 
 
 def test_get_beats():
@@ -272,3 +274,60 @@ def test_adjust_times():
     for ks, t, k in zip(pm.key_signature_changes, ks_times, ks_keys):
         assert ks.time == t
         assert ks.key_number == k
+
+
+def test_properly_order_overlapping_notes():
+    def make_mido_track(notes_str, file):
+        track = mido.MidiTrack()
+        for line in notes_str.split('\n'):
+            line = line.strip()
+            if line:
+                track.append(mido.Message.from_str(line))
+        mido_file = mido.MidiFile()
+        mido_file.tracks.append(track)
+        mido_file.save(file=file)
+
+    # two notes with pitch 72 open at once
+    bad_track = """
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=72 velocity=88 time=48
+    note_on channel=0 note=72 velocity=0 time=0
+    note_on channel=0 note=74 velocity=88 time=48
+    note_on channel=0 note=72 velocity=0 time=0
+    note_on channel=0 note=72 velocity=88 time=48
+    note_on channel=0 note=74 velocity=0 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    """
+
+    # the 72 note is first closed, then another one opened
+    good_track = """
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=74 velocity=88 time=48
+    note_on channel=0 note=72 velocity=0 time=0
+    note_on channel=0 note=72 velocity=88 time=48
+    note_on channel=0 note=74 velocity=0 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    """
+
+    for kind, track in (('good', good_track), ('bad', bad_track)):
+        with NamedTemporaryFile() as file:
+            make_mido_track(track, file)
+            file.seek(0)
+            pm_song = pretty_midi.PrettyMIDI(file)
+
+        def extract_notes(pm_track):
+            return np.array([(note.pitch, note.end-note.start) for note
+                             in pm_track.notes])
+
+        expected = np.array([[72, 0.05], [72, 0.05], [74, 0.05], [72, 0.05]])
+        assert np.allclose(expected, extract_notes(pm_song.instruments[0]))
+
+        with NamedTemporaryFile() as file:
+            pm_song.write(file)
+            file.seek(0)
+            pm_song_written = pretty_midi.PrettyMIDI(file)
+
+        assert np.allclose(expected,
+                           extract_notes(pm_song_written.instruments[0]))
