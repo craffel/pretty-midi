@@ -331,3 +331,109 @@ def test_properly_order_overlapping_notes():
 
         assert np.allclose(expected,
                            extract_notes(pm_song_written.instruments[0]))
+
+def test_get_end_time():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    # When no events, end time should be 0
+    assert pm.get_end_time() == 0
+    # End time should be sensitive to inst notes, pitch bends, control changes
+    inst.notes.append(
+        pretty_midi.Note(start=0.5, end=1.7, pitch=30, velocity=100))
+    assert np.allclose(pm.get_end_time(), 1.7)
+    inst.pitch_bends.append(pretty_midi.PitchBend(pitch=100, time=1.9))
+    assert np.allclose(pm.get_end_time(), 1.9)
+    inst.control_changes.append(
+        pretty_midi.ControlChange(number=0, value=10, time=2.1))
+    assert np.allclose(pm.get_end_time(), 2.1)
+    # End time should be sensitive to meta events
+    pm.time_signature_changes.append(
+        pretty_midi.TimeSignature(numerator=4, denominator=4, time=2.3))
+    assert np.allclose(pm.get_end_time(), 2.3)
+    pm.time_signature_changes.append(
+        pretty_midi.KeySignature(key_number=10, time=2.5))
+    assert np.allclose(pm.get_end_time(), 2.5)
+    pm.time_signature_changes.append(pretty_midi.Lyric(text='hey', time=2.7))
+    assert np.allclose(pm.get_end_time(), 2.7)
+
+
+def test_estimate_tempi():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    # Add events corresponding to 120 bpm (0.5 seconds apart)
+    for start in np.linspace(.5, 4.5, 5):
+        inst.notes.append(pretty_midi.Note(pitch=40, velocity=100, start=start,
+                                           end=start + .1))
+    # Add events corresponding to 180 bpm (0.333... seconds apart)
+    for start in np.linspace(0., 4., 13):
+        inst.notes.append(pretty_midi.Note(pitch=40, velocity=100, start=start,
+                                           end=start + .1))
+    tempi, weights = pm.estimate_tempi()
+    assert len(tempi) == 2
+    assert np.allclose(tempi[0], 180.)
+    assert np.allclose(tempi[1], 120.)
+    assert weights[0] > weights[1]
+    assert tempi[0] == pm.estimate_tempo()
+
+
+def test_get_onsets():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    onsets = np.linspace(.5, 4.5, 5)
+    for start in onsets:
+        inst.notes.append(pretty_midi.Note(pitch=40, velocity=100, start=start,
+                                           end=start + .1))
+    assert np.allclose(pm.get_onsets(), onsets)
+
+
+def test_get_piano_roll_and_get_chroma():
+    pm = pretty_midi.PrettyMIDI()
+    assert pm.get_piano_roll().shape == (128, 0)
+    # Currently just a rudimentary test since it's hard to test things like
+    # pitch bends correctly
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    inst.notes.append(pretty_midi.Note(pitch=40, velocity=100, start=0.05,
+                                       end=0.45))
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    inst.notes.append(pretty_midi.Note(pitch=40, velocity=50, start=0.35,
+                                       end=0.5))
+    inst.notes.append(pretty_midi.Note(pitch=45, velocity=100, start=0.1,
+                                       end=0.2))
+
+    expected_piano_roll = np.zeros((128, 50))
+    expected_piano_roll[40, 5:35] = 100
+    expected_piano_roll[40, 35:45] = 150
+    expected_piano_roll[40, 45:] = 50
+    expected_piano_roll[45, 10:20] = 100
+    assert np.allclose(pm.get_piano_roll(), expected_piano_roll)
+
+    expected_chroma = np.zeros((12, 50))
+    expected_chroma[4, 5:35] = 100
+    expected_chroma[4, 35:45] = 150
+    expected_chroma[4, 45:] = 50
+    expected_chroma[9, 10:20] = 100
+    assert np.allclose(pm.get_chroma(), expected_chroma)
+
+def test_synthesize():
+    pm = pretty_midi.PrettyMIDI()
+    assert pm.synthesize().size == 0
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    inst.notes.append(pretty_midi.Note(pitch=40, velocity=100, start=0.1,
+                                       end=1.1))
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    inst.notes.append(pretty_midi.Note(pitch=60, velocity=50, start=0.5,
+                                       end=1.3))
+    fs = 10000
+    synthesized = pm.synthesize(fs=fs)
+    # Synthesize pads 1 second of silence
+    assert synthesized.shape[0] == (1.3 + 1)*fs
+    # Should be normalied
+    assert (np.allclose(synthesized.max(), 1) or
+            np.allclose(synthesized.min(), -1))
