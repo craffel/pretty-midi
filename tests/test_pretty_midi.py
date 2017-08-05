@@ -332,6 +332,7 @@ def test_properly_order_overlapping_notes():
         assert np.allclose(expected,
                            extract_notes(pm_song_written.instruments[0]))
 
+
 def test_get_end_time():
     pm = pretty_midi.PrettyMIDI()
     inst = pretty_midi.Instrument(0)
@@ -418,6 +419,7 @@ def test_get_piano_roll_and_get_chroma():
     expected_chroma[4, 45:] = 50
     expected_chroma[9, 10:20] = 100
     assert np.allclose(pm.get_chroma(), expected_chroma)
+
 
 def test_synthesize():
     pm = pretty_midi.PrettyMIDI()
