@@ -156,7 +156,7 @@ class Instrument(object):
             return piano_roll
         piano_roll_integrated = np.zeros((128, times.shape[0]))
         # Convert to column indices
-        times = np.array(times*fs, dtype=np.int)
+        times = np.array(np.round(times*fs), dtype=np.int)
         for n, (start, end) in enumerate(zip(times[:-1], times[1:])):
             # Each column is the mean of the columns in piano_roll
             piano_roll_integrated[:, n] = np.mean(piano_roll[:, start:end],
