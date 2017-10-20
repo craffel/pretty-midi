@@ -947,7 +947,7 @@ class PrettyMIDI(object):
         if tick >= len(self.__tick_to_time):
             self._update_tick_to_time(tick)
         # Ticks should be integers
-        if type(tick) != int:
+        if not isinstance(tick, int):
             warnings.warn('tick should be an int.')
         # Otherwise just return the time
         return self.__tick_to_time[int(tick)]
