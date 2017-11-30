@@ -1,13 +1,8 @@
 `pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
-In order to synthesize some MIDI data using the included soundfont file (see the fluidsynth() function), you need fluidsynth and pyfluidsynth:
+Documentation is available [here](http://craffel.github.io/pretty-midi/).  You can also find a Jupyter notebook tutorial [here](http://nbviewer.jupyter.org/github/craffel/pretty-midi/blob/master/Tutorial.ipynb).
 
-http://www.fluidsynth.org/
-
-https://code.google.com/p/pyfluidsynth/
-
-Documentation is available here:
-http://craffel.github.io/pretty-midi/
+`pretty_midi` is available via [pip](https://pypi.python.org/pypi/pretty_midi) or via the [setup.py](https://github.com/craffel/pretty-midi/blob/master/setup.py) script. In order to synthesize MIDI data using fluidsynth, you need the [fluidsynth](http://www.fluidsynth.org/) program and [pyfluidsynth](https://pypi.python.org/pypi/pyfluidsynth).
 
 If you end up using `pretty_midi` in a published research project, please cite the following report:
 
