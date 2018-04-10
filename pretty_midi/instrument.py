@@ -73,7 +73,9 @@ class Instrument(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None, sustain_pedal_elongates_note=False, sustain_pedal_elongate_thres=64):
+    def get_piano_roll(self, fs=100, times=None,
+                       use_pedal=False,
+                       pedal_threshold=64):
         """Compute a piano roll matrix of this instrument.
 
         Parameters
@@ -84,12 +86,15 @@ class Instrument(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
-        sustain_pedal_elongates_note : Boolean
-            Control Change 64 (Sustain pedal) is reflected as elongation of notes.
-            Default is False, which does nothing.  If True, then CC64 value greater
-            than sustain_pedal_elongate_thres will be treated as pedal on and rest as pedal off.
-        sustain_pedal_elongate_thres : Int
-            The threshold value for treating CC64 message as elongation of note.
+        use_pedal : Boolean
+            Control Change 64 (Sustain pedal) is reflected as elongation of
+            notes.
+            Default is False, which does nothing.  If True, then CC64 value
+            greater than pedal_threshold will be treated as pedal on and
+            the rest as pedal off.
+        pedal_threshold : Int
+            The threshold value for treating CC64 message as elongation of a
+            note.
             Default is ``64``
 
         Returns
@@ -121,19 +126,22 @@ class Instrument(object):
                        int(note.start*fs):int(note.end*fs)] += note.velocity
 
         # Process sustain pedals
-        if sustain_pedal_elongates_note:
+        if use_pedal:
             CC_SUSTAIN_PEDAL = 64
             time_pedal_on = 0
             is_pedal_on = False
-            for cc in [_e for _e in self.control_changes if _e.number == CC_SUSTAIN_PEDAL]:
+            for cc in [_e for _e in self.control_changes
+                       if _e.number == CC_SUSTAIN_PEDAL]:
                 time_now = int(cc.time*fs)
-                is_current_pedal_on = (cc.value > sustain_pedal_elongate_thres)
+                is_current_pedal_on = (cc.value > pedal_threshold)
                 if not is_pedal_on and is_current_pedal_on:
                     time_pedal_on = time_now
                     is_pedal_on = True
                 elif is_pedal_on and not is_current_pedal_on:
                     subpr = piano_roll[:, time_pedal_on:time_now]
-                    piano_roll[:, time_pedal_on:time_now] = np.minimum( subpr.cumsum(1), subpr.max(1)[:,np.newaxis])
+                    pedaled = np.minimum(subpr.cumsum(1),
+                                         subpr.max(1)[:, np.newaxis])
+                    piano_roll[:, time_pedal_on:time_now] = pedaled
                     is_pedal_on = False
 
         # Process pitch changes
@@ -186,7 +194,8 @@ class Instrument(object):
                                                   axis=1)
         return piano_roll_integrated
 
-    def get_chroma(self, fs=100, times=None):
+    def get_chroma(self, fs=100, times=None, use_pedal=False,
+                   pedal_threshold=64):
         """Get a sequence of chroma vectors from this instrument.
 
         Parameters
@@ -197,6 +206,16 @@ class Instrument(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
+        use_pedal : Boolean
+            Control Change 64 (Sustain pedal) is reflected as elongation of
+            notes.
+            Default is False, which does nothing.  If True, then CC64 value
+            greater than pedal_threshold will be treated as pedal on and
+            the rest as pedal off.
+        pedal_threshold : Int
+            The threshold value for treating CC64 message as elongation of a
+            note.
+            Default is ``64``
 
         Returns
         -------
@@ -205,7 +224,9 @@ class Instrument(object):
 
         """
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(fs=fs, times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times,
+                                         use_pedal=use_pedal,
+                                         pedal_threshold=pedal_threshold)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
