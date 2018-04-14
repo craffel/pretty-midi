@@ -138,9 +138,13 @@ class Instrument(object):
                     time_pedal_on = time_now
                     is_pedal_on = True
                 elif is_pedal_on and not is_current_pedal_on:
+                    # For each pitch, a sustain pedal "retains"
+                    # the maximum velocity up to now due to
+                    # logarithmic nature of human loudness perception
                     subpr = piano_roll[:, time_pedal_on:time_now]
-                    pedaled = np.minimum(subpr.cumsum(1),
-                                         subpr.max(1)[:, np.newaxis])
+
+                    # Take the running maximum
+                    pedaled = np.maximum.accumulate(subpr, axis=1)
                     piano_roll[:, time_pedal_on:time_now] = pedaled
                     is_pedal_on = False
 
