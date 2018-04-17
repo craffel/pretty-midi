@@ -739,9 +739,7 @@ class PrettyMIDI(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None,
-                       use_pedal=False,
-                       pedal_threshold=64):
+    def get_piano_roll(self, fs=100, times=None, pedal_threshold=None):
         """Compute a piano roll matrix of the MIDI data.
 
         Parameters
@@ -752,16 +750,11 @@ class PrettyMIDI(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
-        use_pedal : Boolean
-            Control Change 64 (Sustain pedal) is reflected as elongation of
-            notes.
-            Default is False, which does nothing.  If True, then CC64 value
-            greater than pedal_threshold will be treated as pedal on and
-            the rest as pedal off.
-        pedal_threshold : Int
-            The threshold value for treating CC64 message as elongation of a
-            note.
-            Default is ``64``
+        pedal_threshold : int
+            Value of control change 64 (sustain pedal) message that is above
+            this value is reflected as pedal-on.  Pedals will be reflected as
+            elongation of notes in the piano roll.
+            Default is None, which ignores CC64 messages.
 
         Returns
         -------
@@ -776,7 +769,6 @@ class PrettyMIDI(object):
 
         # Get piano rolls for each instrument
         piano_rolls = [i.get_piano_roll(fs=fs, times=times,
-                                        use_pedal=use_pedal,
                                         pedal_threshold=pedal_threshold)
                        for i in self.instruments]
         # Allocate piano roll,
@@ -847,8 +839,7 @@ class PrettyMIDI(object):
 
         return pc_trans_mat
 
-    def get_chroma(self, fs=100, times=None, use_pedal=False,
-                   pedal_threshold=64):
+    def get_chroma(self, fs=100, times=None, pedal_threshold=None):
         """Get the MIDI data as a sequence of chroma vectors.
 
         Parameters
@@ -859,16 +850,11 @@ class PrettyMIDI(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
-        use_pedal : Boolean
-            Control Change 64 (Sustain pedal) is reflected as elongation of
-            notes.
-            Default is False, which does nothing.  If True, then CC64 value
-            greater than pedal_threshold will be treated as pedal on and
-            the rest as pedal off.
-        pedal_threshold : Int
-            The threshold value for treating CC64 message as elongation of a
-            note.
-            Default is ``64``
+        pedal_threshold : int
+            Value of control change 64 (sustain pedal) message that is above
+            this value is reflected as pedal-on.  Pedals will be reflected as
+            elongation of notes in the chromagram.
+            Default is None, which ignores CC64 messages.
 
         Returns
         -------
@@ -878,7 +864,6 @@ class PrettyMIDI(object):
         """
         # First, get the piano roll
         piano_roll = self.get_piano_roll(fs=fs, times=times,
-                                         use_pedal=use_pedal,
                                          pedal_threshold=pedal_threshold)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
