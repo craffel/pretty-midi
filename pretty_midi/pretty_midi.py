@@ -739,7 +739,7 @@ class PrettyMIDI(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None, pedal_threshold=None):
+    def get_piano_roll(self, fs=100, times=None, pedal_threshold=64):
         """Compute a piano roll matrix of the MIDI data.
 
         Parameters
@@ -754,7 +754,8 @@ class PrettyMIDI(object):
             Value of control change 64 (sustain pedal) message that is above
             this value is reflected as pedal-on.  Pedals will be reflected as
             elongation of notes in the piano roll.
-            Default is None, which ignores CC64 messages.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------
@@ -839,7 +840,7 @@ class PrettyMIDI(object):
 
         return pc_trans_mat
 
-    def get_chroma(self, fs=100, times=None, pedal_threshold=None):
+    def get_chroma(self, fs=100, times=None, pedal_threshold=64):
         """Get the MIDI data as a sequence of chroma vectors.
 
         Parameters
@@ -854,7 +855,8 @@ class PrettyMIDI(object):
             Value of control change 64 (sustain pedal) message that is above
             this value is reflected as pedal-on.  Pedals will be reflected as
             elongation of notes in the chromagram.
-            Default is None, which ignores CC64 messages.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------

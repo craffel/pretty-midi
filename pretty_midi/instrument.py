@@ -74,7 +74,7 @@ class Instrument(object):
         return np.sort(onsets)
 
     def get_piano_roll(self, fs=100, times=None,
-                       pedal_threshold=None):
+                       pedal_threshold=64):
         """Compute a piano roll matrix of this instrument.
 
         Parameters
@@ -89,7 +89,8 @@ class Instrument(object):
             Value of control change 64 (sustain pedal) message that is above
             this value is reflected as pedal-on.  Pedals will be reflected as
             elongation of notes in the piano roll.
-            Default is None, which ignores CC64 messages.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------
@@ -192,7 +193,7 @@ class Instrument(object):
                                                   axis=1)
         return piano_roll_integrated
 
-    def get_chroma(self, fs=100, times=None, pedal_threshold=None):
+    def get_chroma(self, fs=100, times=None, pedal_threshold=64):
         """Get a sequence of chroma vectors from this instrument.
 
         Parameters
@@ -207,7 +208,8 @@ class Instrument(object):
             Value of control change 64 (sustain pedal) message that is above
             this value is reflected as pedal-on.  Pedals will be reflected as
             elongation of notes in the chromagram.
-            Default is None, which ignores CC64 messages.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------
