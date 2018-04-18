@@ -432,12 +432,13 @@ def test_get_piano_roll_and_get_chroma():
     expected_piano_roll[55, 10:15] = 20
     expected_piano_roll[55, 20:25] = 10
     expected_piano_roll[55, 30:42] = 50
-    assert np.allclose(pm.get_piano_roll(), expected_piano_roll)
+    assert np.allclose(pm.get_piano_roll(pedal_threshold=None),
+                       expected_piano_roll)
 
     expected_piano_roll[50, 35:50] = 50
     expected_piano_roll[55, 10:30] = 20
     expected_piano_roll[55, 30:50] = 50
-    assert np.allclose(pm.get_piano_roll(pedal_threshold=64),
+    assert np.allclose(pm.get_piano_roll(),
                        expected_piano_roll)
 
     expected_chroma = np.zeros((12, 50))
@@ -449,12 +450,13 @@ def test_get_piano_roll_and_get_chroma():
     expected_chroma[7, 10:15] = 20
     expected_chroma[7, 20:25] = 10
     expected_chroma[7, 30:42] = 50
-    assert np.allclose(pm.get_chroma(), expected_chroma)
+    assert np.allclose(pm.get_chroma(pedal_threshold=None),
+                       expected_chroma)
 
     expected_chroma[2, 35:50] = 50
     expected_chroma[7, 10:30] = 20
     expected_chroma[7, 30:50] = 50
-    assert np.allclose(pm.get_chroma(pedal_threshold=64),
+    assert np.allclose(pm.get_chroma(),
                        expected_chroma)
 
 
