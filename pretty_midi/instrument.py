@@ -86,9 +86,9 @@ class Instrument(object):
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
         pedal_threshold : int
-            Value of control change 64 (sustain pedal) message that is above
-            this value is reflected as pedal-on.  Pedals will be reflected as
-            elongation of notes in the piano roll.
+            Value of control change 64 (sustain pedal) message that is less
+            than this value is reflected as pedal-off.  Pedals will be
+            reflected as elongation of notes in the piano roll.
             If None, then CC64 message is ignored.
             Default is 64.
 
@@ -128,7 +128,7 @@ class Instrument(object):
             for cc in [_e for _e in self.control_changes
                        if _e.number == CC_SUSTAIN_PEDAL]:
                 time_now = int(cc.time*fs)
-                is_current_pedal_on = (cc.value > pedal_threshold)
+                is_current_pedal_on = (cc.value >= pedal_threshold)
                 if not is_pedal_on and is_current_pedal_on:
                     time_pedal_on = time_now
                     is_pedal_on = True
@@ -205,9 +205,9 @@ class Instrument(object):
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
         pedal_threshold : int
-            Value of control change 64 (sustain pedal) message that is above
-            this value is reflected as pedal-on.  Pedals will be reflected as
-            elongation of notes in the chromagram.
+            Value of control change 64 (sustain pedal) message that is less
+            than this value is reflected as pedal-off.  Pedals will be
+            reflected as elongation of notes in the piano roll.
             If None, then CC64 message is ignored.
             Default is 64.
 
