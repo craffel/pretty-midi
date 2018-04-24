@@ -73,7 +73,8 @@ class Instrument(object):
         # Return them sorted (because why not?)
         return np.sort(onsets)
 
-    def get_piano_roll(self, fs=100, times=None):
+    def get_piano_roll(self, fs=100, times=None,
+                       pedal_threshold=64):
         """Compute a piano roll matrix of this instrument.
 
         Parameters
@@ -84,6 +85,12 @@ class Instrument(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
+        pedal_threshold : int
+            Value of control change 64 (sustain pedal) message that is less
+            than this value is reflected as pedal-off.  Pedals will be
+            reflected as elongation of notes in the piano roll.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------
@@ -112,6 +119,29 @@ class Instrument(object):
             # Should interpolate
             piano_roll[note.pitch,
                        int(note.start*fs):int(note.end*fs)] += note.velocity
+
+        # Process sustain pedals
+        if pedal_threshold is not None:
+            CC_SUSTAIN_PEDAL = 64
+            time_pedal_on = 0
+            is_pedal_on = False
+            for cc in [_e for _e in self.control_changes
+                       if _e.number == CC_SUSTAIN_PEDAL]:
+                time_now = int(cc.time*fs)
+                is_current_pedal_on = (cc.value >= pedal_threshold)
+                if not is_pedal_on and is_current_pedal_on:
+                    time_pedal_on = time_now
+                    is_pedal_on = True
+                elif is_pedal_on and not is_current_pedal_on:
+                    # For each pitch, a sustain pedal "retains"
+                    # the maximum velocity up to now due to
+                    # logarithmic nature of human loudness perception
+                    subpr = piano_roll[:, time_pedal_on:time_now]
+
+                    # Take the running maximum
+                    pedaled = np.maximum.accumulate(subpr, axis=1)
+                    piano_roll[:, time_pedal_on:time_now] = pedaled
+                    is_pedal_on = False
 
         # Process pitch changes
         # Need to sort the pitch bend list for the following to work
@@ -163,7 +193,7 @@ class Instrument(object):
                                                   axis=1)
         return piano_roll_integrated
 
-    def get_chroma(self, fs=100, times=None):
+    def get_chroma(self, fs=100, times=None, pedal_threshold=64):
         """Get a sequence of chroma vectors from this instrument.
 
         Parameters
@@ -174,6 +204,12 @@ class Instrument(object):
         times : np.ndarray
             Times of the start of each column in the piano roll.
             Default ``None`` which is ``np.arange(0, get_end_time(), 1./fs)``.
+        pedal_threshold : int
+            Value of control change 64 (sustain pedal) message that is less
+            than this value is reflected as pedal-off.  Pedals will be
+            reflected as elongation of notes in the piano roll.
+            If None, then CC64 message is ignored.
+            Default is 64.
 
         Returns
         -------
@@ -182,7 +218,8 @@ class Instrument(object):
 
         """
         # First, get the piano roll
-        piano_roll = self.get_piano_roll(fs=fs, times=times)
+        piano_roll = self.get_piano_roll(fs=fs, times=times,
+                                         pedal_threshold=pedal_threshold)
         # Fold into one octave
         chroma_matrix = np.zeros((12, piano_roll.shape[1]))
         for note in range(12):
