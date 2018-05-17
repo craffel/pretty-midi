@@ -6,7 +6,7 @@ setup(
     description='Functions and classes for handling MIDI data conveniently.',
     author='Colin Raffel',
     author_email='craffel@gmail.com',
-    url='https://github.com/craffel/pretty_midi',
+    url='https://github.com/craffel/pretty-midi',
     packages=['pretty_midi'],
     package_data={'': ['TimGM6mb.sf2']},
     long_description="""\
