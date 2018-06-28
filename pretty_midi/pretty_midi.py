@@ -1030,7 +1030,7 @@ class PrettyMIDI(object):
                     'automatically enforcing this.',
                     RuntimeWarning)
             original_times = np.maximum.accumulate(original_times)
-            original_times, unique_idx = np.unique(original_times, 
+            original_times, unique_idx = np.unique(original_times,
                                                    return_index=True)
             new_times = original_times[unique_idx]
 
