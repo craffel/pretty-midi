@@ -1020,22 +1020,23 @@ class PrettyMIDI(object):
         # to put the first time signature change)
         original_downbeats = self.get_downbeats()
         
-        # Test original_times and new_times for monotonicity
-        # if they are not monotonic, a warning should be given 
-        # and they should be made monotonic with np.maximum.accumulate
-        def _strictly_increasing(L):
-            if all(x<y for x, y in zip(L, L[1:])):
-                return
-            else:
-                warnings.warn(
-                    "Non-monotonicity detected, enforcing strictly"
-                    " increasing event times with np.maximum.accumulate",
-                    RuntimeWarning)
-                L = np.maximum.accumulate(L)
-                return L
+        # Original_times and new_times should strictly increase.
+        # If they don't,  a warning is given and are made monotonic
+        # with np.maximum.accumulate
         
-        _strictly_increasing(original_times)
-        _strictly_increasing(new_times)
+        if not np.all(np.diff(original_times) > 0):
+            warnings.warn(
+                    "original_times does not monotonically increase, "
+                    "enforcing monotonically increasing event times",
+                    RuntimeWarning)
+            original_times = np.maximum.accumulate(original_times)
+
+        if not np.all(np.diff(new_times) > 0):
+            warnings.warn(
+                    "new_times does not monotonically increase, "
+                    "enforcing monotonically increasing event times",
+                    RuntimeWarning)
+            new_times = np.maximum.accumulate(new_times)
         
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
