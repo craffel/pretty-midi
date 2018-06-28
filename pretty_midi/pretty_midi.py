@@ -1019,25 +1019,28 @@ class PrettyMIDI(object):
         # Get original downbeat locations (we will use them to determine where
         # to put the first time signature change)
         original_downbeats = self.get_downbeats()
-        
+
         # Original_times and new_times should strictly increase.
         # If they don't,  a warning is given and are made monotonic
         # with np.maximum.accumulate
-        
+
         if not np.all(np.diff(original_times) > 0):
             warnings.warn(
-                    "original_times does not monotonically increase, "
-                    "enforcing monotonically increasing event times",
+                    'original_times must be strictly increasing; '
+                    'automatically enforcing this.',
                     RuntimeWarning)
             original_times = np.maximum.accumulate(original_times)
+            original_times, unique_idx = np.unique(original_times, 
+                                                   return_index=True)
+            new_times = original_times[unique_idx]
 
-        if not np.all(np.diff(new_times) > 0):
+        if not np.all(np.diff(new_times) >= 0):
             warnings.warn(
-                    "new_times does not monotonically increase, "
-                    "enforcing monotonically increasing event times",
+                    'new_times must be monotonic; '
+                    'automatically enforcing this.',
                     RuntimeWarning)
             new_times = np.maximum.accumulate(new_times)
-        
+
         # Only include notes within start/end time of the provided times
         for instrument in self.instruments:
             instrument.notes = [copy.deepcopy(note)
