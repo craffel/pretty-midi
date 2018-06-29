@@ -164,7 +164,7 @@ def test_adjust_times():
     pm = simple()
     pm.adjust_times([0, 5, 5, 10], [5, 12, 13, 17])
     # Original times  [1, 2, 3, 4,  5,  6,  7,  8,  9]
-    expected_starts = [6, 7, 8, 9, 12, 13, 14, 15, 16]
+    expected_starts = [6.4, 7.8, 9.2, 10.6, 12.0, 13.0, 14.0, 15.0, 16.0]
     assert np.allclose(
         [n.start for n in pm.instruments[0].notes], expected_starts)
 
