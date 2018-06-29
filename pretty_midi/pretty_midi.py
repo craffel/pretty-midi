@@ -1025,7 +1025,7 @@ class PrettyMIDI(object):
         original_times, unique_idx = np.unique(original_times,
                                                return_index=True)
         if ((unique_idx.size != original_size) or
-        unique_idx != np.arange(unique_idx.size)):
+            unique_idx != np.arange(unique_idx.size)):
             warnings.warn('original_times must be strictly increasing; '
                           'automatically enforcing this.')
         new_times = np.array(new_times)[unique_idx]
