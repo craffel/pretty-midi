@@ -1021,7 +1021,7 @@ class PrettyMIDI(object):
         original_downbeats = self.get_downbeats()
         # original_times should increase strictly and new_times monotonically.
         # If they don't, give warning and enforce increasingness.
-        original_size = original_times.size
+        original_size = len(original_times)
         original_times, unique_idx = np.unique(original_times,
                                                return_index=True)
         if ((unique_idx.size != original_size) or
