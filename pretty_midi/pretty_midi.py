@@ -1022,12 +1022,13 @@ class PrettyMIDI(object):
         # original_times should increase strictly and new_times monotonically.
         # If they don't, give warning and enforce increasingness.
         original_size = original_times.size
-        original_times, unique_idx = np.unique(original_times, return_index=True)
-        if ((unique_idx.size != original_size) or 
-            unique_idx != np.arange(unique_idx.size)):
+        original_times, unique_idx = np.unique(original_times,
+                                               return_index=True)
+        if ((unique_idx.size != original_size) or
+        unique_idx != np.arange(unique_idx.size)):
             warnings.warn('original_times must be strictly increasing; '
                           'automatically enforcing this.')
-        new_times = np.array(new_times)[unique_idx]            
+        new_times = np.array(new_times)[unique_idx]
         if not np.all(np.diff(new_times) > 0):
             warnings.warn('new_times must be monotonic; '
                           'automatically enforcing this.')
