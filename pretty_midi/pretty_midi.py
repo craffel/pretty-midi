@@ -1029,7 +1029,7 @@ class PrettyMIDI(object):
             warnings.warn('original_times must be strictly increasing; '
                           'automatically enforcing this.')
         new_times = np.asarray(new_times)[unique_idx]
-        if not np.all(np.diff(new_times) > 0):
+        if not np.all(np.diff(new_times) >= 0):
             warnings.warn('new_times must be monotonic; '
                           'automatically enforcing this.')
             new_times = np.maximum.accumulate(new_times)
