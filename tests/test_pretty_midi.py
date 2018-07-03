@@ -162,9 +162,9 @@ def test_adjust_times():
     assert np.allclose(
         [n.start for n in pm.instruments[0].notes], expected_starts)
     pm = simple()
-    pm.adjust_times([2, 7, 7, 12], [7, 12, 13, 17])
+    pm.adjust_times([0, 5, 5, 10], [7, 12, 13, 17])
     # Original times  [1, 2, 3, 4,  5,  6,  7,  8,  9]
-    expected_starts = [7, 8, 9, 10, 11, 12, 13, 14]
+    expected_starts = [8, 9, 10, 11, 12, 13, 14, 15, 16]
     assert np.allclose(
         [n.start for n in pm.instruments[0].notes], expected_starts)
 
@@ -266,12 +266,12 @@ def test_adjust_times():
 #    for ts, t, n in zip(pm.time_signature_changes, ts_times, ts_numerators):
 #        assert ts.time == t
 #        assert ts.numerator == n
-#
-#    ks_times = [5., 8.5, 8.5]
-#    ks_keys = [1, 2, 3]
-#    for ks, t, k in zip(pm.key_signature_changes, ks_times, ks_keys):
-#        assert ks.time == t
-#        assert ks.key_number == k
+
+    ks_times = [5., 8.5, 8.5]
+    ks_keys = [1, 2, 3]
+    for ks, t, k in zip(pm.key_signature_changes, ks_times, ks_keys):
+        assert ks.time == t
+        assert ks.key_number == k
 
 
 def test_properly_order_overlapping_notes():
