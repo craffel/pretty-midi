@@ -162,9 +162,9 @@ def test_adjust_times():
     assert np.allclose(
         [n.start for n in pm.instruments[0].notes], expected_starts)
     pm = simple()
-    pm.adjust_times([0, 5, 5, 10], [5, 10, 12, 17])
+    pm.adjust_times([0, 5, 5, 10], [7, 12, 13, 17])
     # Original times  [1, 2, 3, 4,  5,  6,  7,  8,  9]
-    expected_starts = [6, 7, 8, 9, 12, 13, 14, 15, 16]
+    expected_starts = [8, 9, 10, 11, 12, 13, 14, 15, 16]
     assert np.allclose(
         [n.start for n in pm.instruments[0].notes], expected_starts)
 
@@ -233,11 +233,9 @@ def test_adjust_times():
     assert np.allclose(expected_tempi, tempi, rtol=.002)
 
     # Test that all other events were interpolated as expected
-    note_starts = [5., 5 + 1/1.1, 7 + .9/(2/1.5), 7 + 1.9/(2/1.5), 8.5 + .5,
-                   8.5 + 1.5]
-    note_ends = [5 + .5/1.1, 7 + .4/(2/1.5), 7 + 1.4/(2/1.5), 8.5, 9 + .5,
-                 10 + .5]
-    note_pitches = [101, 102, 103, 104, 107, 108, 109]
+    note_starts = [5.0, 5.909090909090909, 7.125, 8.375, 9.0, 10.0]
+    note_ends = [5.454545454545454, 6.5, 7.75, 8.5, 9.5, 10.5]
+    note_pitches = [101, 102, 103, 104, 107, 108]
     for note, s, e, p in zip(pm.instruments[0].notes, note_starts, note_ends,
                              note_pitches):
         assert note.start == s
