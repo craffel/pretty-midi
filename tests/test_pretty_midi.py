@@ -233,16 +233,16 @@ def test_adjust_times():
     assert np.allclose(expected_tempi, tempi, rtol=.002)
 
     # Test that all other events were interpolated as expected
-    note_starts = [5.0, 
-                   5 + 1/1.1, 
-                   6 + .9/(2/2.5), 
-                   6 + 1.9/(2/2.5), 
+    note_starts = [5.0,
+                   5 + 1/1.1,
+                   6 + .9/(2/2.5),
+                   6 + 1.9/(2/2.5),
                    8.5 + .5,
                    8.5 + 1.5]
-    note_ends = [5 + .5/1.1, 
-                 6 + .4/(2/2.5), 
-                 6 + 1.4/(2/2.5), 
-                 8.5, 
+    note_ends = [5 + .5/1.1,
+                 6 + .4/(2/2.5),
+                 6 + 1.4/(2/2.5),
+                 8.5,
                  8.5 + 1.,
                  10 + .5]
     note_pitches = [101, 102, 103, 104, 107, 108]
