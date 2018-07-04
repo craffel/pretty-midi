@@ -213,7 +213,7 @@ def test_adjust_times():
     # Original tempo change times: [0, 6, 8.1, 8.3, 9.3]
     # Plus tempo changes at each of new_times which are not collapsed
     # Plus tempo change at 0s by default
-    expected_times = [0., 5., 6., 8.5,
+    expected_times = [0., 5., 6, 8.5,
                       8.5 + (6 - 5.1)*(11 - 8.5)/(10 - 5.1),
                       8.5 + (8.1 - 5.1)*(11 - 8.5)/(10 - 5.1),
                       8.5 + (8.3 - 5.1)*(11 - 8.5)/(10 - 5.1),
@@ -233,8 +233,18 @@ def test_adjust_times():
     assert np.allclose(expected_tempi, tempi, rtol=.002)
 
     # Test that all other events were interpolated as expected
-    note_starts = [5.0, 5.909090909090909, 7.125, 8.375, 9.0, 10.0]
-    note_ends = [5.454545454545454, 6.5, 7.75, 8.5, 9.5, 10.5]
+    note_starts = [5.0, 
+                   5 + 1/1.1, 
+                   6 + .9/(2/2.5), 
+                   6 + 1.9/(2/2.5), 
+                   8.5 + .5,
+                   8.5 + 1.5]
+    note_ends = [5 + .5/1.1, 
+                 6 + .4/(2/2.5), 
+                 6 + 1.4/(2/2.5), 
+                 8.5, 
+                 8.5 + 1.,
+                 10 + .5]
     note_pitches = [101, 102, 103, 104, 107, 108]
     for note, s, e, p in zip(pm.instruments[0].notes, note_starts, note_ends,
                              note_pitches):
@@ -259,13 +269,13 @@ def test_adjust_times():
     # The first time signature change will be placed at the first interpolated
     # downbeat location - so, start by computing the location of the first
     # downbeat after the start of original_times, then interpolate it
-#    first_downbeat_after = .1 + 2*3*60./100.
-#    first_ts_time = 7 + (first_downbeat_after - 3.1)/(2/1.5)
-#    ts_times = [first_ts_time, 8.5, 8.5]
-#    ts_numerators = [3, 4, 6]
-#    for ts, t, n in zip(pm.time_signature_changes, ts_times, ts_numerators):
-#        assert ts.time == t
-#        assert ts.numerator == n
+    first_downbeat_after = .1 + 2*3*60./100.
+    first_ts_time = 6. + (first_downbeat_after - 3.1)/(2./2.5)
+    ts_times = [first_ts_time, 8.5, 8.5]
+    ts_numerators = [3, 4, 6]
+    for ts, t, n in zip(pm.time_signature_changes, ts_times, ts_numerators):
+        assert np.allclose(ts.time, t)
+        assert ts.numerator == n
 
     ks_times = [5., 8.5, 8.5]
     ks_keys = [1, 2, 3]
