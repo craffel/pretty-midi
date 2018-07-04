@@ -274,7 +274,7 @@ def test_adjust_times():
     ts_times = [first_ts_time, 8.5, 8.5]
     ts_numerators = [3, 4, 6]
     for ts, t, n in zip(pm.time_signature_changes, ts_times, ts_numerators):
-        assert np.allclose(ts.time, t)
+        assert np.isclose(ts.time, t)
         assert ts.numerator == n
 
     ks_times = [5., 8.5, 8.5]
