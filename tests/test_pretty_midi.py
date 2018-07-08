@@ -213,7 +213,7 @@ def test_adjust_times():
     # Original tempo change times: [0, 6, 8.1, 8.3, 9.3]
     # Plus tempo changes at each of new_times which are not collapsed
     # Plus tempo change at 0s by default
-    expected_times = [0., 5., 6, 8.5,
+    expected_times = [0., 5., 6., 8.5,
                       8.5 + (6 - 5.1)*(11 - 8.5)/(10 - 5.1),
                       8.5 + (8.1 - 5.1)*(11 - 8.5)/(10 - 5.1),
                       8.5 + (8.3 - 5.1)*(11 - 8.5)/(10 - 5.1),
