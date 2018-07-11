@@ -28,6 +28,7 @@ class Note(object):
         self.end = end
 
     def get_duration(self):
+        """Get the duration of the note in seconds."""
         return self.end - self.start
 
     def __repr__(self):
