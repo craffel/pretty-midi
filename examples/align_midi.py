@@ -49,7 +49,7 @@ def extract_cqt(audio_data, fs, hop, note_start, n_notes):
     # Transpose so that rows are spectra
     cqt = cqt.T
     # Compute log-amplitude
-    cqt = librosa.logamplitude(cqt, ref_power=cqt.max())
+    cqt = librosa.amplitude_to_db(librosa.magphase(cqt)[0], ref=cqt.max())
     # L2 normalize the columns
     cqt = librosa.util.normalize(cqt, norm=2., axis=1)
     # Compute the time of each frame
