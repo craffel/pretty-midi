@@ -127,19 +127,19 @@ if __name__ == '__main__':
                         'By default, uses the mean of the distance matrix.')
 
     parameters = vars(parser.parse_args(sys.argv[1:]))
-    print "Loading {} ...".format(parameters['audio_file'])
+    print("Loading {} ...".format(parameters['audio_file']))
     audio_data, _ = librosa.load(parameters['audio_file'], sr=parameters['fs'])
-    print "Loading {} ...".format(parameters['midi_file'])
+    print("Loading {} ...".format(parameters['midi_file']))
     midi_object = pretty_midi.PrettyMIDI(parameters['midi_file'])
-    print "Aligning {} to {} ...".format(parameters['audio_file'],
-                                         parameters['midi_file'])
+    print("Aligning {} to {} ...".format(parameters['audio_file'],
+                                             parameters['midi_file']))
     align(midi_object, audio_data, parameters['fs'], parameters['hop'],
           parameters['note_start'], parameters['n_notes'],
           parameters['penalty'])
-    print "Writing {} ...".format(parameters['output_file'])
+    print("Writing {} ...".format(parameters['output_file']))
     midi_object.write(parameters['output_file'])
     if parameters['output_audio']:
-        print "Writing {} ...".format(parameters['output_audio'])
+        print("Writing {} ...".format(parameters['output_audio']))
         # Re-synthesize the aligned mIDI
         midi_audio_aligned = midi_object.fluidsynth(fs=parameters['fs'])
         # Adjust to the same size as audio

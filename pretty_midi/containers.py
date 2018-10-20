@@ -98,7 +98,7 @@ class TimeSignature(object):
     Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds:
 
     >>> ts = TimeSignature(6, 8, 3.14)
-    >>> print ts
+    >>> print(ts)
     6/8 at 3.14 seconds
 
     """
@@ -146,7 +146,7 @@ class KeySignature(object):
     Instantiate a C# minor KeySignature object at 3.14 seconds:
 
     >>> ks = KeySignature(13, 3.14)
-    >>> print ks
+    >>> print(ks)
     C# minor at 3.14 seconds
     """
 

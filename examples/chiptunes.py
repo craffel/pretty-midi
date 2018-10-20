@@ -133,7 +133,7 @@ def synthesize_drum_instrument(instrument, fs=44100):
         else:
             if drum_name is not '':
                 # This should never happen
-                print 'Unexpected drum {}'.format(drum_name)
+                print('Unexpected drum {}'.format(drum_name))
             continue
         # Add in the synthesized waveform
         start = int(note.start*fs)
@@ -277,11 +277,11 @@ if __name__ == '__main__':
 
     # Parse command line arguments
     parameters = vars(parser.parse_args(sys.argv[1:]))
-    print "Synthesizing {} ...".format(parameters['midi_file'])
+    print("Synthesizing {} ...".format(parameters['midi_file']))
     # Load in MIDI data and synthesize using chiptunes_synthesize
     midi_object = pretty_midi.PrettyMIDI(parameters['midi_file'])
     synthesized = chiptunes_synthesize(midi_object, parameters['fs'])
-    print "Writing {} ...".format(parameters['output_file'])
+    print("Writing {} ...".format(parameters['output_file']))
     # Write out
     scipy.io.wavfile.write(
         parameters['output_file'], parameters['fs'], synthesized)
