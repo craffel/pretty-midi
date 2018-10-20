@@ -183,6 +183,7 @@ class Lyric(object):
     time : float
         The time in seconds of the lyric.
     """
+
     def __init__(self, text, time):
         self.text = text
         self.time = time

@@ -97,6 +97,7 @@ def align(midi_object, audio_data, fs, hop, note_start, n_notes, penalty):
     # Adjust the timing of the MIDI object according to the alignment
     midi_object.adjust_times(midi_times[p], audio_times[q])
 
+
 if __name__ == '__main__':
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     print("Loading {} ...".format(parameters['midi_file']))
     midi_object = pretty_midi.PrettyMIDI(parameters['midi_file'])
     print("Aligning {} to {} ...".format(parameters['audio_file'],
-                                             parameters['midi_file']))
+                                         parameters['midi_file']))
     align(midi_object, audio_data, parameters['fs'], parameters['hop'],
           parameters['note_start'], parameters['n_notes'],
           parameters['penalty'])
