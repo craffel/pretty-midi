@@ -100,6 +100,7 @@ def cqt_to_piano_roll(cqt, min_midi, max_midi, threshold):
                         'constant')
     return piano_roll
 
+
 if __name__ == '__main__':
     # Set up command-line argument parsing
     parser = argparse.ArgumentParser(
