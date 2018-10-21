@@ -3,6 +3,7 @@ Example audio-to-MIDI alignment script.
 Requires djitw https://github.com/craffel/djitw/
 and librosa >= 0.4 https://github.com/bmcfee/librosa/
 '''
+from __future__ import print_function
 
 import djitw
 import librosa

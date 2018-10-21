@@ -1,6 +1,7 @@
 """These classes simply hold MIDI data in a convenient form.
 
 """
+from __future__ import print_function
 
 from .utilities import key_number_to_key_name
 
