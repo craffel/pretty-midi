@@ -712,12 +712,19 @@ class PrettyMIDI(object):
             end_beat_idx = index(beats, end_ts.time, start_beat_idx)
             # Add beats within this time signature range, skipping beats
             # according to the current time signature
-            downbeats.append(
-                beats[start_beat_idx:end_beat_idx:start_ts.numerator])
+            if start_ts.numerator % 3 == 0 and start_ts.numerator != 3:
+                downbeats.append(beats[
+                    start_beat_idx:end_beat_idx:(start_ts.numerator // 3)])
+            else:
+                downbeats.append(beats[
+                    start_beat_idx:end_beat_idx:start_ts.numerator])
         # Add in beats from the second-to-last to last time signature
         final_ts = time_signatures[-1]
         start_beat_idx = index(beats, final_ts.time, end_beat_idx)
-        downbeats.append(beats[start_beat_idx::final_ts.numerator])
+        if final_ts.numerator % 3 == 0 and final_ts.numerator != 3:
+            downbeats.append(beats[start_beat_idx::(final_ts.numerator // 3)])
+        else:
+            downbeats.append(beats[start_beat_idx::final_ts.numerator])
         # Convert from list to array
         downbeats = np.concatenate(downbeats)
         # Return all downbeats after start_time
