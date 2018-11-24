@@ -33,7 +33,7 @@ class PrettyMIDI(object):
         values for resolution and initial tempo.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
-    intitial_tempo : float
+    initial_tempo : float
         Initial tempo for the MIDI data, when no file is provided.
 
     Attributes
