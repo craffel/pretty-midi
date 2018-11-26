@@ -29,7 +29,7 @@ def test_key_name_to_key_number():
         with pytest.raises(ValueError):
             pretty_midi.key_name_to_key_number(invalid_key)
 
-            
+
 def test_qpm_to_bpm():
     # Test that twice the qpm leads to double the bpm for a range of qpm
     for qpm in [60, 100, 125.56]:
