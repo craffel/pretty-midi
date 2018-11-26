@@ -241,13 +241,13 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
     if denominator in [1, 2, 4, 8, 16, 32]:
         # simple triple
         if numerator == 3:
-            return quarter_note_tempo * denominator / 4
+            return quarter_note_tempo * denominator / 4.0
         # compound meter 6/8*n, 9/8*n, 12/8*n...
         elif numerator % 3 == 0:
-            return quarter_note_tempo / 3.0 * denominator / 4
+            return quarter_note_tempo / 3.0 * denominator / 4.0
         # strongly assume two eighths equal a beat
         else:
-            return quarter_note_tempo * denominator / 4
+            return quarter_note_tempo * denominator / 4.0
     else:
         return quarter_note_tempo
 
