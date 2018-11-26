@@ -132,6 +132,16 @@ def test_get_downbeats():
                                np.arange(expected_beats[-1] + 3*60./change_bpm,
                                          pm.get_end_time(), 3*60./change_bpm))
     assert np.allclose(pm.get_downbeats(2.2), expected_beats)
+    # Test for compound meters
+    pm = pretty_midi.PrettyMIDI()
+    # Add a note to force get_end_time() to be non-zero
+    i = pretty_midi.Instrument(0)
+    i.notes.append(pretty_midi.Note(100, 100, 0.3, 20.4))
+    pm.instruments.append(i)
+    # Simple test, assume 6/8 time for the entire piece
+    pm.time_signature_changes.append(pretty_midi.TimeSignature(6, 8, 0))
+    assert np.allclose(pm.get_downbeats(),
+                       np.arange(0, pm.get_end_time(), 3*60./120.))
 
 
 def test_adjust_times():
