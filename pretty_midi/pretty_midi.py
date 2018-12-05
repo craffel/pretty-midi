@@ -498,7 +498,13 @@ class PrettyMIDI(object):
         return tempi[0]
 
     def get_beats(self, start_time=0.):
-        """Return a list of beat locations, according to MIDI tempo changes.
+        """Returns a list of beat locations, according to MIDI tempo changes.
+        For compound meters (any whose numerator is a multiple of 3 greater
+        than 3), this method returns every third denominator note (for 6/8
+        or 6/16 time, for example, it will return every third 8th note or
+        16th note, respectively). For all other meters, this method returns
+        every denominator note (every quarter note for 3/4 or 4/4 time, for
+        example).
 
         Parameters
         ----------
