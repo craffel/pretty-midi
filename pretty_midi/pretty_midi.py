@@ -498,7 +498,13 @@ class PrettyMIDI(object):
         return tempi[0]
 
     def get_beats(self, start_time=0.):
-        """Return a list of beat locations, according to MIDI tempo changes.
+        """Returns a list of beat locations, according to MIDI tempo changes.
+        For compound meters (any whose numerator is a multiple of 3 greater
+        than 3), this method returns every third denominator note (for 6/8
+        or 6/16 time, for example, it will return every third 8th note or
+        16th note, respectively). For all other meters, this method returns
+        every denominator note (every quarter note for 3/4 or 4/4 time, for
+        example).
 
         Parameters
         ----------
@@ -712,12 +718,19 @@ class PrettyMIDI(object):
             end_beat_idx = index(beats, end_ts.time, start_beat_idx)
             # Add beats within this time signature range, skipping beats
             # according to the current time signature
-            downbeats.append(
-                beats[start_beat_idx:end_beat_idx:start_ts.numerator])
+            if start_ts.numerator % 3 == 0 and start_ts.numerator != 3:
+                downbeats.append(beats[
+                    start_beat_idx:end_beat_idx:(start_ts.numerator // 3)])
+            else:
+                downbeats.append(beats[
+                    start_beat_idx:end_beat_idx:start_ts.numerator])
         # Add in beats from the second-to-last to last time signature
         final_ts = time_signatures[-1]
         start_beat_idx = index(beats, final_ts.time, end_beat_idx)
-        downbeats.append(beats[start_beat_idx::final_ts.numerator])
+        if final_ts.numerator % 3 == 0 and final_ts.numerator != 3:
+            downbeats.append(beats[start_beat_idx::(final_ts.numerator // 3)])
+        else:
+            downbeats.append(beats[start_beat_idx::final_ts.numerator])
         # Convert from list to array
         downbeats = np.concatenate(downbeats)
         # Return all downbeats after start_time

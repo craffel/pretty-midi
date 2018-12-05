@@ -237,26 +237,17 @@ def qpm_to_bpm(quarter_note_tempo, numerator, denominator):
             'Time signature denominator must be an int greater than 0, but {} '
             'was supplied.'.format(denominator))
 
-    # denominator is whole note
-    if denominator == 1:
-        return quarter_note_tempo / 4.0
-    # denominator is half note
-    elif denominator == 2:
-        return quarter_note_tempo / 2.0
-    # denominator is quarter note
-    elif denominator == 4:
-        return quarter_note_tempo
-    # denominator is eighth, sixteenth or 32nd
-    elif denominator in [8, 16, 32]:
+    # denominator is whole, half, quarter, eighth, sixteenth or 32nd note
+    if denominator in [1, 2, 4, 8, 16, 32]:
         # simple triple
         if numerator == 3:
-            return 2 * quarter_note_tempo
+            return quarter_note_tempo * denominator / 4.0
         # compound meter 6/8*n, 9/8*n, 12/8*n...
         elif numerator % 3 == 0:
-            return 2.0 * quarter_note_tempo / 3.0
+            return quarter_note_tempo / 3.0 * denominator / 4.0
         # strongly assume two eighths equal a beat
         else:
-            return quarter_note_tempo
+            return quarter_note_tempo * denominator / 4.0
     else:
         return quarter_note_tempo
 
