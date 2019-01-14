@@ -339,6 +339,53 @@ class Instrument(object):
         for note in notes_to_delete:
             self.notes.remove(note)
 
+    def merge_subsequent_notes(self):
+        """Merges all notes which are directly following each
+        other and have the same pitch, velocities are averaged.
+
+        """
+        # create a list of notelists: notes are grouped if they are subsequent
+        grouped_notes = []
+
+        for note in self.notes:
+
+            # check if the current note is directly following another note
+            # with the same pitch
+            note_is_subsequent = any(round(note.start, 3) ==
+                                     round(other_note.end, 3) and
+                                     note.pitch == other_note.pitch
+                                     for other_note in self.notes)
+
+            if not note_is_subsequent:
+                # create new notelist in grouped_notes
+                grouped_notes.append([note])
+            elif note_is_subsequent:
+                # add the note to the notelist with its predecessors
+                for notelist in grouped_notes:
+                    for other_note in notelist:
+                        equal_pitch = note.pitch == other_note.pitch
+                        is_previous = round(note.start, 3) == \
+                                      round(other_note.end, 3)
+                        if equal_pitch and is_previous:
+                            notelist.append(note)
+
+        # merge the groups of notes created in the first place
+        # to obtain a new note list
+        merged_notes = []
+        for notelist in grouped_notes:
+
+            # unweighted average of velocities
+            velocity = np.empty((0), dtype=np.int)
+            for note in notelist:
+                velocity = np.append(velocity, note.velocity)
+            # use first note as new note, no need to instanciate new notes
+            notelist[0].velocity = int(np.ceil(velocity.mean()))
+            notelist[0].end = notelist[-1].end
+            merged_notes.append(notelist[0])
+
+        # swap out the notes
+        self.notes = merged_notes
+
     def synthesize(self, fs=44100, wave=np.sin):
         """Synthesize the instrument's notes using some waveshape.
         For drum instruments, returns zeros.

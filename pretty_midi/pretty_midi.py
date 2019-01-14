@@ -1242,6 +1242,14 @@ class PrettyMIDI(object):
         for instrument in self.instruments:
             instrument.remove_invalid_notes()
 
+    def merge_subsequent_notes(self):
+        """Merges all notes which are directly following each
+        other and have the same pitch, velocity is averaged.
+        """
+        # Simply call the child method on all instruments
+        for instrument in self.instruments:
+            instrument.merge_subsequent_notes()
+
     def write(self, filename):
         """Write the MIDI data out to a .mid file.
 
