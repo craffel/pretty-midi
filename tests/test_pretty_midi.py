@@ -496,3 +496,52 @@ def test_synthesize():
     # Should be normalied
     assert (np.allclose(synthesized.max(), 1) or
             np.allclose(synthesized.min(), -1))
+
+def test_merge_subsequent_notes():
+    pm = pretty_midi.PrettyMIDI()
+    inst0 = pretty_midi.Instrument(0)
+    inst1 = pretty_midi.Instrument(1)
+
+    # append 10 subsequent notes each
+    for k in range(1, 10):
+        inst0.notes.append(pretty_midi.Note(pitch=40, velocity=100,
+                                            start=k/10,
+                                            end=k/10+0.1))
+        inst1.notes.append(pretty_midi.Note(pitch=52, velocity=(k+1)*10,
+                                            start=k/5,
+                                            end=k/5+0.2))
+    # add another note to inst0, therefore inst0 should have 2 after merging
+    inst0.notes.append(pretty_midi.Note(pitch=80, velocity=40, start=45,
+                                        end=50))
+    # pop out some notes, inst1 should be left with 3 notes after merging
+    inst1.notes.pop(1)
+    inst1.notes.pop(4)
+
+    pm.instruments.append(inst0)
+    pm.instruments.append(inst1)
+    pm.merge_subsequent_notes()  # call the method
+
+    # check if the merging worked as anticipated
+    assert len(pm.instruments[0].notes) == 2
+    assert len(pm.instruments[1].notes) == 3
+    assert pm.instruments[0].notes[-1].pitch == 80
+    assert pm.instruments[0].notes[-2].pitch == 40
+    assert np.isclose(pm.instruments[1].notes[2].velocity, 90)
+
+    # check if calling the method twice changes anything now, it should not
+    pm.merge_subsequent_notes()
+    assert len(pm.instruments[0].notes) == 2
+    assert len(pm.instruments[1].notes) == 3
+    assert pm.instruments[0].notes[-1].pitch == 80
+    assert pm.instruments[0].notes[-2].pitch == 40
+    assert np.isclose(pm.instruments[1].notes[2].velocity, 90)
+
+    # check if the method changes anything in cases where it should not
+    pm1 = pretty_midi.PrettyMIDI()
+    inst2 = pretty_midi.Instrument(0)
+    inst2.notes.append(pretty_midi.Note(100, 40, 0.3, 0.5))
+    inst2.notes.append(pretty_midi.Note(100, 40, 0.6, 1))
+    pm1.instruments.append(inst2)
+    pm2 = pm1
+    pm1.merge_subsequent_notes()
+    assert pm1 == pm2
