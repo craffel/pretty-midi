@@ -31,7 +31,7 @@ class Note(object):
     def get_duration(self):
         """Get the duration of the note in seconds."""
         return self.end - self.start
-    
+
     @property
     def duration(self):
         return self.get_duration()
