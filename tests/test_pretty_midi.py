@@ -489,8 +489,6 @@ def test_get_piano_roll_integrated():
     piano_roll = pm.instruments[0].get_piano_roll(fs=100, times=times)
     expected_piano_roll = np.zeros((128, 12))
     expected_piano_roll[70, 2:10] = 90.
-    print(expected_piano_roll[70])
-    print(piano_roll[70])
     assert np.allclose(piano_roll, expected_piano_roll)
 
 
