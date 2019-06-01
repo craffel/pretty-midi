@@ -478,6 +478,22 @@ def test_get_piano_roll_and_get_chroma():
                        expected_chroma)
 
 
+def test_get_piano_roll_integrated():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+    inst.notes.append(pretty_midi.Note(pitch=70, velocity=90, start=0.01,
+                                       end=0.05))
+    times = np.linspace(0., 0.06, num=12, endpoint=False)  # sampling at 200
+    # piano roll samples at 100, needs to interpolate to 200
+    piano_roll = pm.instruments[0].get_piano_roll(fs=100, times=times)
+    expected_piano_roll = np.zeros((128, 12))
+    expected_piano_roll[70, 2:10] = 90.
+    print(expected_piano_roll[70])
+    print(piano_roll[70])
+    assert np.allclose(piano_roll, expected_piano_roll)
+
+
 def test_synthesize():
     pm = pretty_midi.PrettyMIDI()
     assert pm.synthesize().size == 0

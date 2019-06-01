@@ -188,9 +188,12 @@ class Instrument(object):
         # Convert to column indices
         times = np.array(np.round(times*fs), dtype=np.int)
         for n, (start, end) in enumerate(zip(times[:-1], times[1:])):
-            # Each column is the mean of the columns in piano_roll
-            piano_roll_integrated[:, n] = np.mean(piano_roll[:, start:end],
-                                                  axis=1)
+            if start < piano_roll.shape[1]:  # if start is >=, leave zeros
+                if start == end:
+                    end = start + 1
+                # Each column is the mean of the columns in piano_roll
+                piano_roll_integrated[:, n] = np.mean(piano_roll[:, start:end],
+                                                      axis=1)
         return piano_roll_integrated
 
     def get_chroma(self, fs=100, times=None, pedal_threshold=64):
@@ -368,7 +371,7 @@ class Instrument(object):
             raise ValueError('wave should be a callable Python function')
         # This is a simple way to make the end of the notes fade-out without
         # clicks
-        fade_out = np.linspace(1, 0, .1*fs)
+        fade_out = np.linspace(1, 0, int(.1*fs))
         # Create a frequency multiplier array for pitch bend
         bend_multiplier = np.ones(synthesized.shape)
         # Need to sort the pitch bend list for the loop below to work
