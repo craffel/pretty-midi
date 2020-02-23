@@ -48,7 +48,7 @@ class PrettyMIDI(object):
         List of :class:`pretty_midi.Lyric` objects.
     """
 
-    def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
+    def __init__(self, midi_file=None, resolution=220, initial_tempo=120.,clip=False):
         """Initialize either by populating it with MIDI data from a file or
         from scratch with no data.
 
@@ -57,10 +57,10 @@ class PrettyMIDI(object):
             # Load in the MIDI data using the midi module
             if isinstance(midi_file, six.string_types):
                 # If a string was given, pass it as the string filename
-                midi_data = mido.MidiFile(filename=midi_file)
+                midi_data = mido.MidiFile(filename=midi_file,clip=clip)
             else:
                 # Otherwise, try passing it in as a file pointer
-                midi_data = mido.MidiFile(file=midi_file)
+                midi_data = mido.MidiFile(file=midi_file,clip=clip)
 
             # Convert tick values in midi_data to absolute, a useful thing.
             for track in midi_data.tracks:
