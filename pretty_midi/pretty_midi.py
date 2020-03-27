@@ -828,7 +828,7 @@ class PrettyMIDI(object):
                                           time_thresh=0.05):
         """Computes the total pitch class transition matrix of all instruments.
         Transitions are added whenever the end of a note is within
-        ``time_tresh`` from the start of any other note.
+        ``time_thresh`` from the start of any other note.
 
         Parameters
         ----------
