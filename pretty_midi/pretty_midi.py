@@ -323,10 +323,20 @@ class PrettyMIDI(object):
                         end_tick = event.time
                         open_notes = last_note_on[key]
 
-                        notes_to_close = [
-                            (start_tick, velocity)
-                            for start_tick, velocity in open_notes
-                            if start_tick != end_tick]
+                        if event.channel != 9:
+                            notes_to_close = [
+                                (start_tick, velocity)
+                                for start_tick, velocity in open_notes
+                                if start_tick != end_tick]
+                        else:
+                            notes_to_close = []
+                            for start_tick, velocity in open_notes:
+                                if start_tick == end_tick:
+                                    notes_to_close.append((start_tick, velocity))
+                                    end_tick += 5
+                                else:
+                                    notes_to_close.append((start_tick, velocity))
+                                    
                         notes_to_keep = [
                             (start_tick, velocity)
                             for start_tick, velocity in open_notes
