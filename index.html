@@ -1,31 +1,30 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>pretty_midi &mdash; pretty_midi 0.2.8 documentation</title>
-    
+    <title>pretty_midi &#8212; pretty_midi 0.2.9 documentation</title>
     <link rel="stylesheet" href="_static/classic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.2.8',
+        VERSION:     '0.2.9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="pretty_midi 0.2.8 documentation" href="#" /> 
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
   </head>
-  <body role="document">
+  <body>
     <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
@@ -35,7 +34,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.8 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.9 documentation</a> &#187;</li> 
       </ul>
     </div>  
 
@@ -47,7 +46,7 @@
   <div class="section" id="module-pretty_midi">
 <span id="pretty-midi"></span><h1><a class="reference internal" href="#module-pretty_midi" title="pretty_midi"><code class="xref py py-mod docutils literal"><span class="pre">pretty_midi</span></code></a><a class="headerlink" href="#module-pretty_midi" title="Permalink to this headline">¶</a></h1>
 <p><code class="docutils literal"><span class="pre">pretty_midi</span></code> contains utility function/classes for handling MIDI data,
-so that it&#8217;s in a format from which it is easy to modify and extract
+so that it’s in a format from which it is easy to modify and extract
 information.
 If you end up using <code class="docutils literal"><span class="pre">pretty_midi</span></code> in a published research project, please
 cite the following report:</p>
@@ -97,7 +96,7 @@ and Demo Papers, 2014.</p>
 <span class="n">cello_c_chord</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;cello-C-chord.mid&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Further examples can be found in the source tree&#8217;s <a class="reference external" href="https://github.com/craffel/pretty-midi/tree/master/examples">examples directory</a>.</p>
+<p>Further examples can be found in the source tree’s <a class="reference external" href="https://github.com/craffel/pretty-midi/tree/master/examples">examples directory</a>.</p>
 <div class="section" id="pretty-midi-prettymidi">
 <h2><code class="docutils literal"><span class="pre">pretty_midi.PrettyMIDI</span></code><a class="headerlink" href="#pretty-midi-prettymidi" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
@@ -118,7 +117,7 @@ values for resolution and initial tempo.</p>
 <blockquote>
 <div><p>Resolution of the MIDI data, when no file is provided.</p>
 </div></blockquote>
-<p><strong>intitial_tempo</strong> : float</p>
+<p><strong>initial_tempo</strong> : float</p>
 <blockquote class="last">
 <div><p>Initial tempo for the MIDI data, when no file is provided.</p>
 </div></blockquote>
@@ -129,20 +128,20 @@ values for resolution and initial tempo.</p>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="28%" />
-<col width="73%" />
+<col width="31%" />
+<col width="69%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>instruments</td>
+<tr class="row-odd"><td><strong>instruments</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.Instrument" title="pretty_midi.Instrument"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Instrument</span></code></a> objects.</td>
 </tr>
-<tr class="row-even"><td>key_signature_changes</td>
+<tr class="row-even"><td><strong>key_signature_changes</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.KeySignature" title="pretty_midi.KeySignature"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.KeySignature</span></code></a> objects.</td>
 </tr>
-<tr class="row-odd"><td>time_signature_changes</td>
+<tr class="row-odd"><td><strong>time_signature_changes</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.TimeSignature" title="pretty_midi.TimeSignature"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.TimeSignature</span></code></a> objects.</td>
 </tr>
-<tr class="row-even"><td>lyrics</td>
+<tr class="row-even"><td><strong>lyrics</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.Lyric" title="pretty_midi.Lyric"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Lyric</span></code></a> objects.</td>
 </tr>
 </tbody>
@@ -200,9 +199,9 @@ event in all instruments/meta-events).</p>
 <dl class="method">
 <dt id="pretty_midi.PrettyMIDI.estimate_tempi">
 <code class="descname">estimate_tempi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.estimate_tempi" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return an empirical estimate of tempos and each tempo&#8217;s probability.
-Based on &#8220;Automatic Extraction of Tempo and Beat from Expressive
-Performance&#8221;, Dixon 2001.</p>
+<dd><p>Return an empirical estimate of tempos and each tempo’s probability.
+Based on “Automatic Extraction of Tempo and Beat from Expressive
+Performance”, Dixon 2001.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -243,7 +242,13 @@ Performance&#8221;, Dixon 2001.</p>
 <dl class="method">
 <dt id="pretty_midi.PrettyMIDI.get_beats">
 <code class="descname">get_beats</code><span class="sig-paren">(</span><em>start_time=0.0</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_beats" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a list of beat locations, according to MIDI tempo changes.</p>
+<dd><p>Returns a list of beat locations, according to MIDI tempo changes.
+For compound meters (any whose numerator is a multiple of 3 greater
+than 3), this method returns every third denominator note (for 6/8
+or 6/16 time, for example, it will return every third 8th note or
+16th note, respectively). For all other meters, this method returns
+every denominator note (every quarter note for 3/4 or 4/4 time, for
+example).</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -340,7 +345,7 @@ all instruments.  May have duplicate entries.</p>
 
 <dl class="method">
 <dt id="pretty_midi.PrettyMIDI.get_piano_roll">
-<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_piano_roll" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em>, <em>pedal_threshold=64</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_piano_roll" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute a piano roll matrix of the MIDI data.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -355,6 +360,14 @@ by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.
 <blockquote>
 <div><p>Times of the start of each column in the piano roll.
 Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+<p><strong>pedal_threshold</strong> : int</p>
+<blockquote>
+<div><p>Value of control change 64 (sustain pedal) message that is less
+than this value is reflected as pedal-off.  Pedals will be
+reflected as elongation of notes in the piano roll.
+If None, then CC64 message is ignored.
+Default is 64.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -406,7 +419,7 @@ by their durations or velocities.</p>
 <code class="descname">get_pitch_class_transition_matrix</code><span class="sig-paren">(</span><em>normalize=False</em>, <em>time_thresh=0.05</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_pitch_class_transition_matrix" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the total pitch class transition matrix of all instruments.
 Transitions are added whenever the end of a note is within
-<code class="docutils literal"><span class="pre">time_tresh</span></code> from the start of any other note.</p>
+<code class="docutils literal"><span class="pre">time_thresh</span></code> from the start of any other note.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -434,7 +447,7 @@ and end time of any other note for a transition to be added.</p>
 
 <dl class="method">
 <dt id="pretty_midi.PrettyMIDI.get_chroma">
-<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_chroma" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em>, <em>pedal_threshold=64</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.PrettyMIDI.get_chroma" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the MIDI data as a sequence of chroma vectors.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -449,6 +462,14 @@ by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.
 <blockquote>
 <div><p>Times of the start of each column in the piano roll.
 Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+<p><strong>pedal_threshold</strong> : int</p>
+<blockquote>
+<div><p>Value of control change 64 (sustain pedal) message that is less
+than this value is reflected as pedal-off.  Pedals will be
+reflected as elongation of notes in the piano roll.
+If None, then CC64 message is ignored.
+Default is 64.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -577,7 +598,7 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 <dd><p>Adjusts the timing of the events in the MIDI object.
 The parameters <code class="docutils literal"><span class="pre">original_times</span></code> and <code class="docutils literal"><span class="pre">new_times</span></code> define a mapping,
 so that if an event originally occurs at time <code class="docutils literal"><span class="pre">original_times[n]</span></code>, it
-will be moved so that it occurs at <code class="docutils literal"><span class="pre">new_times[n]</span></code>.  If events don&#8217;t
+will be moved so that it occurs at <code class="docutils literal"><span class="pre">new_times[n]</span></code>.  If events don’t
 occur exactly on a time in <code class="docutils literal"><span class="pre">original_times</span></code>, their timing will be
 linearly interpolated.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -654,26 +675,26 @@ linearly interpolated.</p>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="21%" />
-<col width="79%" />
+<col width="25%" />
+<col width="75%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>program</td>
+<tr class="row-odd"><td><strong>program</strong></td>
 <td>(int) The program number of this instrument.</td>
 </tr>
-<tr class="row-even"><td>is_drum</td>
+<tr class="row-even"><td><strong>is_drum</strong></td>
 <td>(bool) Is the instrument a drum instrument (channel 9)?</td>
 </tr>
-<tr class="row-odd"><td>name</td>
+<tr class="row-odd"><td><strong>name</strong></td>
 <td>(str) Name of the instrument.</td>
 </tr>
-<tr class="row-even"><td>notes</td>
+<tr class="row-even"><td><strong>notes</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.Note" title="pretty_midi.Note"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.Note</span></code></a> objects.</td>
 </tr>
-<tr class="row-odd"><td>pitch_bends</td>
+<tr class="row-odd"><td><strong>pitch_bends</strong></td>
 <td>(list) List of of <a class="reference internal" href="#pretty_midi.PitchBend" title="pretty_midi.PitchBend"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.PitchBend</span></code></a> objects.</td>
 </tr>
-<tr class="row-even"><td>control_changes</td>
+<tr class="row-even"><td><strong>control_changes</strong></td>
 <td>(list) List of <a class="reference internal" href="#pretty_midi.ControlChange" title="pretty_midi.ControlChange"><code class="xref py py-class docutils literal"><span class="pre">pretty_midi.ControlChange</span></code></a> objects.</td>
 </tr>
 </tbody>
@@ -705,7 +726,7 @@ May contain duplicates.</p>
 
 <dl class="method">
 <dt id="pretty_midi.Instrument.get_piano_roll">
-<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_piano_roll" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_piano_roll</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em>, <em>pedal_threshold=64</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_piano_roll" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute a piano roll matrix of this instrument.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -721,6 +742,14 @@ by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.
 <div><p>Times of the start of each column in the piano roll.
 Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
 </div></blockquote>
+<p><strong>pedal_threshold</strong> : int</p>
+<blockquote>
+<div><p>Value of control change 64 (sustain pedal) message that is less
+than this value is reflected as pedal-off.  Pedals will be
+reflected as elongation of notes in the piano roll.
+If None, then CC64 message is ignored.
+Default is 64.</p>
+</div></blockquote>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>piano_roll</strong> : np.ndarray, shape=(128,times.shape[0])</p>
@@ -735,7 +764,7 @@ Default <code class="docutils literal"><span class="pre">None</span></code> whic
 
 <dl class="method">
 <dt id="pretty_midi.Instrument.get_chroma">
-<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_chroma" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_chroma</code><span class="sig-paren">(</span><em>fs=100</em>, <em>times=None</em>, <em>pedal_threshold=64</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.get_chroma" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get a sequence of chroma vectors from this instrument.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -750,6 +779,14 @@ by <code class="docutils literal"><span class="pre">1./fs</span></code> seconds.
 <blockquote>
 <div><p>Times of the start of each column in the piano roll.
 Default <code class="docutils literal"><span class="pre">None</span></code> which is <code class="docutils literal"><span class="pre">np.arange(0,</span> <span class="pre">get_end_time(),</span> <span class="pre">1./fs)</span></code>.</p>
+</div></blockquote>
+<p><strong>pedal_threshold</strong> : int</p>
+<blockquote>
+<div><p>Value of control change 64 (sustain pedal) message that is less
+than this value is reflected as pedal-off.  Pedals will be
+reflected as elongation of notes in the piano roll.
+If None, then CC64 message is ignored.
+Default is 64.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -855,7 +892,7 @@ and end time of any other note for a transition to be added.</p>
 <dl class="method">
 <dt id="pretty_midi.Instrument.synthesize">
 <code class="descname">synthesize</code><span class="sig-paren">(</span><em>fs=44100</em>, <em>wave=&lt;ufunc 'sin'&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Instrument.synthesize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Synthesize the instrument&#8217;s notes using some waveshape.
+<dd><p>Synthesize the instrument’s notes using some waveshape.
 For drum instruments, returns zeros.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -874,7 +911,7 @@ e.g. <code class="docutils literal"><span class="pre">np.sin</span></code>, <cod
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>synthesized</strong> : np.ndarray</p>
 <blockquote class="last">
-<div><p>Waveform of the instrument&#8217;s notes, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
+<div><p>Waveform of the instrument’s notes, synthesized at <code class="docutils literal"><span class="pre">fs</span></code>.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -948,6 +985,17 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 <dl class="method">
 <dt id="pretty_midi.Note.__init__">
 <code class="descname">__init__</code><span class="sig-paren">(</span><em>velocity</em>, <em>pitch</em>, <em>start</em>, <em>end</em><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Note.__init__" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="pretty_midi.Note.get_duration">
+<code class="descname">get_duration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pretty_midi.Note.get_duration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the duration of the note in seconds.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="pretty_midi.Note.duration">
+<code class="descname">duration</code><a class="headerlink" href="#pretty_midi.Note.duration" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1026,25 +1074,25 @@ Default <code class="docutils literal"><span class="pre">None</span></code>, whi
 numerator, denominator and the event time in seconds.</p>
 <p class="rubric">Examples</p>
 <p>Instantiate a TimeSignature object with 6/8 time signature at 3.14 seconds:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ts</span> <span class="o">=</span> <span class="n">TimeSignature</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">ts</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ts</span> <span class="o">=</span> <span class="n">TimeSignature</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span>
 <span class="go">6/8 at 3.14 seconds</span>
 </pre></div>
 </div>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="23%" />
-<col width="77%" />
+<col width="29%" />
+<col width="71%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>numerator</td>
+<tr class="row-odd"><td><strong>numerator</strong></td>
 <td>(int) Numerator of time signature.</td>
 </tr>
-<tr class="row-even"><td>denominator</td>
+<tr class="row-even"><td><strong>denominator</strong></td>
 <td>(int) Denominator of time signature.</td>
 </tr>
-<tr class="row-odd"><td>time</td>
+<tr class="row-odd"><td><strong>time</strong></td>
 <td>(float) Time of event in seconds.</td>
 </tr>
 </tbody>
@@ -1066,22 +1114,22 @@ numerator, denominator and the event time in seconds.</p>
 Only supports major and minor keys.</p>
 <p class="rubric">Examples</p>
 <p>Instantiate a C# minor KeySignature object at 3.14 seconds:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ks</span> <span class="o">=</span> <span class="n">KeySignature</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span> <span class="n">ks</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">ks</span> <span class="o">=</span> <span class="n">KeySignature</span><span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">ks</span><span class="p">)</span>
 <span class="go">C# minor at 3.14 seconds</span>
 </pre></div>
 </div>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="8%" />
-<col width="92%" />
+<col width="11%" />
+<col width="89%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>key_number</td>
+<tr class="row-odd"><td><strong>key_number</strong></td>
 <td>(int) Key number according to <code class="docutils literal"><span class="pre">[0,</span> <span class="pre">11]</span></code> Major, <code class="docutils literal"><span class="pre">[12,</span> <span class="pre">23]</span></code> minor. For example, 0 is C Major, 12 is C minor.</td>
 </tr>
-<tr class="row-even"><td>time</td>
+<tr class="row-even"><td><strong>time</strong></td>
 <td>(float) Time of event in seconds.</td>
 </tr>
 </tbody>
@@ -1103,14 +1151,14 @@ Only supports major and minor keys.</p>
 <p class="rubric">Attributes</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="9%" />
-<col width="91%" />
+<col width="16%" />
+<col width="84%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>text</td>
+<tr class="row-odd"><td><strong>text</strong></td>
 <td>(str) The text of the lyric.</td>
 </tr>
-<tr class="row-even"><td>time</td>
+<tr class="row-even"><td><strong>time</strong></td>
 <td>(float) The time in seconds of the lyric.</td>
 </tr>
 </tbody>
@@ -1169,9 +1217,9 @@ C# minor.</p>
 <li><code class="docutils literal"><span class="pre">(root)</span></code> is one of ABCDEFG or abcdefg.  A lowercase root
 indicates a minor key when no mode string is specified.  Optionally
 a # for sharp or b for flat can be specified.</li>
-<li><code class="docutils literal"><span class="pre">(mode)</span></code> is optionally specified either as one of &#8216;M&#8217;, &#8216;Maj&#8217;,
-&#8216;Major&#8217;, &#8216;maj&#8217;, or &#8216;major&#8217; for major or &#8216;m&#8217;, &#8216;Min&#8217;, &#8216;Minor&#8217;, &#8216;min&#8217;,
-&#8216;minor&#8217; for minor.  If no mode is specified and the root is
+<li><code class="docutils literal"><span class="pre">(mode)</span></code> is optionally specified either as one of ‘M’, ‘Maj’,
+‘Major’, ‘maj’, or ‘major’ for major or ‘m’, ‘Min’, ‘Minor’, ‘min’,
+‘minor’ for minor.  If no mode is specified and the root is
 uppercase, the mode is assumed to be major; if the root is
 lowercase, the mode is assumed to be minor.</li>
 </ul>
@@ -1616,21 +1664,18 @@ General MIDI standard +/-2 semitone range.</p>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
     <ul class="this-page-menu">
-      <li><a href="_sources/index.txt"
+      <li><a href="_sources/index.rst.txt"
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -1646,12 +1691,12 @@ General MIDI standard +/-2 semitone range.</p>
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.8 documentation</a> &raquo;</li> 
+        <li class="nav-item nav-item-0"><a href="#">pretty_midi 0.2.9 documentation</a> &#187;</li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &copy; Copyright Colin Raffel.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.5.
+        &#169; Copyright Colin Raffel.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.6.3.
     </div>
   </body>
 </html>
