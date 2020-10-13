@@ -118,6 +118,8 @@ class PrettyMIDI(object):
             self.time_signature_changes = []
             # Empty lyrics list
             self.lyrics = []
+            # Empty lyrics_times dictionary (time,lyrics_index)
+            self.__lyrics_times = {}
 
     def _load_tempo_changes(self, midi_data):
         """Populates ``self._tick_scales`` with tuples of
@@ -166,27 +168,34 @@ class PrettyMIDI(object):
         """
 
         # Initialize empty lists for storing key signature changes, time
-        # signature changes, and lyrics
+        # signature changes, lyrics and a dictionary (start_time, lyrics index) for faster vocals matching
         self.key_signature_changes = []
         self.time_signature_changes = []
         self.lyrics = []
+        self.__lyrics_times = {}
 
-        for event in midi_data.tracks[0]:
-            if event.type == 'key_signature':
-                key_obj = KeySignature(
-                    key_name_to_key_number(event.key),
-                    self.__tick_to_time[event.time])
-                self.key_signature_changes.append(key_obj)
+        # We search for metadata events on all tracks
+        for track in midi_data.tracks:
+            for event in track:
+                if event.type == 'key_signature':
+                    key_obj = KeySignature(
+                        key_name_to_key_number(event.key),
+                        self.__tick_to_time[event.time])
+                    self.key_signature_changes.append(key_obj)
 
-            elif event.type == 'time_signature':
-                ts_obj = TimeSignature(event.numerator,
-                                       event.denominator,
-                                       self.__tick_to_time[event.time])
-                self.time_signature_changes.append(ts_obj)
+                elif event.type == 'time_signature':
+                    ts_obj = TimeSignature(event.numerator,
+                                           event.denominator,
+                                           self.__tick_to_time[event.time])
+                    self.time_signature_changes.append(ts_obj)
 
-            elif event.type == 'lyrics':
-                self.lyrics.append(Lyric(
-                    event.text, self.__tick_to_time[event.time]))
+                # Lyrics at time 0 are related to copyright, author, title, etc. so we skip them
+                elif (event.type == 'lyrics' or event.type == 'text') and self.__tick_to_time[event.time] != 0:
+                    # keep (start_time, lyrics index) except for line breaks, that don't correspond to notes
+                    if not event.text.isspace():
+                        self.__lyrics_times[self.__tick_to_time[event.time]] = len(self.lyrics)
+                    self.lyrics.append(Lyric(
+                        event.text, self.__tick_to_time[event.time]))
 
     def _update_tick_to_time(self, max_tick):
         """Creates ``self.__tick_to_time``, a class member array which maps
@@ -293,6 +302,9 @@ class PrettyMIDI(object):
             # Keep track of which instrument is playing in each channel
             # initialize to program 0 for all channels
             current_instrument = np.zeros(16, dtype=np.int)
+            # Count how many times note on coincides with lyrics event
+            # for each channel; vocal channel has the most matches
+            lyrics_matches = np.zeros(16, dtype=np.int)
             for event in track:
                 # Look for track name events
                 if event.type == 'track_name':
@@ -308,6 +320,9 @@ class PrettyMIDI(object):
                     note_on_index = (event.channel, event.note)
                     last_note_on[note_on_index].append((
                         event.time, event.velocity))
+                    # If note-on coincides with lyrics event we have a match
+                    if self.__tick_to_time[event.time] in self.__lyrics_times:
+                        lyrics_matches[event.channel] += 1
                 # Note offs can also be note on events with 0 velocity
                 elif event.type == 'note_off' or (event.type == 'note_on' and
                                                   event.velocity == 0):
@@ -382,6 +397,16 @@ class PrettyMIDI(object):
                         program, event.channel, track_idx, 0)
                     # Add the control change event
                     instrument.control_changes.append(control_change)
+            # Find instument with maximum lyrics matches
+            channel = np.argmax(lyrics_matches)
+            program = current_instrument[channel]
+            instrument = __get_instrument(program, channel, track_idx, 0)
+            instrument.set_as_vocals()
+            # For each vocals note add note to lyrics
+            for note in instrument.notes:
+                if note.start in self.__lyrics_times:
+                    self.lyrics[self.__lyrics_times[note.start]].set_note(note)
+
         # Initialize list of instruments from instrument_map
         self.instruments = [i for i in instrument_map.values()]
 

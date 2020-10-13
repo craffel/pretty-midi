@@ -34,6 +34,8 @@ class Instrument(object):
         The program number of this instrument.
     is_drum : bool
         Is the instrument a drum instrument (channel 9)?
+    is_vocals : bool
+        Is the 'instrument' a vocalist, synchronized with the lyrics
     name : str
         Name of the instrument.
     notes : list
@@ -51,10 +53,14 @@ class Instrument(object):
         """
         self.program = program
         self.is_drum = is_drum
+        self.is_vocals = False
         self.name = name
         self.notes = []
         self.pitch_bends = []
         self.control_changes = []
+
+    def set_as_vocals(self):
+        self.is_vocals = True
 
     def get_onsets(self):
         """Get all onsets of all notes played by this instrument.
@@ -530,5 +536,5 @@ class Instrument(object):
         return synthesized
 
     def __repr__(self):
-        return 'Instrument(program={}, is_drum={}, name="{}")'.format(
-            self.program, self.is_drum, self.name.replace('"', r'\"'))
+        return 'Instrument(program={}, is_drum={}, is_vocals={}, name="{}")'.format(
+            self.program, self.is_drum, self.is_vocals, self.name.replace('"', r'\"'))

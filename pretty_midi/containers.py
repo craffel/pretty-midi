@@ -179,7 +179,7 @@ class KeySignature(object):
 
 
 class Lyric(object):
-    """Timestamped lyric text.
+    """Timestamped lyric text with corresponding note.
 
     Attributes
     ----------
@@ -187,15 +187,21 @@ class Lyric(object):
         The text of the lyric.
     time : float
         The time in seconds of the lyric.
+    note: :class:`pretty_midi.Note` object
+        The note that corresponds to lyric, None for empty text.
     """
 
     def __init__(self, text, time):
         self.text = text
         self.time = time
+        self.note = None
+
+    def set_note(self, note):
+        self.note = note
 
     def __repr__(self):
-        return 'Lyric(text="{}", time={})'.format(
-            self.text.replace('"', r'\"'), self.time)
+        return 'Lyric(text="{}", time={}, note={})'.format(
+            self.text.replace('"', r'\"'), self.time, self.note)
 
     def __str__(self):
-        return '"{}" at {:.2f} seconds'.format(self.text, self.time)
+        return '"{}" at {:.2f} seconds, {}'.format(self.text, self.time, self.note)
