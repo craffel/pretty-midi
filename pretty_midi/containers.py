@@ -199,3 +199,25 @@ class Lyric(object):
 
     def __str__(self):
         return '"{}" at {:.2f} seconds'.format(self.text, self.time)
+
+class Text(object):
+    """Timestamped text event.
+
+    Attributes
+    ----------
+    text : str
+        The text.
+    time : float
+        The time it occurs in seconds.
+    """
+
+    def __init__(self, text, time):
+        self.text = text
+        self.time = time
+
+    def __repr__(self):
+        return 'Text(text="{}", time={})'.format(
+            self.text.replace('"', r'\"'), self.time)
+
+    def __str__(self):
+        return '"{}" at {:.2f} seconds'.format(self.text, self.time)
