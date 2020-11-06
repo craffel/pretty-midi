@@ -124,18 +124,31 @@ class Instrument(object):
         if pedal_threshold is not None:
             CC_SUSTAIN_PEDAL = 64
             time_pedal_on = 0
+            time_pedal_on_exact = 0
             is_pedal_on = False
+            # Keep track of non-quantized offset times
+            end_times = np.zeros((128, int(fs * end_time)))
+            for note in self.notes:
+                end_times[note.pitch, int(note.start*fs):int(note.end*fs)] = note.end
+                
             for cc in [_e for _e in self.control_changes
                        if _e.number == CC_SUSTAIN_PEDAL]:
                 time_now = int(cc.time*fs)
                 is_current_pedal_on = (cc.value >= pedal_threshold)
                 if not is_pedal_on and is_current_pedal_on:
                     time_pedal_on = time_now
+                    time_pedal_on_exact = cc.time
                     is_pedal_on = True
                 elif is_pedal_on and not is_current_pedal_on:
                     # For each pitch, a sustain pedal "retains"
                     # the maximum velocity up to now due to
                     # logarithmic nature of human loudness perception
+                    
+                    # Rounding might cause notes to be held for longer
+                    # than would be correct, so we have to take the 
+                    # exact timing into account
+                    held_notes = end_times[:, time_pedal_on] >= time_pedal_on_exact
+                    piano_roll[:, time_pedal_on] *= held_notes
                     subpr = piano_roll[:, time_pedal_on:time_now]
 
                     # Take the running maximum
