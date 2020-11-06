@@ -118,7 +118,7 @@ class Instrument(object):
         for note in self.notes:
             # Should interpolate
             piano_roll[note.pitch,
-                       int(note.start*fs):int(note.end*fs)] += note.velocity
+                       int(note.start*fs):int(note.end*fs)+1] += note.velocity
 
         # Process sustain pedals
         if pedal_threshold is not None:
@@ -129,7 +129,7 @@ class Instrument(object):
             # Keep track of non-quantized offset times
             end_times = np.zeros((128, int(fs * end_time)))
             for note in self.notes:
-                end_times[note.pitch, int(note.start*fs):int(note.end*fs)] = note.end
+                end_times[note.pitch, int(note.start*fs):int(note.end*fs)+1] = note.end
                 
             for cc in [_e for _e in self.control_changes
                        if _e.number == CC_SUSTAIN_PEDAL]:
@@ -149,11 +149,11 @@ class Instrument(object):
                     # exact timing into account
                     held_notes = end_times[:, time_pedal_on] >= time_pedal_on_exact
                     piano_roll[:, time_pedal_on] *= held_notes
-                    subpr = piano_roll[:, time_pedal_on:time_now]
+                    subpr = piano_roll[:, time_pedal_on:time_now+1]
 
                     # Take the running maximum
                     pedaled = np.maximum.accumulate(subpr, axis=1)
-                    piano_roll[:, time_pedal_on:time_now] = pedaled
+                    piano_roll[:, time_pedal_on:time_now+1] = pedaled
                     is_pedal_on = False
 
         # Process pitch changes
