@@ -57,8 +57,11 @@ class PrettyMIDI(object):
 
         """
         if midi_file is not None:
+            # File passed in is already loaded, just use it
+            if isinstance(midi_file, mido.MidiFile):
+                midi_data = midi_file
             # Load in the MIDI data using the midi module
-            if isinstance(midi_file, six.string_types):
+            elif isinstance(midi_file, six.string_types):
                 # If a string was given, pass it as the string filename
                 midi_data = mido.MidiFile(filename=midi_file)
             else:
