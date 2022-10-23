@@ -164,7 +164,7 @@ class Instrument(object):
             # Easiest to process differently depending on bend sign
             if start_bend.pitch >= 0:
                 # First, pitch shift by the int amount
-                if bend_int is not 0:
+                if bend_int != 0:
                     bent_roll[bend_int:] = piano_roll[:-bend_int, bend_range]
                 else:
                     bent_roll = piano_roll[:, bend_range]
@@ -173,7 +173,7 @@ class Instrument(object):
                                  bend_decimal*bent_roll[:-1])
             else:
                 # Same procedure as for positive bends
-                if bend_int is not 0:
+                if bend_int != 0:
                     bent_roll[:bend_int] = piano_roll[-bend_int:, bend_range]
                 else:
                     bent_roll = piano_roll[:, bend_range]
