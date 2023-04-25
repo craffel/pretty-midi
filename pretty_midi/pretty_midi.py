@@ -17,7 +17,7 @@ from heapq import merge
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
                          PitchBend, ControlChange, Text)
-from .utilities import (key_name_to_key_number, qpm_to_bpm)
+from .utilities import (key_name_to_key_number, qpm_to_bpm, note_number_to_hz)
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -822,6 +822,13 @@ class PrettyMIDI(object):
         for roll in piano_rolls:
             piano_roll[:, :roll.shape[1]] += roll
         return piano_roll
+
+    def get_intervals_and_pitches(self):
+        notes = [n for i in self.instruments for n in i.notes]
+        notes = sorted(notes, key=lambda n: n.start)
+        intervals = np.array([[n.start, n.end] for n in notes])
+        pitches = np.array([note_number_to_hz(n.pitch) for n in notes])
+        return intervals, pitches
 
     def get_pitch_class_histogram(self, use_duration=False,
                                   use_velocity=False, normalize=True):

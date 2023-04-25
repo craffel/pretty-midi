@@ -510,3 +510,26 @@ def test_synthesize():
     # Should be normalied
     assert (np.allclose(synthesized.max(), 1) or
             np.allclose(synthesized.min(), -1))
+
+
+def test_get_intervals_and_pitches():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    pm.instruments.append(inst)
+
+    inst.notes.append(pretty_midi.Note(pitch=69, velocity=90, start=0.01,
+                                       end=0.5))
+    inst.notes.append(pretty_midi.Note(pitch=57, velocity=90, start=0.51,
+                                       end=1.0))
+    inst.notes.append(pretty_midi.Note(pitch=45, velocity=90, start=1.01,
+                                       end=1.5))
+    inst.notes.append(pretty_midi.Note(pitch=33, velocity=90, start=1.51,
+                                       end=2.0))
+
+    expected_intervals = np.array([[0.01, 0.5], [0.51, 1.0], [1.01, 1.5], [1.51, 2.0]])
+    expected_pitches = np.array([440, 220, 110, 55])
+
+    intervals, pitches = pm.get_intervals_and_pitches()
+
+    assert np.allclose(intervals, expected_intervals)
+    assert np.allclose(pitches, expected_pitches)
