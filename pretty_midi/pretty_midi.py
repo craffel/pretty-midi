@@ -12,6 +12,7 @@ import collections
 import copy
 import functools
 import six
+import pathlib
 from heapq import merge
 
 from .instrument import Instrument
@@ -58,8 +59,8 @@ class PrettyMIDI(object):
         """
         if midi_file is not None:
             # Load in the MIDI data using the midi module
-            if isinstance(midi_file, six.string_types):
-                # If a string was given, pass it as the string filename
+            if isinstance(midi_file, six.string_types) or isinstance(midi_file, pathlib.PurePath):
+                # If a string or path was given, pass it as the filename
                 midi_data = mido.MidiFile(filename=midi_file)
             else:
                 # Otherwise, try passing it in as a file pointer
@@ -1454,8 +1455,8 @@ class PrettyMIDI(object):
                 event.time -= tick
                 tick += event.time
         # Write it out
-        if isinstance(filename, six.string_types):
-            # If a string was given, pass it as the string filename
+        if isinstance(filename, six.string_types) or isinstance(filename, pathlib.PurePath):
+            # If a string or path was given, pass it as the filename
             mid.save(filename=filename)
         else:
             # Otherwise, try passing it in as a file pointer
