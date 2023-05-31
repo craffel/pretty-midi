@@ -9,7 +9,6 @@ except ImportError:
     _HAS_FLUIDSYNTH = False
 import os
 import pkg_resources
-from ctypes import c_char_p
 
 from .containers import PitchBend
 from .utilities import pitch_bend_to_semitones, note_number_to_hz
@@ -468,7 +467,6 @@ class Instrument(object):
         # Create fluidsynth instance
         fl = fluidsynth.Synth(samplerate=fs)
         # Load in the soundfont
-        sf2_path = c_char_p(sf2_path.encode())
         sfid = fl.sfload(sf2_path)
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
