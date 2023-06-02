@@ -26,5 +26,8 @@ setup(
         'numpy >= 1.7.0',
         'mido >= 1.1.16',
         'six',
-    ]
+    ],
+    extras_require={
+        'fluidsynth': ['pyfluidsynth>=1.3.1',],
+    },
 )
