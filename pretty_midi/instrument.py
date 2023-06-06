@@ -430,7 +430,7 @@ class Instrument(object):
 
         return synthesized
 
-    def fluidsynth(self, fs=44100, sf2_path=None):
+    def fluidsynth(self, fs=44100, sf2_path=None, fl=None, sfid=0):
         """Synthesize using fluidsynth.
 
         Parameters
@@ -441,6 +441,12 @@ class Instrument(object):
             Path to a .sf2 file.
             Default ``None``, which uses the TimGM6mb.sf2 file included with
             ``pretty_midi``.
+        fl : fluidsynth.Synth
+            Fluidsynth instance to use. Default ``None``, which creates a new instance
+            using ``sf2_path``.
+        sfid : int
+            Soundfont ID to use if fl is provided. Default ``0``, which usues
+            the first soundfont.
 
         Returns
         -------
@@ -448,26 +454,36 @@ class Instrument(object):
             Waveform of the MIDI data, synthesized at ``fs``.
 
         """
-        # If sf2_path is None, use the included TimGM6mb.sf2 path
-        if sf2_path is None:
-            sf2_path = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
-
-        if not _HAS_FLUIDSYNTH:
-            raise ImportError("fluidsynth() was called but pyfluidsynth "
-                              "is not installed.")
-
-        if not os.path.exists(sf2_path):
-            raise ValueError("No soundfont file found at the supplied path "
-                             "{}".format(sf2_path))
-
         # If the instrument has no notes, return an empty array
         if len(self.notes) == 0:
             return np.array([])
 
-        # Create fluidsynth instance
-        fl = fluidsynth.Synth(samplerate=fs)
-        # Load in the soundfont
-        sfid = fl.sfload(sf2_path)
+        if sf2_path is not None and fl is not None:
+            raise ValueError("sf2_path and fl cannot both be supplied.")
+        if fl is None and sfid != 0:
+            raise ValueError("sfid cannot be supplied without an fl.")
+
+        if fl is None:
+            # If sf2_path and fl is None, use the included TimGM6mb.sf2 path
+            if sf2_path is None:
+                sf2_path = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
+
+            if not _HAS_FLUIDSYNTH:
+                raise ImportError("fluidsynth() was called but pyfluidsynth "
+                                  "is not installed.")
+
+            if not os.path.exists(sf2_path):
+                raise ValueError("No soundfont file found at the supplied path "
+                                 "{}".format(sf2_path))
+
+            # Create fluidsynth instance
+            fl = fluidsynth.Synth(samplerate=fs)
+            delete_fl = True
+            # Load in the soundfont
+            sfid = fl.sfload(sf2_path)
+        else:
+            delete_fl = False
+
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
             channel = 9
@@ -524,8 +540,9 @@ class Instrument(object):
             synthesized[current_sample:end] += samples
             # Increment the current sample
             current_time += event[0]
-        # Close fluidsynth
-        fl.delete()
+        # Close fluidsynth if it was a local instance created in the function
+        if delete_fl:
+            fl.delete()
 
         return synthesized
 
