@@ -541,7 +541,7 @@ class Instrument(object):
             # Add in these samples
             current_sample = int(fs*current_time)
             end = int(fs*(current_time + event[0]))
-            samples = fl.get_samples(end - current_sample)[::2]
+            samples = synthesizer.get_samples(end - current_sample)[::2]
             synthesized[current_sample:end] += samples
             # Increment the current sample
             current_time += event[0]
