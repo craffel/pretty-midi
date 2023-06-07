@@ -1027,7 +1027,7 @@ class PrettyMIDI(object):
             delete_synthesizer = False
 
         # Get synthesized waveform for each instrument
-        waveforms = [i.fluidsynth(fl=synthesizer, sfid=sfid) for i in self.instruments]
+        waveforms = [i.fluidsynth(synthesizer=synthesizer, sfid=sfid) for i in self.instruments]
 
         # Close fluidsynth if it was a local instance created in the function
         if delete_synthesizer:
