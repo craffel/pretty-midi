@@ -431,11 +431,15 @@ class Instrument(object):
 
         return synthesized
 
-    def fluidsynth(self, synthesizer=None, sfid=0, fs=44100, sf2_path=None):
+    def fluidsynth(self, fs=44100, synthesizer=None, sfid=0, sf2_path=None):
         """Synthesize using fluidsynth.
 
         Parameters
         ----------
+        fs : int
+            Sampling rate to synthesize at.
+            Only used when a new instance of fluidsynth.Synth is created.
+            Default ``44100``.
         synthesizer : fluidsynth.Synth or str
             fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
             Default ``None``, which creates a new instance using the TimGM6mb.sf2 file
@@ -443,10 +447,6 @@ class Instrument(object):
         sfid : int
             Soundfont ID to use if an instance of fluidsynth.Synth is provided.
             Default ``0``, which uses the first soundfont.
-        fs : int
-            Sampling rate to synthesize at.
-            Only used when a new instance of fluidsynth.Synth is created.
-            Default ``44100``.
         sf2_path : str
             Path to a .sf2 file.
             Default ``None``, which uses the TimGM6mb.sf2 file included with
