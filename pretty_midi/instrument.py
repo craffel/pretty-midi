@@ -479,15 +479,17 @@ class Instrument(object):
             return np.array([])
 
         # Create a fluidsynth instance if one wasn't provided
-        if type(synthesizer) is str:
+        if isinstance(synthesizer, str):
             sf2_path = synthesizer
             if not os.path.exists(synthesizer):
                 raise ValueError("No soundfont file found at the supplied path {}".format(sf2_path))
             synthesizer = fluidsynth.Synth(samplerate=fs)
             delete_synthesizer = True
             sfid = synthesizer.sfload(sf2_path)
-        else:
+        elif isinstance(synthesizer, fluidsynth.Synth):
             delete_synthesizer = False
+        else:
+            raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")
 
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
