@@ -16,11 +16,6 @@ import six
 import pathlib
 from heapq import merge
 
-try:
-    import fluidsynth
-    _HAS_FLUIDSYNTH = True
-except ImportError:
-    _HAS_FLUIDSYNTH = False
 import os
 import pkg_resources
 
@@ -28,8 +23,7 @@ from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
                          PitchBend, ControlChange, Text)
 from .utilities import (key_name_to_key_number, qpm_to_bpm, note_number_to_hz)
-
-DEFAULT_SF2 = 'TimGM6mb.sf2'
+from .fluidsynth import get_fluidsynth_instance
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -995,8 +989,6 @@ class PrettyMIDI(object):
             Waveform of the MIDI data, synthesized at ``fs``.
 
         """
-        if not _HAS_FLUIDSYNTH:
-            raise ImportError("fluidsynth() was called but pyfluidsynth is not installed.")
 
         if sf2_path is not None:
             warn("The parameter 'sf2_path' is deprecated, please use 'synthesizer' instead.",
@@ -1006,9 +998,6 @@ class PrettyMIDI(object):
             else:
                 synthesizer = sf2_path
 
-        if synthesizer is None:
-            synthesizer = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
-
         # If there are no instruments, or all instruments have no notes, return
         # an empty array
         if len(self.instruments) == 0 or all(len(i.notes) == 0
@@ -1016,17 +1005,7 @@ class PrettyMIDI(object):
             return np.array([])
 
         # Create a fluidsynth instance if one wasn't provided
-        if isinstance(synthesizer, str):
-            sf2_path = synthesizer
-            if not os.path.exists(synthesizer):
-                raise ValueError("No soundfont file found at the supplied path {}".format(sf2_path))
-            synthesizer = fluidsynth.Synth(samplerate=fs)
-            delete_synthesizer = True
-            sfid = synthesizer.sfload(sf2_path)
-        elif isinstance(synthesizer, fluidsynth.Synth):
-            delete_synthesizer = False
-        else:
-            raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")
+        synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
 
         # Get synthesized waveform for each instrument
         waveforms = [i.fluidsynth(synthesizer=synthesizer, sfid=sfid) for i in self.instruments]

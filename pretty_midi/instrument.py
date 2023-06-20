@@ -3,18 +3,10 @@ functions for extracting information from the events it contains.
 """
 from warnings import warn
 import numpy as np
-try:
-    import fluidsynth
-    _HAS_FLUIDSYNTH = True
-except ImportError:
-    _HAS_FLUIDSYNTH = False
-import os
-import pkg_resources
 
 from .containers import PitchBend
 from .utilities import pitch_bend_to_semitones, note_number_to_hz
-
-DEFAULT_SF2 = 'TimGM6mb.sf2'
+from .fluidsynth import get_fluidsynth_instance
 
 
 class Instrument(object):
@@ -460,9 +452,6 @@ class Instrument(object):
             Waveform of the MIDI data, synthesized at ``fs``.
 
         """
-        if not _HAS_FLUIDSYNTH:
-            raise ImportError("fluidsynth() was called but pyfluidsynth is not installed.")
-
         if sf2_path is not None:
             warn("The parameter 'sf2_path' is deprecated, please use 'synthesizer' instead.",
                  DeprecationWarning, 2)
@@ -471,25 +460,12 @@ class Instrument(object):
             else:
                 synthesizer = sf2_path
 
-        if synthesizer is None:
-            synthesizer = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
-
         # If the instrument has no notes, return an empty array
         if len(self.notes) == 0:
             return np.array([])
 
         # Create a fluidsynth instance if one wasn't provided
-        if isinstance(synthesizer, str):
-            sf2_path = synthesizer
-            if not os.path.exists(synthesizer):
-                raise ValueError("No soundfont file found at the supplied path {}".format(sf2_path))
-            synthesizer = fluidsynth.Synth(samplerate=fs)
-            delete_synthesizer = True
-            sfid = synthesizer.sfload(sf2_path)
-        elif isinstance(synthesizer, fluidsynth.Synth):
-            delete_synthesizer = False
-        else:
-            raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")
+        synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
 
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
