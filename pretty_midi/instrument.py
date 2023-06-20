@@ -1,19 +1,12 @@
 """The Instrument class holds all events for a single instrument and contains
 functions for extracting information from the events it contains.
 """
+from warnings import warn
 import numpy as np
-try:
-    import fluidsynth
-    _HAS_FLUIDSYNTH = True
-except ImportError:
-    _HAS_FLUIDSYNTH = False
-import os
-import pkg_resources
 
 from .containers import PitchBend
 from .utilities import pitch_bend_to_semitones, note_number_to_hz
-
-DEFAULT_SF2 = 'TimGM6mb.sf2'
+from .fluidsynth import get_fluidsynth_instance
 
 
 class Instrument(object):
@@ -430,17 +423,28 @@ class Instrument(object):
 
         return synthesized
 
-    def fluidsynth(self, fs=44100, sf2_path=None):
+    def fluidsynth(self, fs=44100, synthesizer=None, sfid=0, sf2_path=None):
         """Synthesize using fluidsynth.
 
         Parameters
         ----------
         fs : int
-            Sampling rate to synthesize.
+            Sampling rate to synthesize at.
+            Only used when a new instance of fluidsynth.Synth is created.
+            Default ``44100``.
+        synthesizer : fluidsynth.Synth or str
+            fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
+            Default ``None``, which creates a new instance using the TimGM6mb.sf2 file
+            included with ``pretty_midi``.
+        sfid : int
+            Soundfont ID to use if an instance of fluidsynth.Synth is provided.
+            Default ``0``, which uses the first soundfont.
         sf2_path : str
             Path to a .sf2 file.
             Default ``None``, which uses the TimGM6mb.sf2 file included with
             ``pretty_midi``.
+            .. deprecated:: 0.2.11
+                Use :param:`synthesizer` instead.
 
         Returns
         -------
@@ -448,39 +452,34 @@ class Instrument(object):
             Waveform of the MIDI data, synthesized at ``fs``.
 
         """
-        # If sf2_path is None, use the included TimGM6mb.sf2 path
-        if sf2_path is None:
-            sf2_path = pkg_resources.resource_filename(__name__, DEFAULT_SF2)
-
-        if not _HAS_FLUIDSYNTH:
-            raise ImportError("fluidsynth() was called but pyfluidsynth "
-                              "is not installed.")
-
-        if not os.path.exists(sf2_path):
-            raise ValueError("No soundfont file found at the supplied path "
-                             "{}".format(sf2_path))
+        if sf2_path is not None:
+            warn("The parameter 'sf2_path' is deprecated, please use 'synthesizer' instead.",
+                 DeprecationWarning, 2)
+            if synthesizer is not None:
+                raise ValueError("sf2_path and synthesizer cannot both be supplied.")
+            else:
+                synthesizer = sf2_path
 
         # If the instrument has no notes, return an empty array
         if len(self.notes) == 0:
             return np.array([])
 
-        # Create fluidsynth instance
-        fl = fluidsynth.Synth(samplerate=fs)
-        # Load in the soundfont
-        sfid = fl.sfload(sf2_path)
+        # Create a fluidsynth instance if one wasn't provided
+        synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
+
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
             channel = 9
             # Try to use the supplied program number
-            res = fl.program_select(channel, sfid, 128, self.program)
+            res = synthesizer.program_select(channel, sfid, 128, self.program)
             # If the result is -1, there's no preset with this program number
             if res == -1:
                 # So use preset 0
-                fl.program_select(channel, sfid, 128, 0)
+                synthesizer.program_select(channel, sfid, 128, 0)
         # Otherwise just use channel 0
         else:
             channel = 0
-            fl.program_select(channel, sfid, 0, self.program)
+            synthesizer.program_select(channel, sfid, 0, self.program)
         # Collect all notes in one list
         event_list = []
         for note in self.notes:
@@ -510,22 +509,23 @@ class Instrument(object):
         for event in event_list:
             # Process events based on type
             if event[1] == 'note on':
-                fl.noteon(channel, event[2], event[3])
+                synthesizer.noteon(channel, event[2], event[3])
             elif event[1] == 'note off':
-                fl.noteoff(channel, event[2])
+                synthesizer.noteoff(channel, event[2])
             elif event[1] == 'pitch bend':
-                fl.pitch_bend(channel, event[2])
+                synthesizer.pitch_bend(channel, event[2])
             elif event[1] == 'control change':
-                fl.cc(channel, event[2], event[3])
+                synthesizer.cc(channel, event[2], event[3])
             # Add in these samples
             current_sample = int(fs*current_time)
             end = int(fs*(current_time + event[0]))
-            samples = fl.get_samples(end - current_sample)[::2]
+            samples = synthesizer.get_samples(end - current_sample)[::2]
             synthesized[current_sample:end] += samples
             # Increment the current sample
             current_time += event[0]
-        # Close fluidsynth
-        fl.delete()
+        # Close fluidsynth if it was a local instance created in the function
+        if delete_synthesizer:
+            synthesizer.delete()
 
         return synthesized
 

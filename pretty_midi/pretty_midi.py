@@ -3,6 +3,7 @@ format
 
 """
 from __future__ import print_function
+from warnings import warn
 
 import mido
 import numpy as np
@@ -15,10 +16,14 @@ import six
 import pathlib
 from heapq import merge
 
+import os
+import pkg_resources
+
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
                          PitchBend, ControlChange, Text)
 from .utilities import (key_name_to_key_number, qpm_to_bpm, note_number_to_hz)
+from .fluidsynth import get_fluidsynth_instance
 
 # The largest we'd ever expect a tick to be
 MAX_TICK = 1e7
@@ -955,17 +960,28 @@ class PrettyMIDI(object):
         synthesized /= np.abs(synthesized).max()
         return synthesized
 
-    def fluidsynth(self, fs=44100, sf2_path=None):
+    def fluidsynth(self, fs=44100, synthesizer=None, sfid=0, sf2_path=None):
         """Synthesize using fluidsynth.
 
         Parameters
         ----------
         fs : int
             Sampling rate to synthesize at.
+            Only used when a new instance of fluidsynth.Synth is created.
+            Default ``44100``.
+        synthesizer : fluidsynth.Synth or str
+            fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
+            Default ``None``, which creates a new instance using the TimGM6mb.sf2 file
+            included with ``pretty_midi``.
+        sfid : int
+            Soundfont ID to use if an instance of fluidsynth.Synth is provided.
+            Default ``0``, which uses the first soundfont.
         sf2_path : str
             Path to a .sf2 file.
             Default ``None``, which uses the TimGM6mb.sf2 file included with
             ``pretty_midi``.
+            .. deprecated:: 0.2.11
+                Use :param:`synthesizer` instead.
 
         Returns
         -------
@@ -973,14 +989,31 @@ class PrettyMIDI(object):
             Waveform of the MIDI data, synthesized at ``fs``.
 
         """
+
+        if sf2_path is not None:
+            warn("The parameter 'sf2_path' is deprecated, please use 'synthesizer' instead.",
+                 DeprecationWarning, 2)
+            if synthesizer is not None:
+                raise ValueError("sf2_path and synthesizer cannot both be supplied.")
+            else:
+                synthesizer = sf2_path
+
         # If there are no instruments, or all instruments have no notes, return
         # an empty array
         if len(self.instruments) == 0 or all(len(i.notes) == 0
                                              for i in self.instruments):
             return np.array([])
+
+        # Create a fluidsynth instance if one wasn't provided
+        synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
+
         # Get synthesized waveform for each instrument
-        waveforms = [i.fluidsynth(fs=fs,
-                                  sf2_path=sf2_path) for i in self.instruments]
+        waveforms = [i.fluidsynth(synthesizer=synthesizer, sfid=sfid) for i in self.instruments]
+
+        # Close fluidsynth if it was a local instance created in the function
+        if delete_synthesizer:
+            synthesizer.delete()
+
         # Allocate output waveform, with #sample = max length of all waveforms
         synthesized = np.zeros(np.max([w.shape[0] for w in waveforms]))
         # Sum all waveforms in
