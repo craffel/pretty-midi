@@ -12,9 +12,10 @@ except ImportError:
     _HAS_FLUIDSYNTH = False
 
 DEFAULT_SF2 = 'TimGM6mb.sf2'
+DEFAULT_SAMPLE_RATE = 44100
 
 
-def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=44100):
+def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=None):
     """ Check if a valid fluidsynth.Synth instance is provided, and if not,
     create one.
 
@@ -29,8 +30,9 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=44100):
         Default ``0``, which uses the first soundfont.
     fs : int
         Sampling rate to synthesize at.
-        Only used when a new instance of fluidsynth.Synth is created.
-        Default ``44100``.
+        Default ``None``, which falls back to 44100 if a new instance must be created.
+        If ``synthesizer`` is an existing instance and ``fs`` is specified, then
+        a check is performed to ensure that its sample rate is equal to ``fs``.
 
     Returns
     -------
@@ -53,14 +55,14 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=44100):
         sf2_path = synthesizer
         if not os.path.exists(synthesizer):
             raise ValueError("No soundfont file found at the supplied path {}".format(sf2_path))
+        fs = fs or DEFAULT_SAMPLE_RATE
         synthesizer = fluidsynth.Synth(samplerate=fs)
         sfid = synthesizer.sfload(sf2_path)
         new_instance_created = True
     elif isinstance(synthesizer, fluidsynth.Synth):
-        if fs:
-            synth_fs = synthesizer.get_setting('synth.sample-rate')
-            if synth_fs != fs:
-                raise ValueError("synth sample-rate does not match fs", synth_fs)
+        synth_fs = synthesizer.get_setting('synth.sample-rate')
+        if fs and synth_fs != fs:
+            raise ValueError("synth sample-rate does not match fs", synth_fs)
         new_instance_created = False
     else:
         raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")
