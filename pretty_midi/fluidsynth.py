@@ -57,6 +57,10 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=44100):
         sfid = synthesizer.sfload(sf2_path)
         new_instance_created = True
     elif isinstance(synthesizer, fluidsynth.Synth):
+        if fs:
+            synth_fs = synthesizer.get_setting('synth.sample-rate')
+            if synth_fs != fs:
+                raise ValueError("synth sample-rate does not match fs", synth_fs)
         new_instance_created = False
     else:
         raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")
