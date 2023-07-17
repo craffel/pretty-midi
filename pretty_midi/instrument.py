@@ -466,6 +466,8 @@ class Instrument(object):
 
         # Create a fluidsynth instance if one wasn't provided
         synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
+        if not fs:
+            fs = synthesizer.get_setting('synth.sample-rate')
 
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
