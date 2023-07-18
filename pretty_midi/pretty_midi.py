@@ -968,7 +968,7 @@ class PrettyMIDI(object):
         fs : int
             Sampling rate to synthesize at.
             Default ``None``, which takes the sampling rate from ``synthesizer``, or
-            uses ``pretty_midi.fluidsynth.DEFAULT_SAMPLE_RATE`` if ``synthesizer``
+            uses ``pretty_midi.fluidsynth.DEFAULT_SAMPLE_RATE`` = 44100 if a synthesizer
             needs to be created.
         synthesizer : fluidsynth.Synth or str
             fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
