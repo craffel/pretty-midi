@@ -30,9 +30,10 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=None):
         Default ``0``, which uses the first soundfont.
     fs : int
         Sampling rate to synthesize at.
-        Default ``None``, which falls back to 44100 if a new instance must be created.
+        Default ``None``, which falls back to ``pretty_midi.fluidsynth.DEFAULT_SAMPLE_RATE``
+        if a new instance must be created.
         If ``synthesizer`` is an existing instance and ``fs`` is specified, then
-        a check is performed to ensure that its sample rate is equal to ``fs``.
+        ValueError will be raised if the sample rates are not equal.
 
     Returns
     -------
@@ -62,7 +63,8 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=None):
     elif isinstance(synthesizer, fluidsynth.Synth):
         synth_fs = synthesizer.get_setting('synth.sample-rate')
         if fs and synth_fs != fs:
-            raise ValueError("synth sample-rate does not match fs", synth_fs)
+            raise ValueError(
+                f"synthesizer sample rate of {synth_fs} doesn't match provided fs of {fs}")
         new_instance_created = False
     else:
         raise ValueError("synthesizer must be a str or a fluidsynth.Synth instance")

@@ -431,7 +431,8 @@ class Instrument(object):
         fs : int
             Sampling rate to synthesize at.
             Default ``None``, which takes the sampling rate from ``synthesizer``, or
-            uses 44100 if ``synthesizer`` has not been created.
+            uses ``pretty_midi.fluidsynth.DEFAULT_SAMPLE_RATE`` if ``synthesizer``
+            needs to be created.
         synthesizer : fluidsynth.Synth or str
             fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
             Default ``None``, which creates a new instance using the TimGM6mb.sf2 file
@@ -465,10 +466,11 @@ class Instrument(object):
             return np.array([])
 
         # Create a fluidsynth instance if one wasn't provided
-        # Raises if sample rates do not match
+        # Raises ValueError if sample rates do not match
         synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
         # Sample rate required below to compute note positions
-        fs = fs or synthesizer.get_setting('synth.sample-rate')
+        # Take from synthesizer in case fs was not passed explicitly
+        fs = synthesizer.get_setting('synth.sample-rate')
 
         # If this is a drum instrument, use channel 9 and bank 128
         if self.is_drum:
