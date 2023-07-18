@@ -960,15 +960,16 @@ class PrettyMIDI(object):
         synthesized /= np.abs(synthesized).max()
         return synthesized
 
-    def fluidsynth(self, fs=44100, synthesizer=None, sfid=0, sf2_path=None):
+    def fluidsynth(self, fs=None, synthesizer=None, sfid=0, sf2_path=None):
         """Synthesize using fluidsynth.
 
         Parameters
         ----------
         fs : int
             Sampling rate to synthesize at.
-            Only used when a new instance of fluidsynth.Synth is created.
-            Default ``44100``.
+            Default ``None``, which takes the sampling rate from ``synthesizer``, or
+            uses ``pretty_midi.fluidsynth.DEFAULT_SAMPLE_RATE`` = 44100 if a synthesizer
+            needs to be created.
         synthesizer : fluidsynth.Synth or str
             fluidsynth.Synth instance to use or a string with the path to a .sf2 file.
             Default ``None``, which creates a new instance using the TimGM6mb.sf2 file
@@ -1008,7 +1009,8 @@ class PrettyMIDI(object):
         synthesizer, sfid, delete_synthesizer = get_fluidsynth_instance(synthesizer, sfid, fs)
 
         # Get synthesized waveform for each instrument
-        waveforms = [i.fluidsynth(synthesizer=synthesizer, sfid=sfid) for i in self.instruments]
+        waveforms = [i.fluidsynth(synthesizer=synthesizer, sfid=sfid)
+                     for i in self.instruments]
 
         # Close fluidsynth if it was a local instance created in the function
         if delete_synthesizer:
