@@ -24,7 +24,7 @@ class Note(object):
 
     def __init__(self, velocity, pitch, start, end):
         if end < start:
-            raise ValueError("end paramater must be greater than start")
+            raise ValueError("Note end time must be greater than start time")
         
         self.velocity = velocity
         self.pitch = pitch
