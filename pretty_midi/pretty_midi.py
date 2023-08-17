@@ -42,6 +42,8 @@ class PrettyMIDI(object):
         Resolution of the MIDI data, when no file is provided.
     initial_tempo : float
         Initial tempo for the MIDI data, when no file is provided.
+    charset : str
+        Charset of the MIDI.
 
     Attributes
     ----------
@@ -57,7 +59,7 @@ class PrettyMIDI(object):
         List of :class:`pretty_midi.Text` objects.
     """
 
-    def __init__(self, midi_file=None, resolution=220, initial_tempo=120.):
+    def __init__(self, midi_file=None, resolution=220, initial_tempo=120., charset='latin1'):
         """Initialize either by populating it with MIDI data from a file or
         from scratch with no data.
 
@@ -66,10 +68,10 @@ class PrettyMIDI(object):
             # Load in the MIDI data using the midi module
             if isinstance(midi_file, six.string_types) or isinstance(midi_file, pathlib.PurePath):
                 # If a string or path was given, pass it as the filename
-                midi_data = mido.MidiFile(filename=midi_file)
+                midi_data = mido.MidiFile(filename=midi_file, charset=charset)
             else:
                 # Otherwise, try passing it in as a file pointer
-                midi_data = mido.MidiFile(file=midi_file)
+                midi_data = mido.MidiFile(file=midi_file, charset=charset)
 
             # Convert tick values in midi_data to absolute, a useful thing.
             for track in midi_data.tracks:
@@ -111,7 +113,8 @@ class PrettyMIDI(object):
 
             # Populate the list of instruments
             self._load_instruments(midi_data)
-
+            # MIDI Charset
+            self._charset = charset
         else:
             self.resolution = resolution
             # Compute the tick scale for the provided initial tempo
@@ -129,6 +132,8 @@ class PrettyMIDI(object):
             self.lyrics = []
             # Empty text events list
             self.text_events = []
+            # MIDI Charset
+            self._charset = charset
 
     def _load_tempo_changes(self, midi_data):
         """Populates ``self._tick_scales`` with tuples of
@@ -1372,7 +1377,7 @@ class PrettyMIDI(object):
             return event1.time - event2.time
 
         # Initialize output MIDI object
-        mid = mido.MidiFile(ticks_per_beat=self.resolution)
+        mid = mido.MidiFile(ticks_per_beat=self.resolution, charset=self._charset)
         # Create track 0 with timing information
         timing_track = mido.MidiTrack()
         # Add a default time signature only if there is not one at time 0.
