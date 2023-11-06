@@ -6,4 +6,17 @@
 :mod:`pretty_midi`
 ******************
 
-.. automodule:: pretty_midi
+The `pretty_midi` package provides several modules for handling MIDI files.
+
+.. include readme
+
+.. include:: ../README.md
+   :parser: myst_parser.sphinx_
+
+.. toctree::
+   :maxdepth: 1
+
+   containers
+   utilities
+   constants
+   instrument
