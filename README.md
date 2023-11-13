@@ -1,6 +1,6 @@
 `pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
-Documentation is available [here](http://craffel.github.io/pretty-midi/).  You can also find a Jupyter notebook tutorial [here](https://nbviewer.org/github/craffel/pretty-midi/blob/main/Tutorial.ipynb). [[Colab](https://colab.research.google.com/github/craffel/pretty-midi/blob/main/Tutorial.ipynb)]
+Documentation is available [here](http://craffel.github.io/pretty-midi/).  You can also find a Jupyter notebook tutorial [here](https://nbviewer.org/github/craffel/pretty-midi/blob/main/Tutorial.ipynb) (click [here](https://colab.research.google.com/github/craffel/pretty-midi/blob/main/Tutorial.ipynb) to load in Colab).
 
 `pretty_midi` is available via [pip](https://pypi.python.org/pypi/pretty_midi) or via the [setup.py](https://github.com/craffel/pretty-midi/blob/master/setup.py) script. In order to synthesize MIDI data using fluidsynth, you need the [fluidsynth](http://www.fluidsynth.org/) program and [pyfluidsynth](https://pypi.python.org/pypi/pyfluidsynth).
 
