@@ -48,6 +48,8 @@ class Instrument(object):
         self.notes = []
         self.pitch_bends = []
         self.control_changes = []
+        self.lyrics = [] # list of lyric events
+        self.text_annotations = [] # list of text annotation events
 
     def get_onsets(self):
         """Get all onsets of all notes played by this instrument.
