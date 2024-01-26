@@ -1215,7 +1215,7 @@ class PrettyMIDI(object):
         for text_events_key in self.text_events:
             # Adjust text events
             adjusted_events = adjust_meta(self.text_events[text_events_key])
-            self.lyrics[text_events_key] = adjusted_events
+            self.text_events[text_events_key] = adjusted_events
 
         # Remove all downbeats which appear before the start of original_times
         original_downbeats = original_downbeats[
