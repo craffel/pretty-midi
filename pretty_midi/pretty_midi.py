@@ -217,9 +217,9 @@ class PrettyMIDI(object):
                         event.text, self.__tick_to_time[event.time]))
                     
             if lyrics:
-                self.lyrics[track] = lyrics
+                self.lyrics[track.name] = lyrics
             if text_events:
-                self.text_events[track] = text_events
+                self.text_events[track.name] = text_events
 
         # We merge the already sorted lists for every track, based on time
 
@@ -418,10 +418,10 @@ class PrettyMIDI(object):
                     # Add the control change event
                     instrument.control_changes.append(control_change)
 
-            if track in self.lyrics:
-                instrument.lyrics = self.lyrics[track]
-            if track in self.text_events:
-                instrument.text_events = self.text_events[track]
+            if track.name in self.lyrics:
+                instrument.lyrics = self.lyrics[track.name]
+            if track.name in self.text_events:
+                instrument.text_events = self.text_events[track.name]
 
 
         # Initialize list of instruments from instrument_map
@@ -463,7 +463,7 @@ class PrettyMIDI(object):
         """
         # Get end times from all instruments, and times of all meta-events
         meta_events = [self.time_signature_changes, self.key_signature_changes,
-                       self.lyrics, self.text_events]
+                       *self.lyrics.values(), *self.text_events.values()]
         times = ([i.get_end_time() for i in self.instruments] +
                  [e.time for m in meta_events for e in m] +
                  self.get_tempo_changes()[0].tolist())
@@ -1204,15 +1204,18 @@ class PrettyMIDI(object):
                 event for event in events
                 if event.time > new_times[0] and event.time < new_times[-1])
             events[:] = valid_events
+            return events
 
         # Adjust key signature change event times
         adjust_meta(self.key_signature_changes)
         # Adjust lyrics
-        for lyrics in self.lyrics.values():
-            adjust_meta(lyrics)
-        for text_events in self.text_events.values():
+        for lyrics_key in self.lyrics:
+            adjusted_lyrics = adjust_meta(self.lyrics[lyrics_key])
+            self.lyrics[lyrics_key] = adjusted_lyrics
+        for text_events_key in self.text_events:
             # Adjust text events
-            adjust_meta(text_events)
+            adjusted_events = adjust_meta(self.text_events[text_events_key])
+            self.lyrics[text_events_key] = adjusted_events
 
         # Remove all downbeats which appear before the start of original_times
         original_downbeats = original_downbeats[
@@ -1415,14 +1418,6 @@ class PrettyMIDI(object):
             timing_track.append(mido.MetaMessage(
                 'key_signature', time=self.time_to_tick(ks.time),
                 key=key_number_to_mido_key_name[ks.key_number]))
-        # Add in all lyrics events
-        for l in self.lyrics:
-            timing_track.append(mido.MetaMessage(
-                'lyrics', time=self.time_to_tick(l.time), text=l.text))
-        # Add text events
-        for l in self.text_events:
-            timing_track.append(mido.MetaMessage(
-                'text', time=self.time_to_tick(l.time), text=l.text))
         # Sort the (absolute-tick-timed) events.
         timing_track.sort(key=functools.cmp_to_key(event_compare))
         # Add in an end of track event
@@ -1473,8 +1468,6 @@ class PrettyMIDI(object):
                     time=self.time_to_tick(control_change.time),
                     channel=channel, control=control_change.number,
                     value=control_change.value))
-            # Sort all the events using the event_compare comparator.
-            track = sorted(track, key=functools.cmp_to_key(event_compare))
 
             # If there's a note off event and a note on event with the same
             # tick and pitch, put the note off event first
@@ -1497,6 +1490,9 @@ class PrettyMIDI(object):
                 for l in instrument.text_events:
                     track.append(mido.MetaMessage(
                         'text', time=self.time_to_tick(l.time), text=l.text))
+
+            # Sort all the events using the event_compare comparator.
+            track = sorted(track, key=functools.cmp_to_key(event_compare))
 
             # Finally, add in an end of track event
             track.append(mido.MetaMessage(
