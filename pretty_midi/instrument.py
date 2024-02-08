@@ -35,6 +35,10 @@ class Instrument(object):
         List of of :class:`pretty_midi.PitchBend` objects.
     control_changes : list
         List of :class:`pretty_midi.ControlChange` objects.
+    lyrics : list
+        List of mido.MetaMessage objects, containing lyrics.
+    text_events : list
+        List of mido.MetaMessage objects, containing text annotations.
 
     """
 
