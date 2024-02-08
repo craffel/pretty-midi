@@ -204,7 +204,7 @@ class PrettyMIDI(object):
 
         # We search for lyrics and text events on all tracks
         # Lists of lyrics and text events lists, for every track
-        for track in midi_data.tracks:
+        for track_idx, track in enumerate(midi_data.tracks):
             # Track specific lists that get appended if not empty
             lyrics = []
             text_events = []
@@ -217,9 +217,9 @@ class PrettyMIDI(object):
                         event.text, self.__tick_to_time[event.time]))
                     
             if lyrics:
-                self.lyrics[track.name] = lyrics
+                self.lyrics[track_idx] = lyrics
             if text_events:
-                self.text_events[track.name] = text_events
+                self.text_events[track_idx] = text_events
 
         # We merge the already sorted lists for every track, based on time
 
@@ -418,10 +418,10 @@ class PrettyMIDI(object):
                     # Add the control change event
                     instrument.control_changes.append(control_change)
 
-            if track.name in self.lyrics:
-                instrument.lyrics = self.lyrics[track.name]
-            if track.name in self.text_events:
-                instrument.text_events = self.text_events[track.name]
+            if track_idx in self.lyrics:
+                instrument.lyrics = self.lyrics[track_idx]
+            if track_idx in self.text_events:
+                instrument.text_events = self.text_events[track_idx]
 
 
         # Initialize list of instruments from instrument_map
