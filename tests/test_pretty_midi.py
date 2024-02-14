@@ -4,6 +4,61 @@ import mido
 from tempfile import NamedTemporaryFile
 
 
+def test_pm_object_initialization():
+    def make_mido_track(notes_str):
+        track = mido.MidiTrack()
+        for line in notes_str.split('\n'):
+            line = line.strip()
+            if line:
+                track.append(mido.Message.from_str(line))
+        mido_obj = mido.MidiFile()
+        mido_obj.tracks.append(track)
+        return mido_obj
+
+    example_track_1 = """
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=74 velocity=88 time=48
+    note_on channel=0 note=72 velocity=0 time=0
+    note_on channel=0 note=72 velocity=88 time=48
+    note_on channel=0 note=74 velocity=0 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    """
+
+    example_track_2 = """
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    note_on channel=0 note=72 velocity=88 time=0
+    note_on channel=0 note=74 velocity=88 time=48
+    note_on channel=0 note=72 velocity=0 time=0
+    note_on channel=0 note=72 velocity=88 time=48
+    note_on channel=0 note=74 velocity=0 time=0
+    note_on channel=0 note=72 velocity=0 time=48
+    note_on channel=0 note=75 velocity=88 time=0
+    note_on channel=0 note=75 velocity=0 time=48
+    """
+
+    # Test-1: Passing pre-loaded mido.MidiFile object
+    example_mido_obj_1 = make_mido_track(example_track_1)
+    pm_song = pretty_midi.PrettyMIDI(mido_object=example_mido_obj_1)
+    assert len(pm_song.instruments[0].notes) == 4
+
+    with NamedTemporaryFile() as file:
+
+        # Test-2: Passing file path while mido_object argument defaults to None.
+        # This test will ensure <=v0.2.10 compatibility for passing filename without keywords
+        example_mido_obj_2 = make_mido_track(example_track_2)
+        example_mido_obj_2.save(file=file)
+        file.seek(0)
+        pm_song = pretty_midi.PrettyMIDI(file)
+        assert len(pm_song.instruments[0].notes) == 5
+
+        # Test-3: Testing precedence of mido_object over midi_file
+        pm_song = pretty_midi.PrettyMIDI(midi_file=file, mido_object=example_mido_obj_1)
+        assert len(pm_song.instruments[0].notes) == 4
+
+
 def test_get_beats():
     pm = pretty_midi.PrettyMIDI()
     # Add a note to force get_end_time() to be non-zero
