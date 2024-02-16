@@ -34,14 +34,14 @@ class PrettyMIDI(object):
 
     Parameters
     ----------
-    mido_object : mido.MidiFile
-        Pre-loaded `mido.MidiFile` object.
-        Default ``None`` would check if ``midi_file`` is populated instead.
     midi_file : str or file
         Path or file pointer to a MIDI file.
         Default ``None`` which means create an empty class with the supplied
         values for resolution and initial tempo.
         Note: If ``mido_object`` is not ``None``, this argument is ignored.
+    mido_object : mido.MidiFile
+        Pre-loaded `mido.MidiFile` object.
+        Default ``None`` would check if ``midi_file`` is populated instead.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
     initial_tempo : float
@@ -63,7 +63,7 @@ class PrettyMIDI(object):
         List of :class:`pretty_midi.Text` objects.
     """
 
-    def __init__(self, midi_file=None, mido_object=None, resolution=220, initial_tempo=120., charset='latin1'):
+    def __init__(self, midi_file=None, resolution=220, initial_tempo=120., charset='latin1', mido_object=None):
         """Initialize either by populating it with MIDI data from a mido.MidiFile object, file or
         from scratch with no data.
 

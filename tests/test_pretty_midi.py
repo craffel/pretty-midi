@@ -47,7 +47,7 @@ def test_pm_object_initialization():
     with NamedTemporaryFile() as file:
 
         # Test-2: Passing file path while mido_object argument defaults to None.
-        # This test will ensure <=v0.2.10 compatibility for passing filename without keywords
+        # This test will ensure <=v0.2.10 compatibility for passing other arguments without keywords
         example_mido_obj_2 = make_mido_track(example_track_2)
         example_mido_obj_2.save(file=file)
         file.seek(0)
