@@ -39,15 +39,15 @@ class PrettyMIDI(object):
         Default ``None`` which means create an empty class with the supplied
         values for resolution and initial tempo.
         Note: If ``mido_object`` is not ``None``, this argument is ignored.
-    mido_object : mido.MidiFile
-        Pre-loaded `mido.MidiFile` object.
-        Default ``None`` would check if ``midi_file`` is populated instead.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
     initial_tempo : float
         Initial tempo for the MIDI data, when no file is provided.
     charset : str
         Charset of the MIDI.
+    mido_object : mido.MidiFile
+        Pre-loaded `mido.MidiFile` object.
+        Default ``None`` would check if ``midi_file`` is populated instead.
 
     Attributes
     ----------
