@@ -36,9 +36,9 @@ class PrettyMIDI(object):
     ----------
     midi_file : str or file
         Path or file pointer to a MIDI file.
-        Default ``None`` which means create an empty class with the supplied
-        values for resolution and initial tempo.
-        Note: If ``mido_object`` is not ``None``, this argument is ignored.
+        Default ``None`` would check if ``mido_object`` is populated instead. If both are ``None``,
+        creates an empty class with the supplied values for resolution and initial tempo.
+        Additionally, a ValueError is raised if both ``midi_file`` and ``mido_object`` are not ``None``.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
     initial_tempo : float
@@ -47,7 +47,9 @@ class PrettyMIDI(object):
         Charset of the MIDI.
     mido_object : mido.MidiFile
         Pre-loaded `mido.MidiFile` object.
-        Default ``None`` would check if ``midi_file`` is populated instead.
+        Default ``None`` would check if ``midi_file`` is populated instead. If both are ``None``,
+        creates an empty class with the supplied values for resolution and initial tempo.
+        Additionally, a ValueError is raised if both ``mido_object`` and ``midi_file`` are not ``None``.
 
     Attributes
     ----------
@@ -69,13 +71,17 @@ class PrettyMIDI(object):
 
         """
         if mido_object is not None or midi_file is not None:
+
+            if mido_object is not None and midi_file is not None:
+                raise ValueError("Either the midi_file or the mido_object argument must be provided, but not both.")
+
             if mido_object is not None:
                 if isinstance(mido_object, mido.MidiFile):
                     midi_data = mido_object
                 else:
-                    raise ValueError('Expected mido_object to be of type mido.MidiFile '
-                                     'but found {}'.format(type(mido_object).__name__))
-            elif midi_file is not None:
+                    raise ValueError("Expected mido_object to be of type mido.MidiFile.")
+
+            if midi_file is not None:
                 # Load in the MIDI data using the midi module
                 if isinstance(midi_file, six.string_types) or isinstance(midi_file, pathlib.PurePath):
                     # If a string or path was given, pass it as the filename

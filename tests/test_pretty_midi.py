@@ -44,9 +44,16 @@ def test_pm_object_initialization():
     pm_song = pretty_midi.PrettyMIDI(mido_object=example_mido_obj_1)
     assert len(pm_song.instruments[0].notes) == 4
 
+    # Test-2: Testing value error is raised when non mido.MidiFile object is passed as a mido_object argument
+    try:
+        pm_song = pretty_midi.PrettyMIDI(mido_object=mido.MidiTrack())
+        raise Exception("Expected ValueError when non mido.MidiFile object is passed as a mido_object argument.")
+    except ValueError as val_error:
+        assert val_error.args[0] == "Expected mido_object to be of type mido.MidiFile."
+
     with NamedTemporaryFile() as file:
 
-        # Test-2: Passing file path while mido_object argument defaults to None.
+        # Test-3: Passing file path while mido_object argument defaults to None.
         # This test will ensure <=v0.2.10 compatibility for passing other arguments without keywords
         example_mido_obj_2 = make_mido_track(example_track_2)
         example_mido_obj_2.save(file=file)
@@ -54,9 +61,13 @@ def test_pm_object_initialization():
         pm_song = pretty_midi.PrettyMIDI(file)
         assert len(pm_song.instruments[0].notes) == 5
 
-        # Test-3: Testing precedence of mido_object over midi_file
-        pm_song = pretty_midi.PrettyMIDI(midi_file=file, mido_object=example_mido_obj_1)
-        assert len(pm_song.instruments[0].notes) == 4
+        # Test-4: Testing value error is raised when both midi_file and mido_object arguments are provided
+        try:
+            pm_song = pretty_midi.PrettyMIDI(midi_file=file, mido_object=example_mido_obj_1)
+            raise Exception("Expected ValueError when both midi_file and mido_object arguments are provided.")
+        except ValueError as val_error:
+            assert val_error.args[0] == ("Either the midi_file or the mido_object argument must be provided, "
+                                         "but not both.")
 
 
 def test_get_beats():
