@@ -934,7 +934,7 @@ class PrettyMIDI(object):
             chroma_matrix[note, :] = np.sum(piano_roll[note::12], axis=0)
         return chroma_matrix
 
-    def synthesize(self, fs=44100, wave=np.sin, normalize=False):
+    def synthesize(self, fs=44100, wave=np.sin, normalize=True):
         """Synthesize the pattern using some waveshape.  Ignores drum track.
 
         Parameters
@@ -945,10 +945,9 @@ class PrettyMIDI(object):
             Function which returns a periodic waveform,
             e.g. ``np.sin``, ``scipy.signal.square``, etc.
         normalize : bool
-            If True, normalizes the output wave to the range [-1, 1].
-            Default ``False``, which divides the output by the maximum value 
-            of a 16-bit integer multiplied by the number of instruments, and 
-            lets the user handle accordingly.
+            Default ``True``, which normalizes the output wave to the range [-1, 1].
+            Otherwise, divides the output by the maximum value of a 16-bit integer 
+            multiplied by the number of instruments, and lets the user handle accordingly.
 
         Returns
         -------
@@ -978,7 +977,7 @@ class PrettyMIDI(object):
         return synthesized
 
     def fluidsynth(self, fs=None, synthesizer=None, sfid=0, sf2_path=None, 
-                   normalize=False):
+                   normalize=True):
         """Synthesize using fluidsynth.
 
         Parameters
@@ -1002,10 +1001,9 @@ class PrettyMIDI(object):
             .. deprecated:: 0.2.11
                 Use :param:`synthesizer` instead.
         normalize : bool
-            If True, normalizes the output wave to the range [-1, 1].
-            Default ``False``, which divides the output by the maximum value 
-            of a 16-bit integer multiplied by the number of instruments, and 
-            lets the user handle accordingly.
+            Default ``True``, which normalizes the output wave to the range [-1, 1].
+            Otherwise, divides the output by the maximum value of a 16-bit integer 
+            multiplied by the number of instruments, and lets the user handle accordingly.
 
         Returns
         -------
