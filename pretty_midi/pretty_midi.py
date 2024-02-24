@@ -36,14 +36,20 @@ class PrettyMIDI(object):
     ----------
     midi_file : str or file
         Path or file pointer to a MIDI file.
-        Default ``None`` which means create an empty class with the supplied
-        values for resolution and initial tempo.
+        Default ``None`` would check if ``mido_object`` is populated instead. If both are ``None``,
+        creates an empty class with the supplied values for resolution and initial tempo.
+        Additionally, a ValueError is raised if both ``midi_file`` and ``mido_object`` are not ``None``.
     resolution : int
         Resolution of the MIDI data, when no file is provided.
     initial_tempo : float
         Initial tempo for the MIDI data, when no file is provided.
     charset : str
         Charset of the MIDI.
+    mido_object : mido.MidiFile
+        Pre-loaded `mido.MidiFile` object.
+        Default ``None`` would check if ``midi_file`` is populated instead. If both are ``None``,
+        creates an empty class with the supplied values for resolution and initial tempo.
+        Additionally, a ValueError is raised if both ``mido_object`` and ``midi_file`` are not ``None``.
 
     Attributes
     ----------
@@ -59,19 +65,30 @@ class PrettyMIDI(object):
         List of :class:`pretty_midi.Text` objects.
     """
 
-    def __init__(self, midi_file=None, resolution=220, initial_tempo=120., charset='latin1'):
-        """Initialize either by populating it with MIDI data from a file or
+    def __init__(self, midi_file=None, resolution=220, initial_tempo=120., charset='latin1', mido_object=None):
+        """Initialize either by populating it with MIDI data from a mido.MidiFile object, file or
         from scratch with no data.
 
         """
-        if midi_file is not None:
-            # Load in the MIDI data using the midi module
-            if isinstance(midi_file, six.string_types) or isinstance(midi_file, pathlib.PurePath):
-                # If a string or path was given, pass it as the filename
-                midi_data = mido.MidiFile(filename=midi_file, charset=charset)
-            else:
-                # Otherwise, try passing it in as a file pointer
-                midi_data = mido.MidiFile(file=midi_file, charset=charset)
+        if mido_object is not None or midi_file is not None:
+
+            if mido_object is not None and midi_file is not None:
+                raise ValueError("Either the midi_file or the mido_object argument must be provided, but not both.")
+
+            if mido_object is not None:
+                if isinstance(mido_object, mido.MidiFile):
+                    midi_data = mido_object
+                else:
+                    raise ValueError("Expected mido_object to be of type mido.MidiFile.")
+
+            if midi_file is not None:
+                # Load in the MIDI data using the midi module
+                if isinstance(midi_file, six.string_types) or isinstance(midi_file, pathlib.PurePath):
+                    # If a string or path was given, pass it as the filename
+                    midi_data = mido.MidiFile(filename=midi_file, charset=charset)
+                else:
+                    # Otherwise, try passing it in as a file pointer
+                    midi_data = mido.MidiFile(file=midi_file, charset=charset)
 
             # Convert tick values in midi_data to absolute, a useful thing.
             for track in midi_data.tracks:
@@ -217,7 +234,7 @@ class PrettyMIDI(object):
                 elif event.type == 'text':
                     text_events.append(Text(
                         event.text, self.__tick_to_time[event.time]))
-                    
+
             if lyrics:
                 tracks_with_lyrics.append(lyrics)
             if text_events:
