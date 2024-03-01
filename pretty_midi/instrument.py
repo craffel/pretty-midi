@@ -35,6 +35,10 @@ class Instrument(object):
         List of of :class:`pretty_midi.PitchBend` objects.
     control_changes : list
         List of :class:`pretty_midi.ControlChange` objects.
+    lyrics : list
+        List of mido.MetaMessage objects, containing lyrics.
+    text_events : list
+        List of mido.MetaMessage objects, containing text annotations.
 
     """
 
@@ -48,6 +52,8 @@ class Instrument(object):
         self.notes = []
         self.pitch_bends = []
         self.control_changes = []
+        self.lyrics = [] # list of lyric events
+        self.text_events = [] # list of text annotation events
 
     def get_onsets(self):
         """Get all onsets of all notes played by this instrument.
