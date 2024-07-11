@@ -1353,6 +1353,39 @@ class PrettyMIDI(object):
         # Update the tick-to-time mapping
         self._update_tick_to_time(self._tick_scales[-1][0] + 1)
 
+    def crop(self, start_time=0.0, end_time=None):
+        """Crops the MIDI object, keeping only the segment from ``start_time``
+        to ``end_time``.
+
+        Parameters
+        ----------
+        start_time : float
+            Segment start time, in seconds. Defaults to 0.0.
+        end_time : float
+            Segment end time, in seconds. Defaults to self.end_time().
+
+        """
+        midi_end_time = self.get_end_time()
+
+        # Enforce that start_time is non-negative and end_time is lower than
+        # the MIDI object's end time. 
+        if start_time < 0.0:
+            raise ValueError('start_time must be non-negative.')
+        if end_time is None:
+            end_time = midi_end_time
+        elif end_time > midi_end_time:
+            warnings.warn('end_time is greater than the MIDI object\'s '
+                          'end time; automatically adjusting to it.')
+            end_time = midi_end_time
+
+        # Enforce that end_time is strictly higher than start_time
+        if start_time >= end_time:
+            raise ValueError('end_time must be strictly higher than ' 
+                             'start_time.')
+                             
+        # Invoke self.adjust_times to perform the cropping.
+        self.adjust_times([start_time, end_time], [start_time, end_time])
+
     def remove_invalid_notes(self):
         """Removes any notes whose end time is before or at their start time.
 
