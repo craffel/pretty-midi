@@ -319,7 +319,7 @@ class Instrument(object):
         transition_matrix, _, _ = np.histogram2d(nodes[sources],
                                                  nodes[targets],
                                                  bins=np.arange(13),
-                                                 normed=normalize)
+                                                 density=normalize)
         return transition_matrix
 
     def remove_invalid_notes(self):
