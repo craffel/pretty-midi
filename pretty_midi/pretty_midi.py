@@ -100,9 +100,6 @@ class PrettyMIDI(object):
             # Store the resolution for later use
             self.resolution = midi_data.ticks_per_beat
 
-            # Populate the list of tempo changes (tick scales)
-            self._load_tempo_changes(midi_data)
-
             # Update the array which maps ticks to time
             max_tick = max([max([e.time for e in t])
                             for t in midi_data.tracks]) + 1
@@ -112,6 +109,9 @@ class PrettyMIDI(object):
                 raise ValueError(('MIDI file has a largest tick of {},'
                                   ' it is likely corrupt'.format(max_tick)))
 
+            # Populate the list of tempo changes (tick scales)
+            self._load_tempo_changes(midi_data)
+          
             # Create list that maps ticks to time in seconds
             self._update_tick_to_time(max_tick)
 
