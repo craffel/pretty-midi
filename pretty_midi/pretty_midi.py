@@ -16,9 +16,6 @@ import six
 import pathlib
 from heapq import merge
 
-import os
-import pkg_resources
-
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
                          PitchBend, ControlChange, Text)
