@@ -49,7 +49,7 @@ def get_fluidsynth_instance(synthesizer=None, sfid=0, fs=None):
         raise ImportError("fluidsynth() was called but pyfluidsynth is not installed.")
 
     if synthesizer is None:
-        synthesizer = str(importlib_resources.files(__name__) / DEFAULT_SF2)
+        synthesizer = os.path.join(str(importlib_resources.files(__name__)), DEFAULT_SF2)
 
     # Create a fluidsynth instance if one wasn't provided
     if isinstance(synthesizer, str):
