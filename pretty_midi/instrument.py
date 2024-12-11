@@ -179,7 +179,7 @@ class Instrument(object):
             return piano_roll
         piano_roll_integrated = np.zeros((128, times.shape[0]))
         # Convert to column indices
-        times = np.array(np.round(times*fs), dtype=np.int32)
+        times = np.array(np.round(times*fs), dtype=int)
         for n, (start, end) in enumerate(zip(times[:-1], times[1:])):
             if start < piano_roll.shape[1]:  # if start is >=, leave zeros
                 if start == end:
