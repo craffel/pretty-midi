@@ -346,7 +346,7 @@ class PrettyMIDI(object):
             last_note_on = collections.defaultdict(list)
             # Keep track of which instrument is playing in each channel
             # initialize to program 0 for all channels
-            current_instrument = np.zeros(16, dtype=np.int32)
+            current_instrument = np.zeros(16, dtype=int)
             for event in track:
                 # Look for track name events
                 if event.type == 'track_name':
