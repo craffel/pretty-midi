@@ -1,3 +1,10 @@
+# pretty_midi
+
+[![Build Status](https://travis-ci.org/craffel/pretty-midi.svg?branch=master)](https://travis-ci.org/craffel/pretty-midi)
+[![Coverage Status](https://coveralls.io/repos/github/craffel/pretty-midi/badge.svg?branch=master)](https://coveralls.io/github/craffel/pretty-midi?branch=master)
+
+## Overview
+
 `pretty_midi` contains utility function/classes for handling MIDI data, so that it's in a format which is easy to modify and extract information from.
 
 Documentation is available [here](http://craffel.github.io/pretty-midi/).  You can also find a Jupyter notebook tutorial [here](https://nbviewer.org/github/craffel/pretty-midi/blob/main/Tutorial.ipynb) (click [here](https://colab.research.google.com/github/craffel/pretty-midi/blob/main/Tutorial.ipynb) to load in Colab).
