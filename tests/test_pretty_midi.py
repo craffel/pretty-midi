@@ -1,4 +1,5 @@
 import pretty_midi
+import pytest
 import numpy as np
 import mido
 from tempfile import NamedTemporaryFile
@@ -599,3 +600,371 @@ def test_get_intervals_and_pitches():
 
     assert np.allclose(intervals, expected_intervals)
     assert np.allclose(pitches, expected_pitches)
+
+
+def test_metadata_handling():
+    pm = pretty_midi.PrettyMIDI()
+    pm.lyrics.append(pretty_midi.Lyric('word1', 0.5))
+    pm.lyrics.append(pretty_midi.Lyric('word2', 1.0))
+    pm.text_events.append(pretty_midi.Text('text1', 0.1))
+    pm.text_events.append(pretty_midi.Text('text2', 1.5))
+
+    assert pm.get_end_time() == 1.5
+
+    # Test loading metadata from mido object
+    mid = mido.MidiFile()
+    track1 = mido.MidiTrack()
+    track1.append(mido.MetaMessage('lyrics', text='l1', time=100))
+    track1.append(mido.MetaMessage('text', text='t1', time=50))
+    mid.tracks.append(track1)
+
+    track2 = mido.MidiTrack()
+    track2.append(mido.MetaMessage('lyrics', text='l2', time=50))
+    track2.append(mido.MetaMessage('text', text='t2', time=150))
+    mid.tracks.append(track2)
+
+    pm_loaded = pretty_midi.PrettyMIDI(mido_object=mid)
+    assert len(pm_loaded.lyrics) == 2
+    assert pm_loaded.lyrics[0].text == 'l2'
+    assert pm_loaded.lyrics[1].text == 'l1'
+    assert len(pm_loaded.text_events) == 2
+    assert pm_loaded.text_events[0].text == 't1'
+    assert pm_loaded.text_events[1].text == 't2'
+
+
+def test_instrument_loading_stragglers_and_names():
+    mid = mido.MidiFile()
+    track = mido.MidiTrack()
+    track.append(mido.MetaMessage('track_name', name='TestTrack', time=0))
+    # CC and PitchBend before note_on (stragglers)
+    track.append(mido.Message('control_change', control=1, value=10, time=10))
+    track.append(mido.Message('pitchwheel', pitch=1000, time=10))
+    # Now a note_on
+    track.append(mido.Message('note_on', note=60, velocity=64, time=10))
+    track.append(mido.Message('note_off', note=60, velocity=64, time=10))
+    mid.tracks.append(track)
+
+    pm = pretty_midi.PrettyMIDI(mido_object=mid)
+    assert len(pm.instruments) == 1
+    inst = pm.instruments[0]
+    assert inst.name == 'TestTrack'
+    assert len(inst.control_changes) == 1
+    assert inst.control_changes[0].number == 1
+    assert len(inst.pitch_bends) == 1
+    assert inst.pitch_bends[0].pitch == 1000
+    assert len(inst.notes) == 1
+
+
+def test_analysis_functions():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    # C4
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    # E4
+    inst.notes.append(pretty_midi.Note(50, 64, 1, 3))
+    pm.instruments.append(inst)
+
+    # Histogram
+    hist = pm.get_pitch_class_histogram()
+    assert hist[0] == 0.5
+    assert hist[4] == 0.5
+
+    hist_dur = pm.get_pitch_class_histogram(use_duration=True)
+    assert hist_dur[0] == 1/3.0
+    assert hist_dur[4] == 2/3.0
+
+    hist_vel = pm.get_pitch_class_histogram(use_velocity=True)
+    assert hist_vel[0] == 100/150.0
+    assert hist_vel[4] == 50/150.0
+
+    # Transition Matrix
+    # Add another note to have a transition
+    inst.notes.append(pretty_midi.Note(100, 67, 3.01, 4)) # G4
+    # Transitions: C4->E4 (0->4) and E4->G4 (4->7)
+    trans = pm.get_pitch_class_transition_matrix(normalize=True)
+    assert trans[4, 7] == 0.5
+    assert trans[0, 4] == 0.5
+
+    # Beat start estimation
+    # Need more notes for beat start estimation
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    for i in range(10):
+        # Higher velocity for the first note to make 0.0 the best candidate
+        v = 200 if i == 0 else 100
+        inst.notes.append(pretty_midi.Note(v, 60, i * 0.5, i * 0.5 + 0.1))
+    pm.instruments.append(inst)
+    beat_start = pm.estimate_beat_start()
+    assert any(np.isclose(beat_start, n.start) for n in inst.notes)
+
+    # Test estimate_beat_start empty
+    with pytest.raises(ValueError):
+        pretty_midi.PrettyMIDI().estimate_beat_start()
+
+
+def test_conversions_edge_cases():
+    pm = pretty_midi.PrettyMIDI(initial_tempo=120)
+    # tick_to_time
+    assert pm.tick_to_time(0) == 0
+    # Large tick
+    with pytest.raises(IndexError):
+        pm.tick_to_time(1e8)
+    # Tick larger than currently mapped
+    t = pm.tick_to_time(2000)
+    assert t > 0
+    # Non-int tick
+    with pytest.warns(UserWarning, match='tick should be an int.'):
+        pm.tick_to_time(10.5)
+
+    # time_to_tick
+    tick = pm.time_to_tick(10.0)
+    assert tick > 0
+    # Time beyond mapped range
+    tick_far = pm.time_to_tick(1000.0)
+    assert tick_far > tick
+
+
+def test_synthesis_options():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    pm.instruments.append(inst)
+
+    # synthesize with normalize=False
+    syn = pm.synthesize(normalize=False)
+    # Should be small since it divides by len(inst) * 2**15
+    assert syn.max() < 1.0
+
+    # synthesize empty
+    pm_empty = pretty_midi.PrettyMIDI()
+    assert pm_empty.synthesize().size == 0
+
+    # fluidsynth mock test
+    from unittest.mock import MagicMock
+    # We mock fluidsynth to avoid dependency issues during tests
+    mock_synth = MagicMock()
+    mock_synth.get_samples.return_value = np.zeros(1000)
+
+    with MagicMock() as mock_get_fs:
+        mock_get_fs.return_value = (mock_synth, 0, True)
+        # We need to monkeypatch get_fluidsynth_instance
+        # Use a local reference to avoid shadowing pretty_midi
+        import pretty_midi.pretty_midi as pm_mod
+        original_get_fs = pm_mod.get_fluidsynth_instance
+        pm_mod.get_fluidsynth_instance = mock_get_fs
+
+        # Mock instrument.fluidsynth because it's called inside pm.fluidsynth
+        for instrument in pm.instruments:
+            instrument.fluidsynth = MagicMock(return_value=np.zeros(1000))
+
+        fs_syn = pm.fluidsynth()
+        assert fs_syn.size == 1000
+
+        # Restore
+        pm_mod.get_fluidsynth_instance = original_get_fs
+
+
+def test_cropping_and_invalid_notes():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 1, 2))
+    inst.notes.append(pretty_midi.Note(100, 62, 3, 4))
+    pm.instruments.append(inst)
+
+    # crop
+    pm.crop(0.5, 2.5)
+    assert len(pm.instruments[0].notes) == 1
+    assert pm.instruments[0].notes[0].pitch == 60
+
+    # crop invalid
+    with pytest.raises(ValueError, match='start_time must be non-negative.'):
+        pm.crop(-1, 2)
+    with pytest.raises(ValueError, match='end_time must be strictly higher than start_time.'):
+        pm.crop(2, 1)
+
+    # crop end_time > midi_end_time
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 1, 2))
+    pm.instruments.append(inst)
+    with pytest.warns(UserWarning, match='end_time is greater than the MIDI object\'s end time'):
+        pm.crop(0, 5)
+
+    # remove_invalid_notes
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    note = pretty_midi.Note(100, 60, 1, 2)
+    note.end = 0.5 # Manually make it invalid
+    inst.notes.append(note)
+    pm.instruments.append(inst)
+    pm.remove_invalid_notes()
+    assert len(pm.instruments[0].notes) == 0
+
+
+def test_write_and_read_back():
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0, name='Test')
+    inst.notes.append(pretty_midi.Note(100, 60, 0.5, 1.0))
+    pm.instruments.append(inst)
+
+    pm.lyrics.append(pretty_midi.Lyric('test lyric', 0.6))
+    pm.key_signature_changes.append(pretty_midi.KeySignature(1, 0.2)) # G Major
+    pm.time_signature_changes.append(pretty_midi.TimeSignature(3, 4, 0.1))
+
+    with NamedTemporaryFile() as f:
+        pm.write(f.name)
+        pm_read = pretty_midi.PrettyMIDI(f.name)
+
+    assert len(pm_read.instruments) == 1
+    assert pm_read.instruments[0].name == 'Test'
+    assert len(pm_read.lyrics) == 1
+    assert pm_read.lyrics[0].text == 'test lyric'
+    assert len(pm_read.key_signature_changes) == 1
+    assert pm_read.key_signature_changes[0].key_number == 1
+    # Note: PrettyMIDI adds a default 4/4 at 0 if none exists,
+    # or it might have changed based on our 3/4 at 0.1
+    assert any(ts.numerator == 3 for ts in pm_read.time_signature_changes)
+
+
+def test_corrupt_midi_init():
+    mid = mido.MidiFile()
+    track = mido.MidiTrack()
+    track.append(mido.Message('note_on', note=60, time=int(2e7))) # Very large time
+    mid.tracks.append(track)
+    with pytest.raises(ValueError, match='it is likely corrupt'):
+        pretty_midi.PrettyMIDI(mido_object=mid)
+
+
+def test_tempo_signature_warnings():
+    mid = mido.MidiFile()
+    track0 = mido.MidiTrack()
+    track0.append(mido.MetaMessage('set_tempo', tempo=500000, time=0))
+    mid.tracks.append(track0)
+
+    track1 = mido.MidiTrack()
+    # Tempo change on track 1 (invalid for type 1)
+    track1.append(mido.MetaMessage('set_tempo', tempo=400000, time=100))
+    mid.tracks.append(track1)
+
+    with pytest.warns(RuntimeWarning, match='Tempo, Key or Time signature change events found on non-zero tracks'):
+        pretty_midi.PrettyMIDI(mido_object=mid)
+
+
+def test_instrument_coverage():
+    # is_drum histogram
+    inst = pretty_midi.Instrument(0, is_drum=True)
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    assert np.all(inst.get_pitch_class_histogram() == 0)
+
+    # get_piano_roll with sustain pedal
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 0.5))
+    # Sustain pedal on at 0.4, off at 1.0
+    inst.control_changes.append(pretty_midi.ControlChange(64, 100, 0.4))
+    inst.control_changes.append(pretty_midi.ControlChange(64, 0, 1.0))
+    pr = inst.get_piano_roll(fs=100)
+    # Note should be extended to 1.0
+    assert np.all(pr[60, 50:100] == 100)
+
+    # get_piano_roll with pitch bend
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 1.0))
+    # Pitch bend +1 semitone at 0.5
+    inst.pitch_bends.append(pretty_midi.PitchBend(4096, 0.5)) # 4096/8192 * 2 = 1 semitone
+    pr = inst.get_piano_roll(fs=100)
+    # Check that some energy moved to 61
+    assert np.any(pr[61, 50:100] > 0)
+
+    # get_piano_roll drum track empty
+    inst = pretty_midi.Instrument(0, is_drum=True)
+    assert inst.get_piano_roll().shape[0] == 128
+    assert np.all(inst.get_piano_roll(times=np.array([0, 1])) == 0)
+
+    # synthesize invalid wave
+    inst_not_drum = pretty_midi.Instrument(0, is_drum=False)
+    # Need a note to avoid early return if get_end_time is 0
+    inst_not_drum.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    with pytest.raises(ValueError, match='wave should be a callable'):
+        inst_not_drum.synthesize(wave='not callable')
+
+    # fluidsynth with more events
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    inst.pitch_bends.append(pretty_midi.PitchBend(1000, 0.5))
+    inst.control_changes.append(pretty_midi.ControlChange(1, 100, 0.2))
+    pm.instruments.append(inst)
+
+    from unittest.mock import MagicMock
+    mock_synth = MagicMock()
+    # Return 2*n samples because the code does [::2]
+    mock_synth.get_samples.side_effect = lambda n: np.zeros(2 * n)
+    mock_synth.get_setting.return_value = 44100
+
+    import pretty_midi.instrument as inst_mod
+    import pretty_midi.pretty_midi as pm_mod
+    original_get_fs_inst = inst_mod.get_fluidsynth_instance
+    original_get_fs_pm = pm_mod.get_fluidsynth_instance
+    with MagicMock() as mock_get_fs:
+        mock_get_fs.return_value = (mock_synth, 0, True)
+        inst_mod.get_fluidsynth_instance = mock_get_fs
+        pm_mod.get_fluidsynth_instance = mock_get_fs
+        
+        # We need to test the fluidsynth method of the instrument specifically
+        # to hit its internal loops
+        syn = inst.fluidsynth(synthesizer=mock_synth)
+        assert syn.size > 0
+        assert mock_synth.noteon.called
+        assert mock_synth.pitch_bend.called
+        assert mock_synth.cc.called
+
+    inst_mod.get_fluidsynth_instance = original_get_fs_inst
+    pm_mod.get_fluidsynth_instance = original_get_fs_pm
+
+
+def test_note_repr():
+    note = pretty_midi.Note(100, 60, 0.5, 1.0)
+    assert 'Note' in repr(note)
+    assert note.duration == 0.5
+
+
+def test_containers_repr_str():
+    # PitchBend
+    pb = pretty_midi.PitchBend(100, 0.5)
+    assert 'PitchBend' in repr(pb)
+    # ControlChange
+    cc = pretty_midi.ControlChange(1, 100, 0.5)
+    assert 'ControlChange' in repr(cc)
+    # TimeSignature
+    ts = pretty_midi.TimeSignature(4, 4, 0.5)
+    assert 'TimeSignature' in repr(ts)
+    assert '4/4' in str(ts)
+    with pytest.raises(ValueError):
+        pretty_midi.TimeSignature(0, 4, 0.5)
+    with pytest.raises(ValueError):
+        pretty_midi.TimeSignature(4, 0, 0.5)
+    with pytest.raises(ValueError):
+        pretty_midi.TimeSignature(4, 4, -1)
+    # KeySignature
+    ks = pretty_midi.KeySignature(0, 0.5)
+    assert 'KeySignature' in repr(ks)
+    assert 'C Major' in str(ks)
+    with pytest.raises(ValueError):
+        pretty_midi.KeySignature(24, 0.5)
+    with pytest.raises(ValueError):
+        pretty_midi.KeySignature(0, -1)
+    # Lyric
+    lyric = pretty_midi.Lyric('test', 0.5)
+    assert 'Lyric' in repr(lyric)
+    assert 'test' in str(lyric)
+    # Text
+    text = pretty_midi.Text('test', 0.5)
+    assert 'Text' in repr(text)
+    assert 'test' in str(text)
+
+
+def test_pretty_midi_repr():
+    pm = pretty_midi.PrettyMIDI()
+    assert 'PrettyMIDI' in repr(pm)
+    inst = pretty_midi.Instrument(0, name='Test')
+    assert 'Instrument' in repr(inst)
