@@ -254,6 +254,7 @@ class Instrument(object):
             Weight frequency by note velocity.
         normalize : bool
             Normalizes the histogram such that the sum of bin values is 1.
+            If the total weight is zero, returns an all-zero histogram.
 
         Returns
         -------
@@ -276,8 +277,10 @@ class Instrument(object):
 
         histogram, _ = np.histogram([n.pitch % 12 for n in self.notes],
                                     bins=np.arange(13),
-                                    weights=weights,
-                                    density=normalize)
+                                    weights=weights)
+
+        if normalize:
+            histogram /= (histogram.sum() + (histogram.sum() == 0))
 
         return histogram
 
@@ -291,6 +294,7 @@ class Instrument(object):
         ----------
         normalize : bool
             Normalize transition matrix such that matrix sum equals to 1.
+            If there are no transitions, returns an all-zero matrix.
         time_thresh : float
             Maximum temporal threshold, in seconds, between the start of a note
             and end time of any other note for a transition to be added.
@@ -318,8 +322,10 @@ class Instrument(object):
 
         transition_matrix, _, _ = np.histogram2d(nodes[sources],
                                                  nodes[targets],
-                                                 bins=np.arange(13),
-                                                 density=normalize)
+                                                 bins=np.arange(13))
+        if normalize:
+            transition_matrix /= (transition_matrix.sum() +
+                                  (transition_matrix.sum() == 0))
         return transition_matrix
 
     def remove_invalid_notes(self):
