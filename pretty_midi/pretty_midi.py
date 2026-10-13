@@ -1428,8 +1428,8 @@ class PrettyMIDI(object):
                 'text_events' :lambda e: (5 * 256 * 256),
                 'program_change': lambda e: (6 * 256 * 256),
                 'pitchwheel': lambda e: ((7 * 256 * 256) + e.pitch),
-                'control_change': lambda e: (
-                    (8 * 256 * 256) + (e.control * 256) + e.value),
+                # Preserve the order of controller transactions at a tick.
+                'control_change': lambda e: (8 * 256 * 256),
                 'note_off': lambda e: ((9 * 256 * 256) + (e.note * 256)),
                 'note_on': lambda e: (
                     (10 * 256 * 256) + (e.note * 256) + e.velocity),
@@ -1533,7 +1533,8 @@ class PrettyMIDI(object):
                     'pitchwheel', time=self.time_to_tick(bend.time),
                     channel=channel, pitch=bend.pitch))
             # Add all control change events
-            for control_change in instrument.control_changes:
+            for control_change in sorted(instrument.control_changes,
+                                         key=lambda event: event.time):
                 track.append(mido.Message(
                     'control_change',
                     time=self.time_to_tick(control_change.time),
