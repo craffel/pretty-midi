@@ -15,11 +15,14 @@ def _midi_with_controllers(events):
     return midi
 
 
-def _written_track(midi):
+def _written_bytes(midi):
     midi_file = io.BytesIO()
     midi.write(midi_file)
-    midi_file.seek(0)
-    return mido.MidiFile(file=midi_file).tracks[1]
+    return midi_file.getvalue()
+
+
+def _written_track(midi):
+    return mido.MidiFile(file=io.BytesIO(_written_bytes(midi))).tracks[1]
 
 
 def _written_controllers(midi):
@@ -74,3 +77,37 @@ def test_write_keeps_controller_priority_before_note_events():
 
     assert events == ['control_change', 'control_change', 'note_on',
                       'note_on']
+
+
+def test_repeated_writes_are_identical_without_changing_controllers():
+    midi = _midi_with_controllers([
+        (7, 40, 1.0009), (101, 0, 1.0), (100, 0, 1.0),
+        (7, 100, 1.0001), (6, 2, 1.0), (38, 10, 1.0),
+        (121, 0, 2.0), (1, 80, 2.0)])
+    instrument = midi.instruments[0]
+    instrument.name = 'Controller transactions'
+    instrument.pitch_bends.append(pretty_midi.PitchBend(512, 2.0))
+    controllers = instrument.control_changes
+    original_events = tuple(controllers)
+    original_values = [
+        (event.number, event.value, event.time) for event in controllers]
+
+    first = _written_bytes(midi)
+    for _ in range(3):
+        assert _written_bytes(midi) == first
+
+    assert instrument.control_changes is controllers
+    assert len(controllers) == len(original_events)
+    assert all(event is original for event, original in
+               zip(controllers, original_events))
+    assert [(event.number, event.value, event.time)
+            for event in controllers] == original_values
+
+
+def test_equivalent_controller_inputs_produce_identical_bytes():
+    events = [(101, 0, 1.0), (100, 0, 1.0), (6, 2, 1.0),
+              (38, 10, 1.0), (7, 40, 1.0009), (7, 100, 1.0001)]
+    first = _midi_with_controllers(events)
+    second = _midi_with_controllers(events)
+
+    assert _written_bytes(first) == _written_bytes(second)
