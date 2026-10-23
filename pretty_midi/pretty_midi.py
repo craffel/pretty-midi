@@ -1463,8 +1463,8 @@ class PrettyMIDI(object):
         for (tick, tick_scale) in self._tick_scales:
             timing_track.append(mido.MetaMessage(
                 'set_tempo', time=tick,
-                # Convert from microseconds per quarter note to BPM
-                tempo=int(6e7/(60./(tick_scale*self.resolution)))))
+                # Convert seconds per tick to microseconds per quarter note
+                tempo=mido.bpm2tempo(60./(tick_scale*self.resolution))))
         # Add in each time signature
         for ts in self.time_signature_changes:
             timing_track.append(mido.MetaMessage(
