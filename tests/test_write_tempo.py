@@ -4,9 +4,9 @@ import mido
 import pretty_midi
 
 
-def _write_midi(pm):
+def _write_midi(pm, **kwargs):
     output = io.BytesIO()
-    pm.write(output)
+    pm.write(output, **kwargs)
     output.seek(0)
     return mido.MidiFile(file=output)
 
@@ -26,7 +26,17 @@ def test_write_rounds_initial_tempo():
                        (120, 500000), (240, 250000),
                        (6e7 / 500000.4, 500000), (6e7 / 500000.6, 500001)]:
         pm = pretty_midi.PrettyMIDI(initial_tempo=bpm)
+        assert _tempo_events(_write_midi(pm, round_tempo=True)) == [(0, tempo)]
+
+
+def test_write_truncates_tempo_by_default():
+    for bpm, tempo in [(90, 666666), (123, 487804), (137, 437956),
+                       (120, 500000), (240, 250000),
+                       (6e7 / 500000.4, 500000), (6e7 / 500000.6, 500000)]:
+        pm = pretty_midi.PrettyMIDI(initial_tempo=bpm)
         assert _tempo_events(_write_midi(pm)) == [(0, tempo)]
+        written = _write_midi(pm, round_tempo=False)
+        assert _tempo_events(written) == [(0, tempo)]
 
 
 def test_write_preserves_integer_tempo_changes():
@@ -47,7 +57,7 @@ def test_write_preserves_integer_tempo_changes():
             source.save(file=encoded)
             encoded.seek(0)
             pm = pretty_midi.PrettyMIDI(encoded)
-            source = _write_midi(pm)
+            source = _write_midi(pm, round_tempo=True)
             assert source.ticks_per_beat == resolution
             assert _tempo_events(source) == expected
             notes = [(event.time, event.note, event.velocity)
@@ -62,7 +72,7 @@ def test_write_keeps_note_ticks_with_rounded_tempo():
     instrument.notes.append(pretty_midi.Note(100, 60, 0, 60. / 123))
     pm.instruments.append(instrument)
     original_scales = list(pm._tick_scales)
-    written = _write_midi(pm)
+    written = _write_midi(pm, round_tempo=True)
     assert _tempo_events(written) == [(0, 487805)]
     tick = 0
     notes = []
