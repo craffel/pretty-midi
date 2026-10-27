@@ -960,6 +960,7 @@ class PrettyMIDI(object):
             e.g. ``np.sin``, ``scipy.signal.square``, etc.
         normalize : bool
             Default ``True``, which normalizes the output wave to the range [-1, 1].
+            Silent signals remain all zeros.
             Otherwise, divides the output by the maximum value of a 16-bit integer 
             multiplied by the number of instruments, and lets the user handle accordingly.
 
@@ -982,7 +983,9 @@ class PrettyMIDI(object):
 
         if normalize:
             # Hard normalize to [-1, 1]
-            synthesized /= np.abs(synthesized).max()
+            max_amplitude = np.abs(synthesized).max()
+            if max_amplitude > 0:
+                synthesized /= max_amplitude
         else:
             # Normalize by the maximum absolute value of a 16-bit integer
             # to prevent clipping
