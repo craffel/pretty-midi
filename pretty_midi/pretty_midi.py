@@ -1391,13 +1391,17 @@ class PrettyMIDI(object):
         for instrument in self.instruments:
             instrument.remove_invalid_notes()
 
-    def write(self, filename):
+    def write(self, filename, round_tempo=False):
         """Write the MIDI data out to a .mid file.
 
         Parameters
         ----------
         filename : str or file
             Path or file to write .mid file to.
+        round_tempo : bool
+            If True, round MIDI tempos to the nearest integer microsecond per
+            quarter note. If False, truncate them for backwards compatibility.
+            Default is False.
 
         """
 
@@ -1461,10 +1465,11 @@ class PrettyMIDI(object):
 
         # Add in each tempo change event
         for (tick, tick_scale) in self._tick_scales:
+            # Convert seconds per tick to microseconds per quarter note
+            tempo = (mido.bpm2tempo(60./(tick_scale*self.resolution))
+                     if round_tempo else int(6e7/(60./(tick_scale*self.resolution))))
             timing_track.append(mido.MetaMessage(
-                'set_tempo', time=tick,
-                # Convert from microseconds per quarter note to BPM
-                tempo=int(6e7/(60./(tick_scale*self.resolution)))))
+                'set_tempo', time=tick, tempo=tempo))
         # Add in each time signature
         for ts in self.time_signature_changes:
             timing_track.append(mido.MetaMessage(
