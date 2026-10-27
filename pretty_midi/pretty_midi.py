@@ -832,9 +832,10 @@ class PrettyMIDI(object):
 
         """
 
-        # If there are no instruments, return an empty array
+        # If there are no instruments, return zeros on the requested time grid
         if len(self.instruments) == 0:
-            return np.zeros((128, 0))
+            columns = 0 if times is None else times.shape[0]
+            return np.zeros((128, columns))
 
         # Get piano rolls for each instrument
         piano_rolls = [i.get_piano_roll(fs=fs, times=times,
