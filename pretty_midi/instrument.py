@@ -1,6 +1,7 @@
 """The Instrument class holds all events for a single instrument and contains
 functions for extracting information from the events it contains.
 """
+import bisect
 from warnings import warn
 import numpy as np
 
@@ -332,14 +333,9 @@ class Instrument(object):
         """Removes any notes whose end time is before or at their start time.
 
         """
-        # Crete a list of all invalid notes
-        notes_to_delete = []
-        for note in self.notes:
-            if note.end <= note.start:
-                notes_to_delete.append(note)
-        # Remove the notes found
-        for note in notes_to_delete:
-            self.notes.remove(note)
+        # Filter in one pass; list.remove per note is quadratic
+        self.notes[:] = [note for note in self.notes
+                         if not note.end <= note.start]
 
     def synthesize(self, fs=44100, wave=np.sin):
         """Synthesize the instrument's notes using some waveshape.
@@ -387,6 +383,9 @@ class Instrument(object):
             bend_amount = (2**(1/12.))**bend_semitones
             # Sample indices effected by the bend
             bend_multiplier[start:end] = bend_amount
+        # Bend positions in samples, sorted, so each note can find its bends
+        # by bisection instead of scanning every bend
+        bend_samples = [int(bend.time*fs) for bend in ordered_bends]
         # Add in waveform for each note
         for note in self.notes:
             # Indices in samples of this note
@@ -398,17 +397,17 @@ class Instrument(object):
             # discontinuity. So, we also need an array of offsets which get
             # applied to compensate.
             offsets = np.zeros(end - start)
-            for bend in ordered_bends:
-                bend_sample = int(bend.time*fs)
-                # Does this pitch bend fall within this note?
-                if bend_sample > start and bend_sample < end:
-                    # Compute the average bend so far
-                    bend_so_far = bend_multiplier[start:bend_sample].mean()
-                    bend_amount = bend_multiplier[bend_sample]
-                    # Compute the offset correction
-                    offset = (bend_so_far - bend_amount)*(bend_sample - start)
-                    # Store this offset for samples effected
-                    offsets[bend_sample - start:] = offset
+            # Pitch bends strictly inside this note
+            for bend_sample in bend_samples[
+                    bisect.bisect_right(bend_samples, start):
+                    bisect.bisect_left(bend_samples, end)]:
+                # Compute the average bend so far
+                bend_so_far = bend_multiplier[start:bend_sample].mean()
+                bend_amount = bend_multiplier[bend_sample]
+                # Compute the offset correction
+                offset = (bend_so_far - bend_amount)*(bend_sample - start)
+                # Store this offset for samples effected
+                offsets[bend_sample - start:] = offset
             # Compute the angular frequencies, bent, over this interval
             frequencies = 2*np.pi*frequency*(bend_multiplier[start:end])/fs
             # Synthesize using wave function at this frequency

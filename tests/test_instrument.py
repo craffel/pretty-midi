@@ -78,3 +78,29 @@ def test_normalized_transition_matrix_with_silent_instrument():
     expected = np.zeros((12, 12))
     expected[0, 4] = 1.
     np.testing.assert_array_equal(matrix, expected)
+
+
+def test_remove_invalid_notes_keeps_order_and_list():
+    instrument = pretty_midi.Instrument(0)
+    notes = [pretty_midi.Note(100, 60 + i, i, i + 1) for i in range(6)]
+    notes[1].end = notes[1].start
+    notes[4].end = notes[4].start - .5
+    instrument.notes = notes + [notes[1]]
+    original_list = instrument.notes
+    instrument.remove_invalid_notes()
+    assert instrument.notes is original_list
+    assert instrument.notes == [notes[0], notes[2], notes[3], notes[5]]
+
+
+@pytest.mark.parametrize('bend_times', [[.5], [.25, .5, .75], [0., .5, 1.]])
+def test_synthesize_pitch_bend_keeps_phase_continuous(bend_times):
+    fs = 8000
+    instrument = pretty_midi.Instrument(0)
+    instrument.notes = [pretty_midi.Note(1, 69, 0., 1.)]
+    instrument.pitch_bends = [
+        pretty_midi.PitchBend(4096 * (i % 2 * 2 - 1), t)
+        for i, t in enumerate(bend_times)]
+    waveform = instrument.synthesize(fs=fs)[:fs]
+    # Without the per-bend offset the phase would jump at each bend
+    max_step = 2 * np.pi * pretty_midi.note_number_to_hz(70) / fs
+    assert np.abs(np.diff(waveform)).max() < 1.05 * max_step
