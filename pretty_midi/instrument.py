@@ -91,9 +91,10 @@ class Instrument(object):
             Piano roll of this instrument.
 
         """
-        # If there are no notes, return an empty matrix
+        # If there are no notes, return zeros on the requested time grid
         if self.notes == []:
-            return np.array([[]]*128)
+            columns = 0 if times is None else times.shape[0]
+            return np.zeros((128, columns))
         # Get the end time of the last event
         end_time = self.get_end_time()
         # Extend end time if one was provided
