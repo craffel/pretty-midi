@@ -104,3 +104,143 @@ def test_synthesize_pitch_bend_keeps_phase_continuous(bend_times):
     # Without the per-bend offset the phase would jump at each bend
     max_step = 2 * np.pi * pretty_midi.note_number_to_hz(70) / fs
     assert np.abs(np.diff(waveform)).max() < 1.05 * max_step
+
+
+# Verbatim copies of the implementations before the speed-ups, used as
+# references below. Only `self` and the helper names are changed.
+def _legacy_remove_invalid_notes(instrument):
+    # Crete a list of all invalid notes
+    notes_to_delete = []
+    for note in instrument.notes:
+        if note.end <= note.start:
+            notes_to_delete.append(note)
+    # Remove the notes found
+    for note in notes_to_delete:
+        instrument.notes.remove(note)
+
+
+def _legacy_synthesize(instrument, fs=44100, wave=np.sin):
+    # Pre-allocate output waveform
+    synthesized = np.zeros(int(fs*(instrument.get_end_time() + 1)))
+
+    # If we're a percussion channel, just return the zeros
+    if instrument.is_drum:
+        return synthesized
+    # If the above if statement failed, we need to revert back to default
+    if not hasattr(wave, '__call__'):
+        raise ValueError('wave should be a callable Python function')
+    # This is a simple way to make the end of the notes fade-out without
+    # clicks
+    fade_out = np.linspace(1, 0, int(.1*fs))
+    # Create a frequency multiplier array for pitch bend
+    bend_multiplier = np.ones(synthesized.shape)
+    # Need to sort the pitch bend list for the loop below to work
+    ordered_bends = sorted(instrument.pitch_bends, key=lambda bend: bend.time)
+    # Add in a bend of 0 at the end of time
+    end_bend = pretty_midi.PitchBend(0, instrument.get_end_time())
+    for start_bend, end_bend in zip(ordered_bends,
+                                    ordered_bends[1:] + [end_bend]):
+        # Bend start and end time in samples
+        start = int(start_bend.time*fs)
+        end = int(end_bend.time*fs)
+        # The multiplier will be (twelfth root of 2)^(bend semitones)
+        bend_semitones = pretty_midi.pitch_bend_to_semitones(start_bend.pitch)
+        bend_amount = (2**(1/12.))**bend_semitones
+        # Sample indices effected by the bend
+        bend_multiplier[start:end] = bend_amount
+    # Add in waveform for each note
+    for note in instrument.notes:
+        # Indices in samples of this note
+        start = int(fs*note.start)
+        end = int(fs*note.end)
+        # Get frequency of note from MIDI note number
+        frequency = pretty_midi.note_number_to_hz(note.pitch)
+        # When a pitch bend gets applied, there will be a sample
+        # discontinuity. So, we also need an array of offsets which get
+        # applied to compensate.
+        offsets = np.zeros(end - start)
+        for bend in ordered_bends:
+            bend_sample = int(bend.time*fs)
+            # Does this pitch bend fall within this note?
+            if bend_sample > start and bend_sample < end:
+                # Compute the average bend so far
+                bend_so_far = bend_multiplier[start:bend_sample].mean()
+                bend_amount = bend_multiplier[bend_sample]
+                # Compute the offset correction
+                offset = (bend_so_far - bend_amount)*(bend_sample - start)
+                # Store this offset for samples effected
+                offsets[bend_sample - start:] = offset
+        # Compute the angular frequencies, bent, over this interval
+        frequencies = 2*np.pi*frequency*(bend_multiplier[start:end])/fs
+        # Synthesize using wave function at this frequency
+        note_waveform = wave(frequencies*np.arange(end - start) +
+                             2*np.pi*frequency*offsets/fs)
+        # Apply an exponential envelope
+        envelope = np.exp(-np.arange(end - start)/(1.0*fs))
+        # Make the end of the envelope be a fadeout
+        if envelope.shape[0] > fade_out.shape[0]:
+            envelope[-fade_out.shape[0]:] *= fade_out
+        else:
+            envelope *= np.linspace(1, 0, envelope.shape[0])
+        # Multiply by velocity (don't think it's linearly scaled but
+        # whatever)
+        envelope *= note.velocity
+        # Add in envelope'd waveform to the synthesized signal
+        synthesized[start:end] += envelope*note_waveform
+
+    return synthesized
+
+
+def _random_instrument(rng, n_notes, n_bends):
+    """Notes with zero and negative durations and one listed twice, and
+    bends that may fall exactly on note boundaries."""
+    grid = .01
+    instrument = pretty_midi.Instrument(0)
+    for _ in range(n_notes):
+        start = rng.integers(0, 200) * grid
+        end = start + rng.integers(-3, 30) * grid
+        note = pretty_midi.Note(
+            int(rng.integers(1, 128)), int(rng.integers(30, 90)),
+            start, start + 1.)
+        # The constructor rejects invalid durations, so set the end after
+        note.end = max(end, 0.)
+        instrument.notes.append(note)
+    if instrument.notes:
+        instrument.notes.append(
+            instrument.notes[rng.integers(len(instrument.notes))])
+    note_times = [t for note in instrument.notes
+                  for t in (note.start, note.end)]
+    for _ in range(n_bends):
+        if note_times and rng.random() < .3:
+            time = note_times[rng.integers(len(note_times))]
+        else:
+            time = rng.integers(0, 230) * grid
+        instrument.pitch_bends.append(
+            pretty_midi.PitchBend(int(rng.integers(-8192, 8192)), time))
+    return instrument
+
+
+@pytest.mark.parametrize('seed', range(200))
+def test_remove_invalid_notes_matches_legacy(seed):
+    rng = np.random.default_rng(seed)
+    instrument = _random_instrument(rng, int(rng.integers(0, 40)), 0)
+    legacy = pretty_midi.Instrument(0)
+    legacy.notes = list(instrument.notes)
+    _legacy_remove_invalid_notes(legacy)
+    expected = legacy.notes
+    instrument.remove_invalid_notes()
+    assert len(instrument.notes) == len(expected)
+    assert all(a is b for a, b in zip(instrument.notes, expected))
+
+
+@pytest.mark.parametrize('seed', range(100))
+@pytest.mark.parametrize('fs', [800, 8000, 22050])
+def test_synthesize_matches_legacy(seed, fs):
+    rng = np.random.default_rng(seed)
+    instrument = _random_instrument(
+        rng, int(rng.integers(1, 15)), int(rng.integers(0, 25)))
+    instrument.remove_invalid_notes()
+    expected = _legacy_synthesize(instrument, fs=fs)
+    actual = instrument.synthesize(fs=fs)
+    assert actual.dtype == expected.dtype
+    np.testing.assert_array_equal(actual, expected)
