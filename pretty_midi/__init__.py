@@ -123,6 +123,13 @@ Further examples can be found in the source tree's `examples directory
    :members:
    :undoc-members:
 
+``pretty_midi.Marker``
+======================
+
+.. autoclass:: Marker
+   :members:
+   :undoc-members:
+
 Utility functions
 =================
 .. autofunction:: key_number_to_key_name
