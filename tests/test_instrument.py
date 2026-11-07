@@ -191,6 +191,32 @@ def _legacy_synthesize(instrument, fs=44100, wave=np.sin):
     return synthesized
 
 
+def _legacy_get_pitch_class_transition_matrix(instrument, normalize=False,
+                                              time_thresh=0.05):
+    # instrument is drum or less than one note, return all zeros
+    if instrument.is_drum or len(instrument.notes) <= 1:
+        return np.zeros((12, 12))
+
+    # retrieve note starts, ends and pitch classes(nodes) from self.notes
+    starts, ends, nodes = np.array(
+        [[x.start, x.end, x.pitch % 12] for x in instrument.notes]).T
+
+    # compute distance matrix for all start and end time pairs
+    dist_mat = np.subtract.outer(ends, starts)
+
+    # find indices of pairs of notes where the end time of one note is
+    # within time_thresh of the start time of the other
+    sources, targets = np.where(abs(dist_mat) < time_thresh)
+
+    transition_matrix, _, _ = np.histogram2d(nodes[sources],
+                                             nodes[targets],
+                                             bins=np.arange(13))
+    if normalize:
+        transition_matrix /= (transition_matrix.sum() +
+                              (transition_matrix.sum() == 0))
+    return transition_matrix
+
+
 def _random_instrument(rng, n_notes, n_bends):
     """Notes with zero and negative durations and one listed twice, and
     bends that may fall exactly on note boundaries."""
@@ -244,3 +270,30 @@ def test_synthesize_matches_legacy(seed, fs):
     actual = instrument.synthesize(fs=fs)
     assert actual.dtype == expected.dtype
     np.testing.assert_array_equal(actual, expected)
+
+
+@pytest.mark.parametrize('seed', range(100))
+@pytest.mark.parametrize('time_thresh', [.05, .01, 0., 1e-9, .3, -1.,
+                                         np.inf])
+@pytest.mark.parametrize('offset', [0., 1e6])
+def test_transition_matrix_matches_legacy(seed, time_thresh, offset):
+    rng = np.random.default_rng(seed)
+    n_notes = int(rng.integers(0, 60))
+    instrument = pretty_midi.Instrument(0)
+    for _ in range(n_notes):
+        # Mix grid-aligned times, which hit the threshold exactly, with
+        # arbitrary ones
+        if rng.random() < .5:
+            start = rng.integers(0, 100) * .01
+            end = start + rng.integers(0, 20) * .01
+        else:
+            start = rng.random() * 2
+            end = start + rng.random() * .3
+        instrument.notes.append(pretty_midi.Note(
+            int(rng.integers(0, 128)), 100, start + offset, end + offset))
+    for normalize in (False, True):
+        expected = _legacy_get_pitch_class_transition_matrix(
+            instrument, normalize, time_thresh)
+        actual = instrument.get_pitch_class_transition_matrix(
+            normalize, time_thresh)
+        np.testing.assert_array_equal(actual, expected)
