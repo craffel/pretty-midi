@@ -224,3 +224,26 @@ class Text(object):
 
     def __str__(self):
         return '"{}" at {:.2f} seconds'.format(self.text, self.time)
+
+
+class Marker(object):
+    """Timestamped MIDI marker, such as a song section label.
+
+    Attributes
+    ----------
+    text : str
+        The text of the marker.
+    time : float
+        The time of the marker in seconds.
+    """
+
+    def __init__(self, text, time):
+        self.text = text
+        self.time = time
+
+    def __repr__(self):
+        return 'Marker(text="{}", time={})'.format(
+            self.text.replace('"', r'\"'), self.time)
+
+    def __str__(self):
+        return '"{}" at {:.2f} seconds'.format(self.text, self.time)

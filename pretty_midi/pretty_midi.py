@@ -18,7 +18,7 @@ from heapq import merge
 
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
-                         PitchBend, ControlChange, Text)
+                         PitchBend, ControlChange, Text, Marker)
 from .utilities import (key_name_to_key_number, qpm_to_bpm, note_number_to_hz)
 from .fluidsynth import get_fluidsynth_instance
 
@@ -60,6 +60,9 @@ class PrettyMIDI(object):
         List of :class:`pretty_midi.Lyric` objects.
     text_events : list
         List of :class:`pretty_midi.Text` objects.
+    markers : list
+        List of :class:`pretty_midi.Marker` objects from all tracks. Markers
+        are written to the timing track; original track indices are not stored.
     """
 
     def __init__(self, midi_file=None, resolution=220, initial_tempo=120., charset='latin1', mido_object=None):
@@ -146,6 +149,8 @@ class PrettyMIDI(object):
             self.lyrics = []
             # Empty text events list
             self.text_events = []
+            # Empty markers list
+            self.markers = []
             # MIDI Charset
             self._charset = charset
 
@@ -188,7 +193,7 @@ class PrettyMIDI(object):
         """Populates ``self.time_signature_changes`` with ``TimeSignature``
         objects, ``self.key_signature_changes`` with ``KeySignature`` objects,
         ``self.lyrics`` with ``Lyric`` objects and ``self.text_events`` with
-        ``Text`` objects.
+        ``Text`` objects, and ``self.markers`` with ``Marker`` objects.
 
         Parameters
         ----------
@@ -202,6 +207,7 @@ class PrettyMIDI(object):
         self.time_signature_changes = []
         self.lyrics = []
         self.text_events = []
+        self.markers = []
 
         for event in midi_data.tracks[0]:
             if event.type == 'key_signature':
@@ -216,14 +222,16 @@ class PrettyMIDI(object):
                                        self.__tick_to_time[event.time])
                 self.time_signature_changes.append(ts_obj)
 
-        # We search for lyrics and text events on all tracks
-        # Lists of lyrics and text events lists, for every track
+        # We search for lyrics, text events and markers on all tracks
+        # Lists of metadata lists, for every track
         tracks_with_lyrics = []
         tracks_with_text_events = []
+        tracks_with_markers = []
         for track in midi_data.tracks:
             # Track specific lists that get appended if not empty
             lyrics = []
             text_events = []
+            markers = []
             for event in track:
                 if event.type == 'lyrics':
                     lyrics.append(Lyric(
@@ -231,15 +239,21 @@ class PrettyMIDI(object):
                 elif event.type == 'text':
                     text_events.append(Text(
                         event.text, self.__tick_to_time[event.time]))
+                elif event.type == 'marker':
+                    markers.append(Marker(
+                        event.text, self.__tick_to_time[event.time]))
 
             if lyrics:
                 tracks_with_lyrics.append(lyrics)
             if text_events:
                 tracks_with_text_events.append(text_events)
+            if markers:
+                tracks_with_markers.append(markers)
 
         # We merge the already sorted lists for every track, based on time
         self.lyrics = list(merge(*tracks_with_lyrics, key=lambda x: x.time))
         self.text_events = list(merge(*tracks_with_text_events, key=lambda x: x.time))
+        self.markers = list(merge(*tracks_with_markers, key=lambda x: x.time))
 
 
     def _update_tick_to_time(self, max_tick):
@@ -475,7 +489,7 @@ class PrettyMIDI(object):
         """
         # Get end times from all instruments, and times of all meta-events
         meta_events = [self.time_signature_changes, self.key_signature_changes,
-                       self.lyrics, self.text_events]
+                       self.lyrics, self.text_events, self.markers]
         times = ([i.get_end_time() for i in self.instruments] +
                  [e.time for m in meta_events for e in m] +
                  self.get_tempo_changes()[0].tolist())
@@ -1140,6 +1154,9 @@ class PrettyMIDI(object):
         occur exactly on a time in ``original_times``, their timing will be
         linearly interpolated.
 
+        Markers are kept only when their original times lie within the supplied
+        interval, including both endpoints. Simultaneous markers are retained.
+
         Parameters
         ----------
         original_times : np.ndarray
@@ -1251,6 +1268,18 @@ class PrettyMIDI(object):
         # Adjust text events
         adjust_meta(self.text_events)
 
+        # Markers label individual positions rather than persistent state.
+        # Discard out-of-range labels instead of moving them to a boundary.
+        self.markers[:] = sorted(
+            (marker for marker in self.markers
+             if original_times[0] <= marker.time <= original_times[-1]),
+            key=lambda marker: marker.time)
+        marker_times = np.interp(
+            [marker.time for marker in self.markers],
+            original_times, new_times)
+        for marker, time in zip(self.markers, marker_times):
+            marker.time = time
+
         # Remove all downbeats which appear before the start of original_times
         original_downbeats = original_downbeats[
             original_downbeats >= original_times[0]]
@@ -1357,6 +1386,8 @@ class PrettyMIDI(object):
     def crop(self, start_time=0.0, end_time=None):
         """Crops the MIDI object, keeping only the segment from ``start_time``
         to ``end_time``.
+
+        Markers at both endpoints are retained, without shifting their times.
 
         Parameters
         ----------
@@ -1498,6 +1529,11 @@ class PrettyMIDI(object):
         for l in self.text_events:
             timing_track.append(mido.MetaMessage(
                 'text', time=self.time_to_tick(l.time), text=l.text))
+        # Add markers in chronological order without changing the caller's list
+        for marker in sorted(self.markers, key=lambda marker: marker.time):
+            timing_track.append(mido.MetaMessage(
+                'marker', time=self.time_to_tick(marker.time),
+                text=marker.text))
         # Sort the (absolute-tick-timed) events.
         timing_track.sort(key=functools.cmp_to_key(event_compare))
         # Add in an end of track event
