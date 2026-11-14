@@ -315,12 +315,21 @@ class Instrument(object):
         starts, ends, nodes = np.array(
             [[x.start, x.end, x.pitch % 12] for x in self.notes]).T
 
-        # compute distance matrix for all start and end time pairs
-        dist_mat = np.subtract.outer(ends, starts)
-
-        # find indices of pairs of notes where the end time of one note is
-        # within time_thresh of the start time of the other
-        sources, targets = np.where(abs(dist_mat) < time_thresh)
+        # Only starts near each end can match, so search a sorted window
+        # instead of building the full len(notes)**2 distance matrix
+        order = np.argsort(starts, kind='stable')
+        sorted_starts = starts[order]
+        # Widen the window so float rounding can't drop a pair
+        width = 2*abs(time_thresh) + 4*np.spacing(np.abs(ends))
+        lo = np.searchsorted(sorted_starts, ends - width, 'left')
+        hi = np.searchsorted(sorted_starts, ends + width, 'right')
+        counts = hi - lo
+        sources = np.repeat(np.arange(len(ends)), counts)
+        firsts = np.repeat(lo - (np.cumsum(counts) - counts), counts)
+        targets = order[firsts + np.arange(counts.sum())]
+        # Apply the original test to the candidates
+        mask = abs(ends[sources] - starts[targets]) < time_thresh
+        sources, targets = sources[mask], targets[mask]
 
         transition_matrix, _, _ = np.histogram2d(nodes[sources],
                                                  nodes[targets],

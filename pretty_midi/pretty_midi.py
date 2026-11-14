@@ -44,7 +44,6 @@ class PrettyMIDI(object):
         Charset of the MIDI.
     mido_object : mido.MidiFile
         Pre-loaded `mido.MidiFile` object.
-        Pass its charset as ``charset`` when using non-Latin-1 metadata.
         Default ``None`` would check if ``midi_file`` is populated instead. If both are ``None``,
         creates an empty class with the supplied values for resolution and initial tempo.
         Additionally, a ValueError is raised if both ``mido_object`` and ``midi_file`` are not ``None``.

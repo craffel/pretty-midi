@@ -1,5 +1,6 @@
 """Regression coverage for MIDI marker metadata."""
 from io import BytesIO
+from pathlib import Path
 
 import mido
 import numpy as np
@@ -203,7 +204,8 @@ def test_retime_markers_with_notes_and_tempo_changes():
 
 
 def test_many_markers_in_example_file():
-    midi = pretty_midi.PrettyMIDI('example.mid')
+    example = Path(__file__).resolve().parent.parent / 'example.mid'
+    midi = pretty_midi.PrettyMIDI(example)
     end = midi.get_end_time()
     midi.markers = [pretty_midi.Marker(str(i), end * i / 1024)
                     for i in range(1025)]
@@ -218,3 +220,15 @@ def test_many_markers_in_example_file():
     output.seek(0)
     reloaded = pretty_midi.PrettyMIDI(output)
     assert [m.text for m in reloaded.markers] == [text for text, _ in expected]
+
+
+def test_trailing_marker_extends_beat_grids_but_not_note_roll():
+    midi = pretty_midi.PrettyMIDI()
+    instrument = pretty_midi.Instrument(0)
+    instrument.notes.append(pretty_midi.Note(100, 60, 0, 1))
+    midi.instruments.append(instrument)
+    midi.markers = [pretty_midi.Marker('Outro', 4)]
+    assert midi.get_end_time() == 4
+    np.testing.assert_array_equal(midi.get_beats(), np.arange(0, 4, 0.5))
+    np.testing.assert_array_equal(midi.get_downbeats(), [0, 2])
+    assert midi.get_piano_roll(fs=100).shape == (128, 100)
