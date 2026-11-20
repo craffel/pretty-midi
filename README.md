@@ -20,12 +20,17 @@ print(midi_data.estimate_tempo())
 # Compute the relative amount of each semitone across the entire song, a proxy for key
 total_velocity = sum(sum(midi_data.get_chroma()))
 print([sum(semitone)/total_velocity for semitone in midi_data.get_chroma()])
-# Shift all notes up by 5 semitones
+# Shift non-drum notes by up to 5 semitones, using one interval for all notes
+highest_pitch = max(
+    (note.pitch for instrument in midi_data.instruments if not instrument.is_drum
+     for note in instrument.notes),
+    default=0,
+)
+semitones = min(5, 127 - highest_pitch)
 for instrument in midi_data.instruments:
-    # Don't want to shift drum notes
     if not instrument.is_drum:
         for note in instrument.notes:
-            note.pitch += 5
+            note.pitch += semitones
 # Synthesize the resulting MIDI data using sine waves
 audio_data = midi_data.synthesize()
 ```
