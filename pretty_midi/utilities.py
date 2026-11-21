@@ -580,4 +580,6 @@ def semitones_to_pitch_bend(semitones, semitone_range=2.):
         MIDI pitch bend amount, in ``[-8192, 8191]``.
 
     """
-    return int(8192*(semitones/semitone_range))
+    pitch_bend = int(8192*(semitones/semitone_range))
+    # +semitone_range maps to 8192, which MIDI (and mido) can't encode
+    return max(-8192, min(8191, pitch_bend))

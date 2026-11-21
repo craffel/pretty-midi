@@ -75,3 +75,29 @@ def test_qpm_to_bpm():
     for den in [-1, 0, 4.3, 'invalid']:
         with pytest.raises(ValueError):
             pretty_midi.qpm_to_bpm(qpm, num, den)
+
+
+def test_semitones_to_pitch_bend_range():
+    assert pretty_midi.semitones_to_pitch_bend(0.) == 0
+    assert pretty_midi.semitones_to_pitch_bend(1.) == 4096
+    assert pretty_midi.semitones_to_pitch_bend(-1.) == -4096
+    # The ends of the range must stay within the 14-bit MIDI limits
+    assert pretty_midi.semitones_to_pitch_bend(2.) == 8191
+    assert pretty_midi.semitones_to_pitch_bend(-2.) == -8192
+    assert pretty_midi.semitones_to_pitch_bend(12., 12.) == 8191
+    assert pretty_midi.semitones_to_pitch_bend(5.) == 8191
+    assert pretty_midi.semitones_to_pitch_bend(-5.) == -8192
+
+
+def test_semitones_to_pitch_bend_writes(tmpdir):
+    pm = pretty_midi.PrettyMIDI()
+    inst = pretty_midi.Instrument(0)
+    inst.notes.append(pretty_midi.Note(100, 60, 0., 2.))
+    for t, semitones in enumerate([2., -2.]):
+        inst.pitch_bends.append(pretty_midi.PitchBend(
+            pretty_midi.semitones_to_pitch_bend(semitones), float(t)))
+    pm.instruments.append(inst)
+    path = str(tmpdir.join('bend.mid'))
+    pm.write(path)
+    bends = pretty_midi.PrettyMIDI(path).instruments[0].pitch_bends
+    assert [b.pitch for b in bends] == [8191, -8192]
