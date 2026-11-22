@@ -1509,6 +1509,7 @@ class PrettyMIDI(object):
         channels = list(range(16))
         # Don't assign the drum channel by mistake!
         channels.remove(9)
+        n_skipped_notes = 0
         for n, instrument in enumerate(self.instruments):
             # Initialize track for this instrument
             track = mido.MidiTrack()
@@ -1528,13 +1529,20 @@ class PrettyMIDI(object):
                 channel=channel))
             # Add all note events
             for note in instrument.notes:
+                start_tick = self.time_to_tick(note.start)
+                end_tick = self.time_to_tick(note.end)
+                # Notes shorter than one tick can't be written, as their
+                # note-off would be sorted before their note-on
+                if end_tick <= start_tick:
+                    n_skipped_notes += 1
+                    continue
                 # Construct the note-on event
                 track.append(mido.Message(
-                    'note_on', time=self.time_to_tick(note.start),
+                    'note_on', time=start_tick,
                     channel=channel, note=note.pitch, velocity=note.velocity))
                 # Also need a note-off event (note on with velocity 0)
                 track.append(mido.Message(
-                    'note_on', time=self.time_to_tick(note.end),
+                    'note_on', time=end_tick,
                     channel=channel, note=note.pitch, velocity=0))
             # Add all pitch bend events
             for bend in instrument.pitch_bends:
@@ -1567,6 +1575,10 @@ class PrettyMIDI(object):
                 'end_of_track', time=track[-1].time + 1))
             # Add to the list of output tracks
             mid.tracks.append(track)
+        if n_skipped_notes:
+            warnings.warn(
+                "{} note(s) shorter than one tick were not written.".format(
+                    n_skipped_notes), RuntimeWarning)
         # Turn ticks to relative time from absolute
         for track in mid.tracks:
             tick = 0

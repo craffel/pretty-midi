@@ -1,6 +1,7 @@
 import pretty_midi
 import numpy as np
 import mido
+import pytest
 from tempfile import NamedTemporaryFile
 
 
@@ -415,6 +416,27 @@ def test_properly_order_overlapping_notes():
 
         assert np.allclose(expected,
                            extract_notes(pm_song_written.instruments[0]))
+
+
+def test_write_skips_notes_shorter_than_a_tick():
+    pm = pretty_midi.PrettyMIDI(resolution=220)
+    inst = pretty_midi.Instrument(0)
+    # this note starts and ends on the same tick
+    inst.notes.append(pretty_midi.Note(100, 60, 0., 0.0001))
+    inst.notes.append(pretty_midi.Note(100, 60, 1., 2.))
+    pm.instruments.append(inst)
+
+    with NamedTemporaryFile() as file:
+        with pytest.warns(RuntimeWarning, match='shorter than one tick'):
+            pm.write(file)
+        file.seek(0)
+        pm_written = pretty_midi.PrettyMIDI(file)
+
+    # the short note is dropped instead of becoming a note from 0 to 2
+    notes = [(note.pitch, note.start, note.end)
+             for note in pm_written.instruments[0].notes]
+    assert np.allclose(notes, [(60, 1., 2.)])
+    assert len(inst.notes) == 2
 
 
 def test_get_end_time():
