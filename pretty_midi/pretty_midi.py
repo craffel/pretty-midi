@@ -15,6 +15,7 @@ import functools
 import six
 import pathlib
 from heapq import merge
+from bisect import bisect_left, bisect_right
 
 from .instrument import Instrument
 from .containers import (KeySignature, TimeSignature, Lyric, Note,
@@ -135,7 +136,7 @@ class PrettyMIDI(object):
             # and let the tick scale start from 0
             self._tick_scales = [(0, 60.0/(initial_tempo*self.resolution))]
             # Only need to convert one tick to time
-            self.__tick_to_time = [0]
+            self._update_tick_to_time(0)
             # Empty instruments list
             self.instruments = []
             # Empty key signature changes list
@@ -207,13 +208,13 @@ class PrettyMIDI(object):
             if event.type == 'key_signature':
                 key_obj = KeySignature(
                     key_name_to_key_number(event.key),
-                    self.__tick_to_time[event.time])
+                    self.__tick_time(event.time))
                 self.key_signature_changes.append(key_obj)
 
             elif event.type == 'time_signature':
                 ts_obj = TimeSignature(event.numerator,
                                        event.denominator,
-                                       self.__tick_to_time[event.time])
+                                       self.__tick_time(event.time))
                 self.time_signature_changes.append(ts_obj)
 
         # We search for lyrics and text events on all tracks
@@ -227,10 +228,10 @@ class PrettyMIDI(object):
             for event in track:
                 if event.type == 'lyrics':
                     lyrics.append(Lyric(
-                        event.text, self.__tick_to_time[event.time]))
+                        event.text, self.__tick_time(event.time)))
                 elif event.type == 'text':
                     text_events.append(Text(
-                        event.text, self.__tick_to_time[event.time]))
+                        event.text, self.__tick_time(event.time)))
 
             if lyrics:
                 tracks_with_lyrics.append(lyrics)
@@ -243,8 +244,8 @@ class PrettyMIDI(object):
 
 
     def _update_tick_to_time(self, max_tick):
-        """Creates ``self.__tick_to_time``, a class member array which maps
-        ticks to time starting from tick 0 and ending at ``max_tick``.
+        """Creates the mapping from ticks to time, starting from tick 0 and
+        ending at ``max_tick``.
 
         Parameters
         ----------
@@ -257,25 +258,62 @@ class PrettyMIDI(object):
         # use this largest tick instead
         max_scale_tick = max(ts[0] for ts in self._tick_scales)
         max_tick = max_tick if max_tick > max_scale_tick else max_scale_tick
-        # Allocate tick to time array - indexed by tick from 0 to max_tick
-        self.__tick_to_time = np.zeros(max_tick + 1)
-        # Keep track of the end time of the last tick in the previous interval
+        # Store one (tick, time, scale) row per tempo segment instead of a
+        # time for every tick, which costs 8 bytes per tick of the file.
+        seg_ticks, seg_times, seg_scales = [], [], []
         last_end_time = 0
-        # Cycle through intervals of different tempi
         for (start_tick, tick_scale), (end_tick, _) in \
                 zip(self._tick_scales[:-1], self._tick_scales[1:]):
-            # Convert ticks in this interval to times
-            ticks = np.arange(end_tick - start_tick + 1)
-            self.__tick_to_time[start_tick:end_tick + 1] = (last_end_time +
-                                                            tick_scale*ticks)
-            # Update the time of the last tick in this interval
-            last_end_time = self.__tick_to_time[end_tick]
-        # For the final interval, use the final tempo setting
-        # and ticks from the final tempo setting until max_tick
+            if start_tick != end_tick:
+                seg_ticks.append(start_tick)
+                seg_times.append(last_end_time)
+                seg_scales.append(tick_scale)
+            # Same arithmetic as filling a dense array, so times match exactly
+            last_end_time = last_end_time + tick_scale*(end_tick - start_tick)
         start_tick, tick_scale = self._tick_scales[-1]
-        ticks = np.arange(max_tick + 1 - start_tick)
-        self.__tick_to_time[start_tick:] = (last_end_time +
-                                            tick_scale*ticks)
+        seg_ticks.append(start_tick)
+        seg_times.append(last_end_time)
+        seg_scales.append(tick_scale)
+        self.__seg_ticks = seg_ticks
+        self.__seg_times = [float(t) for t in seg_times]
+        self.__seg_scales = seg_scales
+        self.__n_ticks = max_tick + 1
+        self.__dense_cache = None
+
+    def __tick_time(self, tick):
+        """Time in seconds of an integer tick, as a numpy float64."""
+        if tick < 0:
+            # Match indexing the former dense array from the end
+            tick += self.__n_ticks
+            if tick < 0:
+                raise IndexError('Supplied tick is out of range.')
+        i = bisect_right(self.__seg_ticks, tick) - 1
+        return np.float64(self.__seg_times[i] +
+                          self.__seg_scales[i]*(tick - self.__seg_ticks[i]))
+
+    def __ticks_to_times(self, ticks):
+        """Vectorized ``__tick_time`` for non-negative ticks."""
+        ticks = np.asarray(ticks, dtype=np.int64)
+        seg_ticks = np.asarray(self.__seg_ticks, dtype=np.int64)
+        i = np.searchsorted(seg_ticks, ticks, side='right') - 1
+        return (np.asarray(self.__seg_times)[i] +
+                np.asarray(self.__seg_scales)[i]*(ticks - seg_ticks[i]))
+
+    @property
+    def __tick_to_time(self):
+        # Dense tick -> time array, built only for code that still reads the
+        # private ``_PrettyMIDI__tick_to_time`` attribute directly.
+        if self.__dense_cache is None:
+            self.__dense_cache = self.__ticks_to_times(
+                np.arange(self.__n_ticks))
+        return self.__dense_cache
+
+    def __setstate__(self, state):
+        # Objects pickled by older versions carry the dense array instead
+        old = state.pop('_PrettyMIDI__tick_to_time', None)
+        self.__dict__.update(state)
+        if '_PrettyMIDI__seg_ticks' not in state:
+            self._update_tick_to_time(len(old) - 1 if old is not None else 0)
 
     def _load_instruments(self, midi_data):
         """Populates ``self.instruments`` using ``midi_data``.
@@ -347,7 +385,8 @@ class PrettyMIDI(object):
             # Keep track of which instrument is playing in each channel
             # initialize to program 0 for all channels
             current_instrument = np.zeros(16, dtype=int)
-            for event in track:
+            track_times = self.__ticks_to_times([e.time for e in track])
+            for event, event_time in zip(track, track_times):
                 # Look for track name events
                 if event.type == 'track_name':
                     # Set the track name for the current track
@@ -361,7 +400,7 @@ class PrettyMIDI(object):
                     # Store this as the last note-on location
                     note_on_index = (event.channel, event.note)
                     last_note_on[note_on_index].append((
-                        event.time, event.velocity))
+                        event.time, event.velocity, event_time))
                 # Note offs can also be note on events with 0 velocity
                 elif event.type == 'note_off' or (event.type == 'note_on' and
                                                   event.velocity == 0):
@@ -378,17 +417,14 @@ class PrettyMIDI(object):
                         open_notes = last_note_on[key]
 
                         notes_to_close = [
-                            (start_tick, velocity)
-                            for start_tick, velocity in open_notes
-                            if start_tick != end_tick]
+                            note_on for note_on in open_notes
+                            if note_on[0] != end_tick]
                         notes_to_keep = [
-                            (start_tick, velocity)
-                            for start_tick, velocity in open_notes
-                            if start_tick == end_tick]
+                            note_on for note_on in open_notes
+                            if note_on[0] == end_tick]
 
-                        for start_tick, velocity in notes_to_close:
-                            start_time = self.__tick_to_time[start_tick]
-                            end_time = self.__tick_to_time[end_tick]
+                        for _, velocity, start_time in notes_to_close:
+                            end_time = event_time
                             # Create the note event
                             note = Note(velocity, event.note, start_time,
                                         end_time)
@@ -413,8 +449,7 @@ class PrettyMIDI(object):
                 # Store pitch bends
                 elif event.type == 'pitchwheel':
                     # Create pitch bend class instance
-                    bend = PitchBend(event.pitch,
-                                     self.__tick_to_time[event.time])
+                    bend = PitchBend(event.pitch, event_time)
                     # Get the program for the current inst
                     program = current_instrument[event.channel]
                     # Retrieve the Instrument instance for the current inst
@@ -426,8 +461,7 @@ class PrettyMIDI(object):
                 # Store control changes
                 elif event.type == 'control_change':
                     control_change = ControlChange(
-                        event.control, event.value,
-                        self.__tick_to_time[event.time])
+                        event.control, event.value, event_time)
                     # Get the program for the current inst
                     program = current_instrument[event.channel]
                     # Retrieve the Instrument instance for the current inst
@@ -1073,7 +1107,7 @@ class PrettyMIDI(object):
 
     def tick_to_time(self, tick):
         """Converts from an absolute tick to time in seconds using
-        ``self.__tick_to_time``.
+        ``self._tick_scales``.
 
         Parameters
         ----------
@@ -1090,13 +1124,13 @@ class PrettyMIDI(object):
         if tick >= MAX_TICK:
             raise IndexError('Supplied tick is too large.')
         # If we haven't compute the mapping for a tick this large, compute it
-        if tick >= len(self.__tick_to_time):
+        if tick >= self.__n_ticks:
             self._update_tick_to_time(tick)
         # Ticks should be integers
         if not isinstance(tick, int):
             warnings.warn('tick should be an int.')
         # Otherwise just return the time
-        return self.__tick_to_time[int(tick)]
+        return self.__tick_time(int(tick))
 
     def time_to_tick(self, time):
         """Converts from a time in seconds to absolute tick using
@@ -1113,21 +1147,36 @@ class PrettyMIDI(object):
             Absolute tick corresponding to the supplied time.
 
         """
-        # Find the index of the ticktime which is smaller than time
-        tick = np.searchsorted(self.__tick_to_time, time, side="left")
-        # If the closest tick was the final tick in self.__tick_to_time...
-        if tick == len(self.__tick_to_time):
-            # start from time at end of __tick_to_time
+        # Find the first tick whose time is >= time, as np.searchsorted
+        # would on the times of ticks 0 .. n_ticks - 1
+        seg_ticks, seg_times = self.__seg_ticks, self.__seg_times
+        n_ticks = self.__n_ticks
+        i = bisect_left(seg_times, time)
+        if i == 0:
+            return 0
+        start, t0, scale = seg_ticks[i - 1], seg_times[i - 1], \
+            self.__seg_scales[i - 1]
+        end = seg_ticks[i] if i < len(seg_ticks) else n_ticks
+
+        def at(k):
+            return t0 + scale*(k - start)
+        # Estimate within the segment, then fix float rounding by stepping
+        guess = start + (time - t0)/scale
+        tick = int(min(max(math.ceil(guess), start + 1), end)) \
+            if math.isfinite(guess) else end
+        while tick > start + 1 and at(tick - 1) >= time:
             tick -= 1
+        while tick < end and at(tick) < time:
+            tick += 1
+        # If time is past the last tick...
+        if tick == n_ticks:
             # Add on ticks assuming the final tick_scale amount
             _, final_tick_scale = self._tick_scales[-1]
-            tick += (time - self.__tick_to_time[tick])/final_tick_scale
+            tick = n_ticks - 1 + (time - at(n_ticks - 1))/final_tick_scale
             # Re-round/quantize
             return int(round(tick))
-        # If the tick is not 0 and the previous ticktime in a is closer to time
-        if tick and (math.fabs(time - self.__tick_to_time[tick - 1]) <
-                     math.fabs(time - self.__tick_to_time[tick])):
-            # Decrement index by 1
+        # If the previous ticktime is closer to time
+        if math.fabs(time - at(tick - 1)) < math.fabs(time - at(tick)):
             return tick - 1
         else:
             return tick
@@ -1286,7 +1335,7 @@ class PrettyMIDI(object):
         # wandering mapping.  This may not be the optimal way of doing this,
         # but it does the right thing.
         self._update_tick_to_time(self.time_to_tick(original_times[-1]))
-        original_times = [self.__tick_to_time[self.time_to_tick(time)]
+        original_times = [self.__tick_time(self.time_to_tick(time))
                           for time in original_times]
         # Use spacing between timing to change tempo changes
         tempo_change_times, tempo_changes = self.get_tempo_changes()
