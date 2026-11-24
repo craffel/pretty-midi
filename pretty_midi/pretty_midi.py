@@ -1395,7 +1395,7 @@ class PrettyMIDI(object):
         for instrument in self.instruments:
             instrument.remove_invalid_notes()
 
-    def write(self, filename, round_tempo=False):
+    def write(self, filename, round_tempo=False, midi_type=1):
         """Write the MIDI data out to a .mid file.
 
         Parameters
@@ -1406,6 +1406,12 @@ class PrettyMIDI(object):
             If True, round MIDI tempos to the nearest integer microsecond per
             quarter note. If False, truncate them for backwards compatibility.
             Default is False.
+        midi_type : int
+            Write a type 1 file with separate instrument tracks (default),
+            or a type 0 file with all events on one track. Type 0 supports
+            up to 15 melodic instruments and one drum instrument. A single
+            instrument keeps its track name. With multiple instruments,
+            individual track names are omitted from the shared track.
 
         """
 
@@ -1455,7 +1461,10 @@ class PrettyMIDI(object):
             return event1.time - event2.time
 
         # Initialize output MIDI object
-        mid = mido.MidiFile(ticks_per_beat=self.resolution, charset=self._charset)
+        if midi_type not in (0, 1):
+            raise ValueError('midi_type must be 0 or 1')
+        mid = mido.MidiFile(type=midi_type, ticks_per_beat=self.resolution,
+                            charset=self._charset)
         # Create track 0 with timing information
         timing_track = mido.MidiTrack()
         # Add a default time signature only if there is not one at time 0.
@@ -1500,25 +1509,30 @@ class PrettyMIDI(object):
                 'text', time=self.time_to_tick(l.time), text=l.text))
         # Sort the (absolute-tick-timed) events.
         timing_track.sort(key=functools.cmp_to_key(event_compare))
-        # Add in an end of track event
-        timing_track.append(mido.MetaMessage(
-            'end_of_track', time=timing_track[-1].time + 1))
         mid.tracks.append(timing_track)
         # Create a list of possible channels to assign - this seems to matter
         # for some synths.
         channels = list(range(16))
         # Don't assign the drum channel by mistake!
         channels.remove(9)
+        if midi_type == 0:
+            drums = sum(1 for inst in self.instruments if inst.is_drum)
+            if drums > 1 or len(self.instruments) - drums > len(channels):
+                raise ValueError('Type 0 supports at most 15 melodic '
+                                 'instruments and one drum instrument')
+        write_track_names = midi_type == 1 or len(self.instruments) == 1
         for n, instrument in enumerate(self.instruments):
             # Initialize track for this instrument
             track = mido.MidiTrack()
             # Add track name event if instrument has a name
-            if instrument.name:
+            if instrument.name and write_track_names:
                 track.append(mido.MetaMessage(
                     'track_name', time=0, name=instrument.name))
             # If it's a drum event, we need to set channel to 9
             if instrument.is_drum:
                 channel = 9
+            elif midi_type == 0:
+                channel = channels.pop(0)
             # Otherwise, choose a channel from the possible channel list
             else:
                 channel = channels[n % len(channels)]
@@ -1562,13 +1576,15 @@ class PrettyMIDI(object):
                         event2.velocity == 0):
                     track[n] = event2
                     track[n + 1] = event1
-            # Finally, add in an end of track event
-            track.append(mido.MetaMessage(
-                'end_of_track', time=track[-1].time + 1))
             # Add to the list of output tracks
             mid.tracks.append(track)
+        if midi_type == 0:
+            # Merge while times are absolute, preserving each track's order.
+            mid.tracks = [list(merge(*mid.tracks, key=lambda e: e.time))]
         # Turn ticks to relative time from absolute
         for track in mid.tracks:
+            track.append(mido.MetaMessage(
+                'end_of_track', time=track[-1].time + 1))
             tick = 0
             for event in track:
                 event.time -= tick
